@@ -39,7 +39,9 @@ class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
 
-        self.pipeline = SDXLMinerPipeline.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0").to("cuda")
+        self.pipeline = (SDXLMinerPipeline
+                         .from_pretrained("stabilityai/stable-diffusion-xl-base-1.0")
+                         .to(self.device))
 
     async def forward(
         self, synapse: ImageGenerationSynapse
