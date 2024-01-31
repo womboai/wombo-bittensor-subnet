@@ -21,12 +21,10 @@ import time
 import typing
 import bittensor as bt
 
-# Bittensor Miner Template:
-import template
-
 # import base miner class which takes care of most of the boilerplate
 from template.base.miner import BaseMinerNeuron
 from template.miner import SDXLMinerPipeline, forward
+from template.protocol import ImageGenerationSynapse
 
 
 class Miner(BaseMinerNeuron):
@@ -44,8 +42,8 @@ class Miner(BaseMinerNeuron):
         self.pipeline = SDXLMinerPipeline()
 
     async def forward(
-        self, synapse: template.protocol.ImageGenerationSynapse
-    ) -> template.protocol.ImageGenerationSynapse:
+        self, synapse: ImageGenerationSynapse
+    ) -> ImageGenerationSynapse:
         """
         Processes the incoming 'ImageGenerationSynapse' synapse by performing a predefined operation on the input data.
         This method should be replaced with actual logic relevant to the miner's purpose.
@@ -63,7 +61,7 @@ class Miner(BaseMinerNeuron):
         return synapse
 
     async def blacklist(
-        self, synapse: template.protocol.ImageGenerationSynapse
+        self, synapse: ImageGenerationSynapse
     ) -> typing.Tuple[bool, str]:
         """
         Determines whether an incoming request should be blacklisted and thus ignored. Your implementation should
@@ -107,7 +105,7 @@ class Miner(BaseMinerNeuron):
         )
         return False, "Hotkey recognized!"
 
-    async def priority(self, synapse: template.protocol.ImageGenerationSynapse) -> float:
+    async def priority(self, synapse: ImageGenerationSynapse) -> float:
         """
         The priority function determines the order in which requests are handled. More valuable or higher-priority
         requests are processed before others. You should design your own priority mechanism with care.
