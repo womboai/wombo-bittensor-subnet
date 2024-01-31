@@ -22,6 +22,8 @@ import argparse
 import bittensor as bt
 from loguru import logger
 
+from template.base.neuron import BaseNeuron
+
 
 def check_config(cls, config: "bt.Config"):
     r"""Checks/validates the config namespace object."""
@@ -56,7 +58,7 @@ def check_config(cls, config: "bt.Config"):
         )
 
 
-def add_args(cls, parser):
+def add_args(cls: BaseNeuron, parser):
     """
     Adds relevant arguments to the parser for operation.
     """
@@ -164,7 +166,7 @@ def add_args(cls, parser):
         )
 
 
-def config(cls):
+def config(cls: BaseNeuron):
     """
     Returns the configuration object specific to this miner or validator after adding relevant arguments.
     """

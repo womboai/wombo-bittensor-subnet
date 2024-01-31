@@ -17,8 +17,10 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import typing
+from typing import Dict, Tuple, Union, List, Optional, Any, Callable
+
 import bittensor as bt
+import torch
 
 # TODO(developer): Rewrite with your protocol definition.
 
@@ -40,24 +42,24 @@ import bittensor as bt
 #   assert dummy_output == 2
 
 
-class Dummy(bt.Synapse):
+class ImageGenerationSynapse(bt.Synapse):
     """
     A simple dummy protocol representation which uses bt.Synapse as its base.
     This protocol helps in handling dummy request and response communication between
     the miner and the validator.
 
     Attributes:
-    - dummy_input: An integer value representing the input request sent by the validator.
-    - dummy_output: An optional integer value which, when filled, represents the response from the miner.
+    - input_parameters: A dictionary containing the image generation inputs
+    - output_data: An optional tuple value which, when filled, represents the response from the miner
+        which the frames tensor in the first argument and the list of images in the second.
     """
 
-    # Required request input, filled by sending dendrite caller.
-    dummy_input: int
+    input_parameters: Dict[str, Any]
 
     # Optional request output, filled by recieving axon.
-    dummy_output: typing.Optional[int] = None
+    output_data: Optional[Tuple[torch.Tensor, List[Any]]] = None
 
-    def deserialize(self) -> int:
+    def deserialize(self) -> Tuple[torch.Tensor, List[Any]]:
         """
         Deserialize the dummy output. This method retrieves the response from
         the miner in the form of dummy_output, deserializes it and returns it
@@ -68,9 +70,9 @@ class Dummy(bt.Synapse):
 
         Example:
         Assuming a Dummy instance has a dummy_output value of 5:
-        >>> dummy_instance = Dummy(dummy_input=4)
+        >>> dummy_instance = ImageGenerationSynapse(dummy_input=4)
         >>> dummy_instance.dummy_output = 5
         >>> dummy_instance.deserialize()
         5
         """
-        return self.dummy_output
+        return self.output_data
