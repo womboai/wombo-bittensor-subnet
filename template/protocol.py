@@ -19,6 +19,7 @@
 
 from typing import Dict, Tuple, Union, List, Optional, Any, Callable
 
+from numpy import ndarray
 import bittensor as bt
 import torch
 
@@ -57,7 +58,7 @@ class ImageGenerationSynapse(bt.Synapse):
     input_parameters: Dict[str, Any]
 
     # Optional request output, filled by recieving axon.
-    output_data: Optional[Tuple[torch.Tensor, List[Any]]] = None
+    output_data: Optional[Tuple[ndarray, List[Any]]] = None
 
     def deserialize(self) -> Tuple[torch.Tensor, List[Any]]:
         """
@@ -75,4 +76,5 @@ class ImageGenerationSynapse(bt.Synapse):
         >>> dummy_instance.deserialize()
         5
         """
-        return self.output_data
+        frames_array, images = self.output_data
+        return torch.from_numpy(frames_array), images
