@@ -1,3 +1,5 @@
+import pickle
+
 from neurons.miner import Miner
 from template.protocol import ImageGenerationSynapse
 
@@ -23,4 +25,5 @@ class SDXLMinerPipeline(StableDiffusionXLPipeline):
 
 
 def forward(self: Miner, request: ImageGenerationSynapse):
-    request.output_data = self.pipeline.generate(**request.input_parameters)
+    frames_tensor, images = self.pipeline.generate(**request.input_parameters)
+    request.output_data = pickle.dumps(frames_tensor), [pickle.dumps(image) for image in images]

@@ -2,7 +2,7 @@
 # Copyright © 2023 Yuma Rao
 # TODO(developer): Set your name
 # Copyright © 2023 <your name>
-
+import pickle
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -58,7 +58,7 @@ class ImageGenerationSynapse(bt.Synapse):
     input_parameters: Dict[str, Any]
 
     # Optional request output, filled by recieving axon.
-    output_data: Optional[Tuple[ndarray, List[Any]]] = None
+    output_data: Optional[Tuple[bytes, List[bytes]]] = None
 
     def deserialize(self) -> Tuple[torch.Tensor, List[Any]]:
         """
@@ -76,5 +76,5 @@ class ImageGenerationSynapse(bt.Synapse):
         >>> dummy_instance.deserialize()
         5
         """
-        frames_array, images = self.output_data
-        return torch.from_numpy(frames_array), images
+        frames_array, image_data = self.output_data
+        return pickle.loads(frames_array), [pickle.loads(data) for data in image_data]

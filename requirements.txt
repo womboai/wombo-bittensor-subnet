@@ -1,3 +1,2 @@
 bittensor
 torch
-numpy
