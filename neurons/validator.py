@@ -29,7 +29,7 @@ from template.validator import forward
 
 # import base validator class which takes care of most of the boilerplate
 from template.base.validator import BaseValidatorNeuron
-from template.validator.reward import SDXLValidatorPipeline
+from template.validator import SDXLValidatorPipeline
 
 
 class Validator(BaseValidatorNeuron):

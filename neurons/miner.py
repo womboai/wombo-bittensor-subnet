@@ -26,7 +26,7 @@ import template
 
 # import base miner class which takes care of most of the boilerplate
 from template.base.miner import BaseMinerNeuron
-from template.miner.forward import SDXLMinerPipeline, forward
+from template.miner import SDXLMinerPipeline, forward
 
 
 class Miner(BaseMinerNeuron):
