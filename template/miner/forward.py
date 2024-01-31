@@ -24,5 +24,4 @@ class SDXLMinerPipeline(StableDiffusionXLPipeline):
 
 
 def forward(self, request: ImageGenerationSynapse):
-    frames_tensor, images = self.pipeline.generate(**request.input_parameters)
-    request.output_data = pickle.dumps(frames_tensor), [pickle.dumps(image) for image in images]
+    request.output_data = pickle.dumps(self.pipeline.generate(**request.input_parameters))

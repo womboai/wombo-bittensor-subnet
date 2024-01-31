@@ -57,8 +57,8 @@ class ImageGenerationSynapse(bt.Synapse):
 
     input_parameters: Dict[str, Any]
 
-    # Optional request output, filled by recieving axon.
-    output_data: Optional[Tuple[bytes, List[bytes]]] = None
+    # Optional request output, filled by receiving axon.
+    output_data: Optional[bytes] = None
 
     def deserialize(self) -> Tuple[torch.Tensor, List[Any]]:
         """
@@ -76,5 +76,4 @@ class ImageGenerationSynapse(bt.Synapse):
         >>> dummy_instance.deserialize()
         5
         """
-        frames_array, image_data = self.output_data
-        return pickle.loads(frames_array), [pickle.loads(data) for data in image_data]
+        return pickle.loads(self.output_data)
