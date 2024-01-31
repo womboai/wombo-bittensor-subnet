@@ -25,8 +25,6 @@ from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import
     StableDiffusionXLPipeline, retrieve_timesteps, rescale_noise_cfg
 )
 
-from neurons.validator import Validator
-
 
 class SDXLValidatorPipeline(StableDiffusionXLPipeline):
     def all_close(self, tensor_a, tensor_b) -> bool:
@@ -433,7 +431,7 @@ def reward(pipeline: SDXLValidatorPipeline, query: Dict[str, Any], response: Tup
 
 
 def get_rewards(
-    self: Validator,
+    self,
     query: Dict[str, Any],
     responses: List[Tuple[torch.Tensor, List[Any]]],
 ) -> torch.FloatTensor:

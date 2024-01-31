@@ -21,13 +21,12 @@ import sys
 
 import bittensor as bt
 
-from neurons.validator import Validator
 from template.protocol import ImageGenerationSynapse
 from template.validator.reward import get_rewards
 from template.utils.uids import get_random_uids
 
 
-async def forward(self: Validator):
+async def forward(self):
     """
     The forward function is called by the validator every time step.
 
