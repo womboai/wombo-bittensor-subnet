@@ -39,7 +39,7 @@ class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
 
-        self.pipeline = SDXLMinerPipeline()
+        self.pipeline = SDXLMinerPipeline.from_pretrained("newdream_sdxl_v10").to("cuda")
 
     async def forward(
         self, synapse: ImageGenerationSynapse

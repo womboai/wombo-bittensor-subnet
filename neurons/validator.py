@@ -47,7 +47,7 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info("load_state()")
         self.load_state()
 
-        self.pipeline = SDXLValidatorPipeline()
+        self.pipeline = SDXLValidatorPipeline.from_pretrained("newdream_sdxl_v10").to("cuda")
 
     async def forward(self):
         """
