@@ -9,11 +9,9 @@ ENV PATH=/app/venv:$PATH
 
 RUN pip install -r requirements.txt
 
-ENTRYPOINT [
-    "python",
-    "-m neurons.validator",
-    "--netuid $NETUID",
-    "--subtensor.network $NETWORK",
-    "--wallet.name $WALLET_NAME",
-    "--wallet.hotkey $WALLET_HOTKEY"
-]
+ENTRYPOINT python \
+    -m neurons.miner \
+    --netuid $NETUID \
+    --subtensor.network $NETWORK \
+    --wallet.name $WALLET_NAME \
+    --wallet.hotkey $WALLET_HOTKEY \
