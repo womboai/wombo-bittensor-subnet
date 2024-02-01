@@ -2,6 +2,8 @@ FROM subnet:neuron
 
 WORKDIR /app/
 
+EXPOSE 8089
+
 ENTRYPOINT python \
     -m neurons.miner \
     --neuron.device cuda \

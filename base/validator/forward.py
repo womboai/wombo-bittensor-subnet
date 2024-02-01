@@ -1,7 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2024 WOMBO
 import random
 import sys
 
@@ -21,9 +20,9 @@ import sys
 
 import bittensor as bt
 
-from template.protocol import ImageGenerationSynapse
-from template.validator.reward import get_rewards
-from template.utils.uids import get_random_uids
+from base.protocol import ImageGenerationSynapse
+from base.validator.reward import get_rewards
+from base.utils.uids import get_random_uids
 
 
 async def forward(self):

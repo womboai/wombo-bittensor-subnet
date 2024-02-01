@@ -1,7 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2024 WOMBO
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -22,9 +21,9 @@ import typing
 import bittensor as bt
 
 # import base miner class which takes care of most of the boilerplate
-from template.base.miner import BaseMinerNeuron
-from template.miner import SDXLMinerPipeline, forward
-from template.protocol import ImageGenerationSynapse
+from base.base.miner import BaseMinerNeuron
+from base.miner import SDXLMinerPipeline, forward
+from base.protocol import ImageGenerationSynapse
 
 
 class Miner(BaseMinerNeuron):
@@ -51,10 +50,10 @@ class Miner(BaseMinerNeuron):
         This method should be replaced with actual logic relevant to the miner's purpose.
 
         Args:
-            synapse (template.protocol.ImageGenerationSynapse): The synapse object containing the 'input_parameters' data.
+            synapse (base.protocol.ImageGenerationSynapse): The synapse object containing the 'input_parameters' data.
 
         Returns:
-            template.protocol.ImageGenerationSynapse: The synapse object with the 'output_data' field set to the frames tensor and images list.
+            base.protocol.ImageGenerationSynapse: The synapse object with the 'output_data' field set to the frames tensor and images list.
 
         The 'forward' function is a placeholder and should be overridden with logic that is appropriate for
         the miner's intended operation. This method demonstrates a basic transformation of input data.
@@ -74,7 +73,7 @@ class Miner(BaseMinerNeuron):
         requests before they are deserialized to avoid wasting resources on requests that will be ignored.
 
         Args:
-            synapse (template.protocol.ImageGenerationSynapse): A synapse object constructed from the headers of the incoming request.
+            synapse (base.protocol.ImageGenerationSynapse): A synapse object constructed from the headers of the incoming request.
 
         Returns:
             Tuple[bool, str]: A tuple containing a boolean indicating whether the synapse's hotkey is blacklisted,
@@ -115,7 +114,7 @@ class Miner(BaseMinerNeuron):
         This implementation assigns priority to incoming requests based on the calling entity's stake in the metagraph.
 
         Args:
-            synapse (template.protocol.ImageGenerationSynapse): The synapse object that contains metadata about the incoming request.
+            synapse (base.protocol.ImageGenerationSynapse): The synapse object that contains metadata about the incoming request.
 
         Returns:
             float: A priority score derived from the stake of the calling entity.

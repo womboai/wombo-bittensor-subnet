@@ -1,7 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2024 WOMBO
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -20,11 +19,9 @@
 import re
 import os
 import codecs
-import pathlib
 from os import path
 from io import open
 from setuptools import setup, find_packages
-from pkg_resources import parse_requirements
 
 
 def read_requirements(path):
@@ -55,7 +52,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 # loading version from setup.py
 with codecs.open(
-    os.path.join(here, "template/__init__.py"), encoding="utf-8"
+    os.path.join(here, "base/__init__.py"), encoding="utf-8"
 ) as init_file:
     version_match = re.search(
         r"^__version__ = ['\"]([^'\"]*)['\"]", init_file.read(), re.M
@@ -63,18 +60,18 @@ with codecs.open(
     version_string = version_match.group(1)
 
 setup(
-    name="bittensor_subnet_template",  # TODO(developer): Change this value to your module subnet name.
+    name="wombo-bittensor-subnet",
     version=version_string,
-    description="bittensor_subnet_template",  # TODO(developer): Change this value to your module subnet description.
+    description="wombo-bittensor-subnet",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/opentensor/bittensor-subnet-template",  # TODO(developer): Change this url to your module subnet github url.
-    author="bittensor.com",  # TODO(developer): Change this value to your module subnet author name.
+    url="https://github.com/womboai/wombo-bittensor-subnet",
+    author="womboai",
     packages=find_packages(),
     include_package_data=True,
-    author_email="",  # TODO(developer): Change this value to your module subnet author email.
+    author_email="hello@wombo.ai",
     license="MIT",
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     install_requires=requirements,
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -83,8 +80,6 @@ setup(
         # Pick your license as you wish
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3 :: Only",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Mathematics",

@@ -1,7 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2024 WOMBO
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -24,12 +23,11 @@ import time
 import bittensor as bt
 
 # Bittensor Validator Template:
-import template
-from template.validator import forward
+from base.validator import forward
 
 # import base validator class which takes care of most of the boilerplate
-from template.base.validator import BaseValidatorNeuron
-from template.validator import SDXLValidatorPipeline
+from base.base.validator import BaseValidatorNeuron
+from base.validator import SDXLValidatorPipeline
 
 
 class Validator(BaseValidatorNeuron):
@@ -60,7 +58,6 @@ class Validator(BaseValidatorNeuron):
         - Rewarding the miners
         - Updating the scores
         """
-        # TODO(developer): Rewrite this function based on your protocol definition.
         return await forward(self)
 
 

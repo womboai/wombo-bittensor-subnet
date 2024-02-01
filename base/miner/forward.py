@@ -1,6 +1,6 @@
 import pickle
 
-from template.protocol import ImageGenerationSynapse
+from base.protocol import ImageGenerationSynapse
 
 import torch
 from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import StableDiffusionXLPipeline
