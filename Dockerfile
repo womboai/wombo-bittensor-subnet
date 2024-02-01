@@ -1,9 +1,7 @@
-FROM nvcr.io/nvidia/tensorrt:22.11-py3
+FROM pytorch/pytorch:2.0.1-cuda11.7-cudnn8-devel
 
 WORKDIR /app/
 COPY . .
-
-RUN apt-get update && apt-get install -y python3.8-venv
 
 RUN python3 -m venv ./venv
 
