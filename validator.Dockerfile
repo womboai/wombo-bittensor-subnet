@@ -4,6 +4,7 @@ WORKDIR /app/
 
 ENTRYPOINT python \
     -m neurons.validator \
+    --neuron.device cuda \
     --netuid $NETUID \
     --subtensor.network $NETWORK \
     --wallet.name $WALLET_NAME \
