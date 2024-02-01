@@ -1,4 +1,4 @@
-FROM python:3.10.10-slim
+FROM nvcr.io/nvidia/tensorrt:22.11-py3
 
 WORKDIR /app/
 COPY . .
