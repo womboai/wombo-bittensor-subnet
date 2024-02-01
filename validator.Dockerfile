@@ -2,10 +2,6 @@ FROM subnet:neuron
 
 WORKDIR /app/
 
-COPY --from=neuron-image /app/ ./
-
-ENV PATH="/app/venv:$PATH"
-
 ENTRYPOINT python \
     -m neurons.validator \
     --netuid $NETUID \
