@@ -40,12 +40,4 @@ class ImageGenerationSynapse(bt.Synapse):
     output_data: Optional[bytes] = None
 
     def deserialize(self) -> Tuple[torch.Tensor, List[Any]]:
-        """
-        Deserialize the dummy output. This method retrieves the response from
-        the miner in the form of dummy_output, deserializes it and returns it
-        as the output of the dendrite.query() call.
-
-        Returns:
-        - int: The deserialized response, which in this case is the value of dummy_output.
-        """
         return pickle.loads(self.output_data)

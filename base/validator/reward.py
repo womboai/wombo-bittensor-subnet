@@ -418,15 +418,14 @@ class SDXLValidatorPipeline(StableDiffusionXLPipeline):
 
 def reward(pipeline: SDXLValidatorPipeline, query: Dict[str, Any], response: Tuple[torch.Tensor, List[Any]]) -> float:
     """
-    Reward the miner response to the dummy request. This method returns a reward
+    Reward the miner response to the generation request. This method returns a reward
     value for the miner, which is used to update the miner's score.
 
     Returns:
     - float: The reward value for the miner.
     """
 
-    pipeline.validate(response, query)
-    return 1.0 if response == query * 2 else 0
+    return pipeline.validate(response, query)
 
 
 def get_rewards(

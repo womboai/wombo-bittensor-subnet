@@ -51,9 +51,8 @@ def query_synapse(
     dendrite = bt.dendrite(wallet=wallet)
 
     resp: Tuple[torch.Tensor, List[Any]] = dendrite.query(
-        # Send the query to selected miner axons in the network.
+        # Send the query to selected miner axon in the network.
         axons=[axon],
-        # Construct a dummy query. This simply contains a single integer.
         synapse=ImageGenerationSynapse(input_parameters=input_parameters),
         # All responses have the deserialize function called on them before returning.
         # You are encouraged to define your own deserialization function.
