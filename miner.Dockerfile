@@ -2,7 +2,7 @@ FROM subnet:neuron
 
 WORKDIR /app/
 
-EXPOSE 8089
+EXPOSE 8091
 
 ENTRYPOINT python \
     -m neurons.miner \
