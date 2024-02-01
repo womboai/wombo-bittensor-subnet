@@ -4,7 +4,8 @@ WORKDIR /app/
 
 ENTRYPOINT python \
     -m neurons.miner \
+    $EXTRA \
     --netuid $NETUID \
-    --subtensor.chain_endpoint $NETWORK \
+    --subtensor.network $NETWORK \
     --wallet.name $WALLET_NAME \
     --wallet.hotkey $WALLET_HOTKEY \
