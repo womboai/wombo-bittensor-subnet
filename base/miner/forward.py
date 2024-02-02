@@ -1,11 +1,10 @@
+import base64
 import pickle
 
 from base.protocol import ImageGenerationSynapse
 
 import torch
 from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import StableDiffusionXLPipeline
-
-import bittensor as bt
 
 
 class SDXLMinerPipeline(StableDiffusionXLPipeline):
@@ -26,4 +25,4 @@ class SDXLMinerPipeline(StableDiffusionXLPipeline):
 
 
 def forward(self, request: ImageGenerationSynapse):
-    request.output_data = pickle.dumps(self.pipeline.generate(**request.input_parameters))
+    request.output_data = base64.b64encode(pickle.dumps(self.pipeline.generate(**request.input_parameters)))

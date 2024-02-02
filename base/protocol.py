@@ -1,6 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
+import base64
 import pickle
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -41,4 +42,4 @@ class ImageGenerationSynapse(bt.Synapse):
     output_data: Optional[bytes] = None
 
     def deserialize(self) -> Tuple[torch.Tensor, List[Any]]:
-        return pickle.loads(self.output_data)
+        return pickle.loads(base64.b64decode(self.output_data))

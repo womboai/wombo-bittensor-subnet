@@ -48,7 +48,7 @@ async def forward(self):
         "seed": seed,
         "width": 512,
         "height": 512,
-        "steps": 15
+        "steps": 15,
     }
 
     # The dendrite client queries the network.
