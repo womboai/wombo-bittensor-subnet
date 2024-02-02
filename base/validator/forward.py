@@ -39,6 +39,8 @@ async def forward(self):
     # get_random_uids is an example method, but you can replace it with your own.
     miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
 
+    axons = [self.metagraph.axons[uid] for uid in miner_uids]
+
     max_seed = 2**32
     random_int = random.randint(0, max_seed)
     seed = (self.step * random_int) % max_seed
@@ -51,10 +53,12 @@ async def forward(self):
         "steps": 15,
     }
 
+    bt.logging.info(f"Sending request {input_parameters} to {miner_uids} which have axons {axons}")
+
     # The dendrite client queries the network.
     responses = self.dendrite.query(
         # Send the query to selected miner axons in the network.
-        axons=[self.metagraph.axons[uid] for uid in miner_uids],
+        axons=axons,
         synapse=ImageGenerationSynapse(input_parameters=input_parameters),
         # All responses have the deserialize function called on them before returning.
         # You are encouraged to define your own deserialization function.
