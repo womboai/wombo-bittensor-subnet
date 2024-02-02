@@ -63,7 +63,7 @@ async def forward(self):
         synapse=ImageGenerationSynapse(input_parameters=input_parameters),
         # All responses have the deserialize function called on them before returning.
         # You are encouraged to define your own deserialization function.
-        deserialize=True,
+        deserialize=False,
     )
 
     if responses is None:
@@ -83,7 +83,7 @@ async def forward(self):
             **input_parameters,
             "generator": torch.Generator().manual_seed(seed),
         },
-        responses=responses
+        responses=[response.deserialize() for response in responses]
     )
 
     bt.logging.info(f"Scored responses: {rewards}")
