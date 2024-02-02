@@ -65,6 +65,11 @@ async def forward(self):
         deserialize=True,
     )
 
+    if responses is None:
+        bt.logging.error(f"Received {None} response when querying for {input_parameters}")
+
+        return
+
     # Log the results for monitoring purposes.
     bt.logging.info(f"Received responses: {responses}")
 
