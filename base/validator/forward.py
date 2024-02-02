@@ -1,6 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
+import asyncio
 import random
 import sys
 
@@ -67,6 +68,8 @@ async def forward(self):
 
     if responses is None:
         bt.logging.error(f"Received {None} response when querying for {input_parameters}")
+
+        await asyncio.sleep(12)
 
         return
 
