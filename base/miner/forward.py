@@ -32,7 +32,7 @@ class SDXLMinerPipeline(StableDiffusionXLPipeline):
 
 def _image_base64(image: Image) -> bytes:
     with BytesIO() as output:
-        image.save(output)
+        image.save(output, format=image.format)
 
         return base64.b64encode(output.getvalue())
 
