@@ -22,6 +22,7 @@ from numpy import ndarray
 import bittensor as bt
 import torch
 
+
 class ImageGenerationSynapse(bt.Synapse):
     """
     A simple image generation protocol representation which uses bt.Synapse as its base.
@@ -40,4 +41,8 @@ class ImageGenerationSynapse(bt.Synapse):
     output_data: Optional[bytes] = None
 
     def deserialize(self) -> Tuple[torch.Tensor, List[Any]]:
-        return pickle.loads(self.output_data)
+        result = pickle.loads(self.output_data)
+
+        bt.logging.info(f"Deserialized synapse {self.output_data} to {result}")
+
+        return result

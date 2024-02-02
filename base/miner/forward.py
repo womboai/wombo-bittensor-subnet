@@ -5,6 +5,8 @@ from base.protocol import ImageGenerationSynapse
 import torch
 from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import StableDiffusionXLPipeline
 
+import bittensor as bt
+
 
 class SDXLMinerPipeline(StableDiffusionXLPipeline):
     def generate(self, **inputs):
@@ -24,4 +26,8 @@ class SDXLMinerPipeline(StableDiffusionXLPipeline):
 
 
 def forward(self, request: ImageGenerationSynapse):
-    request.output_data = pickle.dumps(self.pipeline.generate(**request.input_parameters))
+    output = self.pipeline.generate(**request.input_parameters)
+
+    request.output_data = pickle.dumps(output)
+
+    bt.logging.info(f"Serialized synapse {output} to {request.output_data}")
