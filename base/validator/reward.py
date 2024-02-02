@@ -20,6 +20,7 @@ import torch
 import random
 from typing import List, Optional, Union, Tuple, Dict, Any, Callable
 
+from PIL.Image import Image
 from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import (
     StableDiffusionXLPipeline, retrieve_timesteps, rescale_noise_cfg
 )
@@ -52,8 +53,6 @@ class SDXLValidatorPipeline(StableDiffusionXLPipeline):
             pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
             negative_pooled_prompt_embeds: Optional[torch.FloatTensor] = None,
             ip_adapter_image=None,
-            output_type: Optional[str] = "pil",
-            return_dict: bool = True,
             cross_attention_kwargs: Optional[Dict[str, Any]] = None,
             guidance_rescale: float = 0.0,
             original_size: Optional[Tuple[int, int]] = None,
@@ -404,8 +403,7 @@ class SDXLValidatorPipeline(StableDiffusionXLPipeline):
 
         return 1.0
 
-    def validate(self, miner_output, miner_inputs) -> float:
-        miner_inputs["generator"] = torch.Generator().manual_seed(miner_inputs["seed"])
+    def validate(self, miner_output: Tuple[torch.Tensor, List[Image]], miner_inputs: Dict[str, Any]) -> float:
         frames, images = miner_output
         num_random_indices = 1
         random_indices = sorted(random.sample(
@@ -416,7 +414,7 @@ class SDXLValidatorPipeline(StableDiffusionXLPipeline):
         return self.__validate_internal(frames_dict, **miner_inputs)
 
 
-def reward(pipeline: SDXLValidatorPipeline, query: Dict[str, Any], response: Tuple[torch.Tensor, List[Any]]) -> float:
+def reward(pipeline: SDXLValidatorPipeline, query: Dict[str, Any], response: Tuple[torch.Tensor, List[Image]]) -> float:
     """
     Reward the miner response to the generation request. This method returns a reward
     value for the miner, which is used to update the miner's score.
@@ -431,7 +429,7 @@ def reward(pipeline: SDXLValidatorPipeline, query: Dict[str, Any], response: Tup
 def get_rewards(
     self,
     query: Dict[str, Any],
-    responses: List[Tuple[torch.Tensor, List[Any]]],
+    responses: List[Tuple[torch.Tensor, List[Image]]],
 ) -> torch.FloatTensor:
     """
     Returns a tensor of rewards for the given query and responses.

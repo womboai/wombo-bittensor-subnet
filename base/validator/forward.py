@@ -3,7 +3,7 @@
 # Copyright © 2024 WOMBO
 import asyncio
 import random
-import sys
+import torch
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -77,7 +77,14 @@ async def forward(self):
     bt.logging.info(f"Received responses: {responses}")
 
     # Adjust the scores based on responses from miners.
-    rewards = get_rewards(self, query=input_parameters, responses=responses)
+    rewards = get_rewards(
+        self,
+        query={
+            **input_parameters,
+            "generator": torch.Generator().manual_seed(seed),
+        },
+        responses=responses
+    )
 
     bt.logging.info(f"Scored responses: {rewards}")
     # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.

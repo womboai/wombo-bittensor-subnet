@@ -2,7 +2,7 @@
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
 import base64
-import pickle
+from io import BytesIO
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -17,11 +17,16 @@ import pickle
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from typing import Dict, Tuple, Union, List, Optional, Any, Callable
+from typing import Dict, Tuple, List, Optional, Any
 
-from numpy import ndarray
+from PIL import Image
 import bittensor as bt
 import torch
+
+
+def _load_base64_image(data: bytes) -> Image.Image:
+    with BytesIO(base64.b64decode(data)) as input_data:
+        return Image.open(input_data)
 
 
 class ImageGenerationSynapse(bt.Synapse):
@@ -39,7 +44,13 @@ class ImageGenerationSynapse(bt.Synapse):
     input_parameters: Dict[str, Any]
 
     # Optional request output, filled by receiving axon.
-    output_data: Optional[bytes] = None
+    output_data: Optional[Tuple[List, List[bytes]]] = None
 
-    def deserialize(self) -> Tuple[torch.Tensor, List[Any]]:
-        return pickle.loads(base64.b64decode(self.output_data))
+    def deserialize(self) -> Tuple[torch.Tensor, List[Image.Image]]:
+        frames, image_data = self.output_data
+
+        frames_tensor = torch.FloatTensor(frames, dtype=torch.float16)
+
+        images = [_load_base64_image(data) for data in image_data]
+
+        return frames_tensor, images
