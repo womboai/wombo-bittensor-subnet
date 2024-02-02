@@ -42,7 +42,14 @@ async def forward(self):
     max_seed = 2**32
     random_int = random.randint(0, max_seed)
     seed = (self.step * random_int) % max_seed
-    input_parameters = {"prompt": f"Test Apples {self.step} * {random_int}", "seed": seed}
+
+    input_parameters = {
+        "prompt": f"Test Apples {self.step} * {random_int}",
+        "seed": seed,
+        "width": 512,
+        "height": 512,
+        "steps": 15
+    }
 
     # The dendrite client queries the network.
     responses = self.dendrite.query(

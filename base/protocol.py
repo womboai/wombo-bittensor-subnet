@@ -41,8 +41,4 @@ class ImageGenerationSynapse(bt.Synapse):
     output_data: Optional[bytes] = None
 
     def deserialize(self) -> Tuple[torch.Tensor, List[Any]]:
-        result = pickle.loads(self.output_data)
-
-        bt.logging.info(f"Deserialized synapse {self.output_data} to {result}")
-
-        return result
+        return pickle.loads(self.output_data)

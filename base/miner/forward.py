@@ -26,8 +26,4 @@ class SDXLMinerPipeline(StableDiffusionXLPipeline):
 
 
 def forward(self, request: ImageGenerationSynapse):
-    output = self.pipeline.generate(**request.input_parameters)
-
-    request.output_data = pickle.dumps(output)
-
-    bt.logging.info(f"Serialized synapse {output} to {request.output_data}")
+    request.output_data = pickle.dumps(self.pipeline.generate(**request.input_parameters))
