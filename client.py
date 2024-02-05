@@ -15,8 +15,17 @@ class Client:
         client_config = self.client_config()
 
         self.config = client_config
-
         self.check_config(client_config)
+
+        # Set up logging with the provided configuration and directory.
+        bt.logging(config=client_config, logging_dir=client_config.full_path)
+
+        # Log the configuration for reference.
+        bt.logging.info(client_config)
+
+        # Build Bittensor objects
+        # These are core Bittensor classes to interact with the network.
+        bt.logging.info("Setting up bittensor objects.")
 
         # The wallet holds the cryptographic key pairs for the miner.
         self.wallet = bt.wallet(config=client_config)
