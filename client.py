@@ -5,16 +5,16 @@ import uvicorn
 from fastapi import FastAPI, Body, HTTPException
 from starlette import status
 
-from utils.config import config, check_config
+from utils.config import config, check_config, add_args
 from utils.protocol import ImageGenerationSynapse
 from utils.uids import get_random_uids
 
 
 class Client:
     def __init__(self):
-        self.client_config = config(Client)
+        self.client_config = self.config()
 
-        check_config(Client, self.client_config)
+        self.check_config(self.client_config)
 
         # The wallet holds the cryptographic key pairs for the miner.
         self.wallet = bt.wallet(config=self.client_config)
@@ -30,6 +30,18 @@ class Client:
         # Dendrite lets us send messages to other nodes (axons) in the network.
         self.dendrite = bt.dendrite(wallet=self.wallet)
         bt.logging.info(f"Dendrite: {self.dendrite}")
+
+    @classmethod
+    def check_config(cls, config: "bt.Config"):
+        check_config(cls, config)
+
+    @classmethod
+    def add_args(cls, parser):
+        add_args(cls, parser)
+
+    @classmethod
+    def config(cls):
+        return config(cls)
 
     def generate(
         self, input_parameters: Dict[str, Any],
