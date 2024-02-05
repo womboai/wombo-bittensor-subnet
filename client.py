@@ -61,7 +61,7 @@ if __name__ == "__main__":
     client = Client()
 
     @app.post("/api/generate")
-    def generate(input_parameters: Dict[str, Any]) -> List[bytes]:
+    def generate(input_parameters: Dict[str, Any] = Body()) -> List[bytes]:
         return client.generate(input_parameters)
 
     uvicorn.run(app)
