@@ -2,7 +2,7 @@
 
 set -e
 
-docker build -f client.Dockerfile -t subnet:$1 .
+docker build -f client.Dockerfile -t subnet:client .
 
 docker run \
   --network="host" \
@@ -10,4 +10,4 @@ docker run \
   --env-file .env \
   -v ~/.bittensor:/root/.bittensor/ \
   -v ~/.cache:/root/.cache/ \
-  subnet:$1 \
+  subnet:client \
