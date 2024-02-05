@@ -3,7 +3,7 @@ from io import BytesIO
 
 from PIL.Image import Image
 
-from base.protocol import ImageGenerationSynapse
+from utils.protocol import ImageGenerationSynapse
 
 import torch
 from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import StableDiffusionXLPipeline

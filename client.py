@@ -5,8 +5,8 @@ import bittensor as bt
 import uvicorn
 from fastapi import FastAPI
 
-from base.protocol import ImageGenerationSynapse
-from base.utils.uids import get_random_uids
+from utils.protocol import ImageGenerationSynapse
+from utils.uids import get_random_uids
 
 
 class Client:

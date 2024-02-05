@@ -23,7 +23,7 @@ import bittensor as bt
 # import base miner class which takes care of most of the boilerplate
 from base.base.miner import BaseMinerNeuron
 from base.miner import SDXLMinerPipeline, forward
-from base.protocol import ImageGenerationSynapse
+from utils.protocol import ImageGenerationSynapse
 
 
 class Miner(BaseMinerNeuron):

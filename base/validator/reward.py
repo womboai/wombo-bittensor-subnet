@@ -20,12 +20,11 @@ import torch
 import random
 from typing import List, Optional, Union, Tuple, Dict, Any, Callable
 
-from PIL.Image import Image
 from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import (
     StableDiffusionXLPipeline, retrieve_timesteps, rescale_noise_cfg
 )
 
-from base.protocol import ImageGenerationSynapse
+from utils.protocol import ImageGenerationSynapse
 
 
 class SDXLValidatorPipeline(StableDiffusionXLPipeline):

@@ -21,9 +21,9 @@ import torch
 
 import bittensor as bt
 
-from base.protocol import ImageGenerationSynapse
+from utils.protocol import ImageGenerationSynapse
 from base.validator.reward import get_rewards
-from base.utils.uids import get_random_uids
+from utils.uids import get_random_uids
 
 
 async def forward(self):
