@@ -3,6 +3,8 @@ FROM python:3.10.10-slim
 WORKDIR /app/
 COPY . .
 
+RUN apt-get install -y gcc
+
 RUN python3 -m venv ./venv
 
 ENV PATH="/app/venv:$PATH"
