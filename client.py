@@ -12,19 +12,21 @@ from utils.uids import get_random_uids
 
 class Client:
     def __init__(self):
-        self.client_config = self.config()
+        client_config = self.client_config()
 
-        self.check_config(self.client_config)
+        self.config = client_config
+
+        self.check_config(client_config)
 
         # The wallet holds the cryptographic key pairs for the miner.
-        self.wallet = bt.wallet(config=self.client_config)
+        self.wallet = bt.wallet(config=client_config)
         bt.logging.info(f"Wallet: {self.wallet}")
 
-        self.subtensor = bt.subtensor(config=self.client_config)
+        self.subtensor = bt.subtensor(config=client_config)
         bt.logging.info(f"Subtensor: {self.subtensor}")
 
         # The metagraph holds the state of the network, letting us know about other validators and miners.
-        self.metagraph = self.subtensor.metagraph(self.client_config.netuid)
+        self.metagraph = self.subtensor.metagraph(client_config)
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
         # Dendrite lets us send messages to other nodes (axons) in the network.
@@ -32,15 +34,15 @@ class Client:
         bt.logging.info(f"Dendrite: {self.dendrite}")
 
     @classmethod
-    def check_config(cls, config: "bt.Config"):
-        check_config(cls, config)
+    def check_config(cls, client_config: "bt.Config"):
+        check_config(cls, client_config)
 
     @classmethod
     def add_args(cls, parser):
         add_args(cls, parser)
 
     @classmethod
-    def config(cls):
+    def client_config(cls):
         return config(cls)
 
     def generate(
