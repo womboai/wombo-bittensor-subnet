@@ -423,9 +423,10 @@ def reward(pipeline: SDXLValidatorPipeline, device: str, query: Dict[str, Any], 
     target_time = 0.09375
     time_reward = target_time / response.dendrite.process_time
 
-    frames_tensor, _ = response.deserialize()
+    frames, _ = response.output_data
+    frames_tensor = torch.FloatTensor(frames, dtype=torch.float16).to(device)
 
-    return pipeline.validate(frames_tensor.to(device), query) + time_reward
+    return pipeline.validate(frames_tensor, query) + time_reward
 
 
 def get_rewards(

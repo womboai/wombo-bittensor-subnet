@@ -46,15 +46,11 @@ class ImageGenerationSynapse(bt.Synapse):
     # Optional request output, filled by receiving axon.
     output_data: Optional[Tuple[List, List[bytes]]] = None
 
-    def deserialize(self) -> Tuple[torch.Tensor, List[Image.Image]]:
+    def deserialize(self) -> List[Image.Image]:
         """
         This assumes this synapse has been filled by the axon.
         """
 
-        frames, image_data = self.output_data
+        _, image_data = self.output_data
 
-        frames_tensor = torch.FloatTensor(frames, dtype=torch.float16)
-
-        images = [_load_base64_image(data) for data in image_data]
-
-        return frames_tensor, images
+        return [_load_base64_image(data) for data in image_data]
