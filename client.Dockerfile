@@ -8,13 +8,14 @@ RUN python3 -m venv ./venv
 
 ENV PATH="/app/venv:$PATH"
 
+COPY ./requirements.txt ./requirements.txt
 COPY ./client.requirements.txt ./client.requirements.txt
 
 RUN pip install -r client.requirements.txt
 
-EXPOSE 8080
-
 COPY . .
+
+EXPOSE 8080
 
 ENTRYPOINT python \
     -m client \
