@@ -1,8 +1,4 @@
-import base64
-from io import BytesIO
-
-from PIL.Image import Image
-
+from base.base.base64_images import save_image_base64
 from utils.protocol import ImageGenerationSynapse
 
 import torch
@@ -30,16 +26,9 @@ class SDXLMinerPipeline(StableDiffusionXLPipeline):
         return frames_tensor, output.images
 
 
-def _image_base64(image: Image) -> bytes:
-    with BytesIO() as output:
-        image.save(output, format=image.format)
-
-        return base64.b64encode(output.getvalue())
-
-
 def forward(self, request: ImageGenerationSynapse):
     frames_tensor, images = self.pipeline.generate(**request.input_parameters)
 
-    images = [_image_base64(image) for image in images]
+    images = [save_image_base64(image) for image in images]
 
     request.output_data = frames_tensor.tolist(), images

@@ -1,9 +1,9 @@
 import argparse
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Annotated
 
 import bittensor as bt
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
 
 from utils.protocol import ImageGenerationSynapse
 from utils.uids import get_random_uids
@@ -61,7 +61,7 @@ if __name__ == "__main__":
     client = Client()
 
     @app.post("/api/generate")
-    def generate(input_parameters: Dict[str, Any]) -> List[bytes]:
+    def generate(input_parameters: Annotated[Dict[str, Any], Body()]) -> List[bytes]:
         return client.generate(input_parameters)
 
     uvicorn.run(app)
