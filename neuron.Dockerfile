@@ -7,7 +7,7 @@ RUN python3 -m venv ./venv
 ENV PATH="/app/venv:$PATH"
 
 COPY ./requirements.txt ./requirements.txt
-COPY ./client.requirements.txt ./client.requirements.txt
+COPY ./neuron.requirements.txt ./neuron.requirements.txt
 
 RUN pip install -r neuron.requirements.txt
 
