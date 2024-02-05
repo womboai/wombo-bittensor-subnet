@@ -3,6 +3,8 @@
 # Copyright © 2024 WOMBO
 import asyncio
 import random
+from typing import List
+
 import torch
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
@@ -57,7 +59,7 @@ async def forward(self):
     bt.logging.info(f"Sending request {input_parameters} to {miner_uids} which have axons {axons}")
 
     # The dendrite client queries the network.
-    responses = self.dendrite.query(
+    responses: List[ImageGenerationSynapse] = self.dendrite.query(
         # Send the query to selected miner axons in the network.
         axons=axons,
         synapse=ImageGenerationSynapse(input_parameters=input_parameters),
@@ -66,15 +68,21 @@ async def forward(self):
         deserialize=False,
     )
 
-    if responses is None:
-        bt.logging.error(f"Received {None} response when querying for {input_parameters}")
+    working_miner_uids = []
+    finished_responses = []
 
-        await asyncio.sleep(12)
+    for uid, response in zip(miner_uids, responses):
+        if not response.output_data:
+            continue
 
-        return
+        working_miner_uids.append(uid)
+        finished_responses.append(response)
 
     # Log the results for monitoring purposes.
-    bt.logging.info(f"Received responses: {responses}")
+    bt.logging.info(f"Received responses: {finished_responses}")
+
+    if not len(finished_responses):
+        return
 
     # Adjust the scores based on responses from miners.
     rewards = get_rewards(
@@ -83,7 +91,7 @@ async def forward(self):
             **input_parameters,
             "generator": torch.Generator().manual_seed(seed),
         },
-        responses=responses
+        responses=finished_responses
     )
 
     bt.logging.info(f"Scored responses: {rewards}")
