@@ -1,11 +1,9 @@
 import argparse
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List
 
 import bittensor as bt
-import torch
 import uvicorn
-from PIL.Image import Image
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI
 
 from base.protocol import ImageGenerationSynapse
 from base.utils.uids import get_random_uids
