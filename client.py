@@ -62,6 +62,8 @@ class Client:
         # Grab the axon you're serving
         axon = self.metagraph.axons[uid]
 
+        bt.logging.info(f"Sending request {input_parameters} to {uid}, axon {axon}")
+
         resp: ImageGenerationSynapse = self.dendrite.query(
             # Send the query to selected miner axon in the network.
             axons=[axon],
