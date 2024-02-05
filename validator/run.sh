@@ -2,6 +2,8 @@
 
 set -e
 
+docker container rm validator
+
 docker build -f Dockerfile -t wombo_subnet:validator ../
 
 docker run \
@@ -36,6 +38,8 @@ while true; do
   if [ "$PRUNE" == "1" ]; then
     docker image prune -f
   fi
+
+  docker container rm validator
 
   docker build -f Dockerfile -t wombo_subnet:validator ../
 
