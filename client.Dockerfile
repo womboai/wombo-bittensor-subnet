@@ -15,7 +15,7 @@ RUN pip install -r client.requirements.txt
 
 COPY . .
 
-EXPOSE 8080
+EXPOSE 8000
 
 ENTRYPOINT python \
     -m client \
