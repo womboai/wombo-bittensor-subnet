@@ -417,9 +417,6 @@ def reward(pipeline: SDXLValidatorPipeline, device: str, query: Dict[str, Any], 
     - float: The reward value for the miner.
     """
 
-    if not response.output_data:
-        return 0.0
-
     target_time = 0.09375
     time_reward = target_time / response.dendrite.process_time
 
