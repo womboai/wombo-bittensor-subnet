@@ -8,11 +8,10 @@ docker build -f Dockerfile -t wombo_subnet:validator ../
 
 docker run \
   --network="host" \
-  --detach \
   --env-file .env \
   -v ~/.bittensor:/root/.bittensor/ \
   --name validator \
-  wombo_subnet:validator \
+  wombo_subnet:validator &
 
 while true; do
   sleep 1800
@@ -45,9 +44,8 @@ while true; do
 
   docker run \
     --network="host" \
-    --detach \
     --env-file .env \
     -v ~/.bittensor:/root/.bittensor/ \
     --name validator \
-    wombo_subnet:validator
+    wombo_subnet:validator &
 done
