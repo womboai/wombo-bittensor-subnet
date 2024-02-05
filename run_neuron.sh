@@ -2,6 +2,7 @@
 
 set -e
 
+docker build -f neuron.Dockerfile -t subnet:neuron .
 docker build -f $1.Dockerfile -t subnet:$1 .
 
 docker run \
