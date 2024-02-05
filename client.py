@@ -26,7 +26,7 @@ class Client:
         bt.logging.info(f"Subtensor: {self.subtensor}")
 
         # The metagraph holds the state of the network, letting us know about other validators and miners.
-        self.metagraph = self.subtensor.metagraph(client_config)
+        self.metagraph = self.subtensor.metagraph(client_config.netuid)
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
         # Dendrite lets us send messages to other nodes (axons) in the network.
