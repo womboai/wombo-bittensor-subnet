@@ -42,6 +42,9 @@ async def forward(self):
     # get_random_uids is an example method, but you can replace it with your own.
     miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
 
+    if not len(miner_uids):
+        return
+
     axons = [self.metagraph.axons[uid] for uid in miner_uids]
 
     max_seed = 2**32
