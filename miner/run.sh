@@ -2,10 +2,11 @@
 
 set -e
 
-docker build -f client.Dockerfile -t subnet:client .
+docker build -f Dockerfile -t wombo_subnet:$1 ../
 
 docker run \
   --network="host" \
   --env-file .env \
   -v ~/.bittensor:/root/.bittensor/ \
-  subnet:client \
+  -v ~/.cache:/root/.cache/ \
+  wombo_subnet:$1 \

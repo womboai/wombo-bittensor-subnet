@@ -103,6 +103,13 @@ def add_args(cls, parser):
 
     if neuron_type == "validator":
         parser.add_argument(
+            "--scoring_endpoint",
+            type=str,
+            help="The endpoint to call for validator scoring",
+            default="http://localhost:8001/api/score",
+        )
+
+        parser.add_argument(
             "--neuron.num_concurrent_forwards",
             type=int,
             help="The number of concurrent forwards running at any time.",
@@ -148,6 +155,13 @@ def add_args(cls, parser):
         )
 
     else:
+        parser.add_argument(
+            "--generation_endpoint",
+            type=str,
+            help="The endpoint to call for miner generation",
+            default="http://localhost:8001/api/generate",
+        )
+
         parser.add_argument(
             "--blacklist.force_validator_permit",
             action="store_true",

@@ -5,9 +5,9 @@ import uvicorn
 from fastapi import FastAPI, Body, HTTPException
 from starlette import status
 
-from utils.config import config, check_config, add_args
-from utils.protocol import ImageGenerationSynapse
-from utils.uids import get_random_uids
+from tensor.config import config, check_config, add_args
+from tensor.protocol import ImageGenerationSynapse
+from tensor.uids import get_random_uids
 
 
 class Client:

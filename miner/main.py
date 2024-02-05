@@ -19,11 +19,17 @@
 import time
 import typing
 import bittensor as bt
+from aiohttp import ClientSession
+from pydantic import BaseModel
 
 # import base miner class which takes care of most of the boilerplate
-from base.base.miner import BaseMinerNeuron
-from base.miner import SDXLMinerPipeline, forward
-from utils.protocol import ImageGenerationSynapse
+from miner.miner import BaseMinerNeuron
+from tensor.protocol import ImageGenerationSynapse
+
+
+class ImageGenerationOutput(BaseModel):
+    frames: typing.List
+    images: typing.List[bytes]
 
 
 class Miner(BaseMinerNeuron):
@@ -37,10 +43,6 @@ class Miner(BaseMinerNeuron):
 
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
-
-        self.pipeline = (SDXLMinerPipeline
-                         .from_pretrained("stabilityai/stable-diffusion-xl-base-1.0")
-                         .to(self.device))
 
     async def forward(
         self, synapse: ImageGenerationSynapse
@@ -58,7 +60,16 @@ class Miner(BaseMinerNeuron):
         The 'forward' function is a placeholder and should be overridden with logic that is appropriate for
         the miner's intended operation. This method demonstrates a basic transformation of input data.
         """
-        forward(self, synapse)
+        async with ClientSession() as session:
+            response = await session.post(
+                self.config.generation_endpoint,
+                headers={"Content-Type": "application/json"},
+                data=synapse.input_parameters,
+            )
+
+            output = ImageGenerationOutput.model_validate(await response.json())
+            synapse.output_data = output.frames, output.images
+
         return synapse
 
     async def blacklist(

@@ -1,4 +1,4 @@
--r requirements.txt
+-r ../neuron/requirements.txt
 
 diffusers==0.25.1
 transformers==4.37.2

@@ -23,7 +23,7 @@ import traceback
 
 import bittensor as bt
 
-from base.base.neuron import BaseNeuron
+from neuron.neuron import BaseNeuron
 
 
 class BaseMinerNeuron(BaseNeuron):
