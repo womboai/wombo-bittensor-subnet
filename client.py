@@ -66,4 +66,4 @@ if __name__ == "__main__":
     def generate(input_parameters: Dict[str, Any]) -> List[bytes]:
         return client.generate(input_parameters)
 
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(app)
