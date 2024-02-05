@@ -2,16 +2,15 @@
 
 set -e
 
-docker build -f Dockerfile -t wombo_subnet:$1 ../
+docker build -f Dockerfile -t wombo_subnet:validator ../
 
 docker run \
   --network="host" \
   --detach \
   --env-file .env \
   -v ~/.bittensor:/root/.bittensor/ \
-  -v ~/.cache:/root/.cache/ \
   --name validator \
-  wombo_subnet:$1 \
+  wombo_subnet:validator \
 
 while true; do
   sleep 1800
@@ -38,14 +37,13 @@ while true; do
     docker image prune -f
   fi
 
-  docker build -f Dockerfile -t wombo_subnet:$1 ../
+  docker build -f Dockerfile -t wombo_subnet:validator ../
 
   docker run \
     --network="host" \
     --detach \
     --env-file .env \
     -v ~/.bittensor:/root/.bittensor/ \
-    -v ~/.cache:/root/.cache/ \
     --name validator \
-    wombo_subnet:$1
+    wombo_subnet:validator
 done

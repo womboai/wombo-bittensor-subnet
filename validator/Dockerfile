@@ -17,7 +17,7 @@ COPY . .
 EXPOSE 8091
 
 ENTRYPOINT python \
-    -m neurons.validator \
+    -m validator.main \
     --netuid $NETUID \
     --subtensor.network $NETWORK \
     --wallet.name $WALLET_NAME \
