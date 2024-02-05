@@ -1,10 +1,11 @@
 import argparse
-from typing import Dict, Any, List, Annotated
+from typing import Dict, Any, List
 
 import bittensor as bt
 import uvicorn
 from fastapi import FastAPI, Body
 
+from utils.config import add_args
 from utils.protocol import ImageGenerationSynapse
 from utils.uids import get_random_uids
 
@@ -15,9 +16,7 @@ class Client:
 
         bt.wallet.add_args(parser)
         bt.subtensor.add_args(parser)
-
-        # Netuid Arg: The netuid of the subnet to connect to.
-        parser.add_argument("--netuid", type=int, help="Subnet netuid", default=1)
+        add_args(Client, parser)
 
         self.config = bt.config(parser)
 
