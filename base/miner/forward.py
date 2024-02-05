@@ -1,4 +1,4 @@
-from base.base.base64_images import save_image_base64
+from utils.base64_images import save_image_base64
 from utils.protocol import ImageGenerationSynapse
 
 import torch
