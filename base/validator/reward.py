@@ -446,5 +446,5 @@ def get_rewards(
     """
     # Get all the reward results by iteratively calling your reward() function.
     return torch.FloatTensor(
-        [reward(self.pipeline, query, response) for response in responses]
+        [reward(self.pipeline, self.device, query, response) for response in responses]
     ).to(self.device)
