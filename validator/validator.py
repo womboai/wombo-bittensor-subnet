@@ -26,7 +26,7 @@ import bittensor as bt
 from typing import List
 from traceback import print_exception
 
-from validator.base.neuron import BaseNeuron
+from neuron.neuron import BaseNeuron
 
 
 class BaseValidatorNeuron(BaseNeuron):

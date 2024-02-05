@@ -22,9 +22,8 @@ import bittensor as bt
 from abc import ABC, abstractmethod
 
 # Sync calls set weights and also resyncs the metagraph.
-from utils.config import check_config, add_args, config
-from utils.misc import ttl_get_block
-from base import __spec_version__ as spec_version
+from tensor.config import check_config, add_args, config
+from neuron.misc import ttl_get_block
 
 
 class BaseNeuron(ABC):
@@ -49,7 +48,7 @@ class BaseNeuron(ABC):
     subtensor: "bt.subtensor"
     wallet: "bt.wallet"
     metagraph: "bt.metagraph"
-    spec_version: int = spec_version
+    spec_version: int = 1
 
     @property
     def block(self):

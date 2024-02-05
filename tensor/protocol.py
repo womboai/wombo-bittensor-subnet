@@ -21,7 +21,7 @@ from typing import Dict, Tuple, List, Optional, Any
 from PIL import Image
 import bittensor as bt
 
-from utils.base64_images import load_base64_image
+from tensor.base64_images import load_base64_image
 
 
 class ImageGenerationSynapse(bt.Synapse):
