@@ -28,13 +28,13 @@ class Client:
         self.subtensor = bt.subtensor(config=self.config)
         bt.logging.info(f"Subtensor: {self.subtensor}")
 
-        # Dendrite lets us send messages to other nodes (axons) in the network.
-        self.dendrite = bt.dendrite(wallet=self.wallet)
-        bt.logging.info(f"Dendrite: {self.dendrite}")
-
         # The metagraph holds the state of the network, letting us know about other validators and miners.
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
         bt.logging.info(f"Metagraph: {self.metagraph}")
+
+        # Dendrite lets us send messages to other nodes (axons) in the network.
+        self.dendrite = bt.dendrite(wallet=self.wallet)
+        bt.logging.info(f"Dendrite: {self.dendrite}")
 
     def generate(
         self, input_parameters: Dict[str, Any],
