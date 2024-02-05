@@ -6,30 +6,26 @@ import uvicorn
 from fastapi import FastAPI, Body, HTTPException
 from starlette import status
 
-from utils.config import add_args
+from utils.config import config, check_config
 from utils.protocol import ImageGenerationSynapse
 from utils.uids import get_random_uids
 
 
 class Client:
     def __init__(self):
-        parser = argparse.ArgumentParser()
+        self.client_config = config(Client)
 
-        bt.wallet.add_args(parser)
-        bt.subtensor.add_args(parser)
-        add_args(Client, parser)
-
-        self.config = bt.config(parser)
+        check_config(Client, self.client_config)
 
         # The wallet holds the cryptographic key pairs for the miner.
-        self.wallet = bt.wallet(config=self.config)
+        self.wallet = bt.wallet(config=self.client_config)
         bt.logging.info(f"Wallet: {self.wallet}")
 
-        self.subtensor = bt.subtensor(config=self.config)
+        self.subtensor = bt.subtensor(config=self.client_config)
         bt.logging.info(f"Subtensor: {self.subtensor}")
 
         # The metagraph holds the state of the network, letting us know about other validators and miners.
-        self.metagraph = self.subtensor.metagraph(self.config.netuid)
+        self.metagraph = self.subtensor.metagraph(self.client_config.netuid)
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
         # Dendrite lets us send messages to other nodes (axons) in the network.
