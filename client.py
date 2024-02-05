@@ -38,36 +38,32 @@ class Client:
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
+    def generate(
+        self, input_parameters: Dict[str, Any],
+    ) -> List[bytes]:
+        uid = get_random_uids(self, k=1)[0]
+
+        # Grab the axon you're serving
+        axon = self.metagraph.axons[uid]
+
+        resp: ImageGenerationSynapse = self.dendrite.query(
+            # Send the query to selected miner axon in the network.
+            axons=[axon],
+            synapse=ImageGenerationSynapse(input_parameters=input_parameters),
+            # All responses have the deserialize function called on them before returning.
+            # You are encouraged to define your own deserialization function.
+            deserialize=False,
+        )[0]
+
+        return resp.output_data[1]
+
 
 if __name__ == "__main__":
     app = FastAPI()
     client = Client()
 
     @app.post("/api/generate")
-    def query_synapse(
-        input_parameters: Dict[str, Any],
-    ) -> List[Image]:
-        uid = get_random_uids(client, k=1)[0]
-
-        network = client.config.subtensor.network
-
-        # instantiate the metagraph with provided network and netuid
-        metagraph = bt.metagraph(
-            netuid=client.config.netuid, network=network, sync=True, lite=False
-        )
-
-        # Grab the axon you're serving
-        axon = metagraph.axons[uid]
-
-        resp: Tuple[torch.Tensor, List[Image]] = client.dendrite.query(
-            # Send the query to selected miner axon in the network.
-            axons=[axon],
-            synapse=ImageGenerationSynapse(input_parameters=input_parameters),
-            # All responses have the deserialize function called on them before returning.
-            # You are encouraged to define your own deserialization function.
-            deserialize=True,
-        )[0]
-
-        return resp[1]
+    def generate(input_parameters: Dict[str, Any]) -> List[bytes]:
+        return client.generate(input_parameters)
 
     uvicorn.run(app, host="0.0.0.0", port=8080)
