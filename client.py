@@ -3,7 +3,8 @@ from typing import Dict, Any, List
 
 import bittensor as bt
 import uvicorn
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, HTTPException
+from starlette import status
 
 from utils.config import add_args
 from utils.protocol import ImageGenerationSynapse
@@ -52,7 +53,17 @@ class Client:
             deserialize=False,
         )[0]
 
-        return resp.output_data[1]
+        if not resp.output_data:
+            bt.logging.error(f"Failed to query subnetwork with {input_parameters} and axon {axon}")
+
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Failed to query subnetwork",
+            )
+
+        _, images = resp.output_data
+
+        return images
 
 
 if __name__ == "__main__":
