@@ -25,6 +25,8 @@ from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import
     StableDiffusionXLPipeline, retrieve_timesteps, rescale_noise_cfg
 )
 
+from base.protocol import ImageGenerationSynapse
+
 
 class SDXLValidatorPipeline(StableDiffusionXLPipeline):
     def all_close(self, tensor_a, tensor_b) -> bool:
@@ -397,8 +399,7 @@ class SDXLValidatorPipeline(StableDiffusionXLPipeline):
 
         return 1.0
 
-    def validate(self, miner_output: Tuple[torch.Tensor, List[Image]], miner_inputs: Dict[str, Any]) -> float:
-        frames, images = miner_output
+    def validate(self, frames: torch.Tensor, miner_inputs: Dict[str, Any]) -> float:
         num_random_indices = 1
         random_indices = sorted(random.sample(
             range(frames.shape[0] - 1),
@@ -408,7 +409,7 @@ class SDXLValidatorPipeline(StableDiffusionXLPipeline):
         return self.__validate_internal(frames_dict, **miner_inputs)
 
 
-def reward(pipeline: SDXLValidatorPipeline, query: Dict[str, Any], response: Tuple[torch.Tensor, List[Image]]) -> float:
+def reward(pipeline: SDXLValidatorPipeline, device: str, query: Dict[str, Any], response: ImageGenerationSynapse) -> float:
     """
     Reward the miner response to the generation request. This method returns a reward
     value for the miner, which is used to update the miner's score.
@@ -417,13 +418,20 @@ def reward(pipeline: SDXLValidatorPipeline, query: Dict[str, Any], response: Tup
     - float: The reward value for the miner.
     """
 
-    return pipeline.validate(response, query)
+    if not response.output_data:
+        return 0.0
+
+    time_reward = 0.125 / response.dendrite.process_time
+
+    frames_tensor, _ = response.deserialize()
+
+    return pipeline.validate(frames_tensor.to(device), query) + time_reward
 
 
 def get_rewards(
     self,
     query: Dict[str, Any],
-    responses: List[Tuple[torch.Tensor, List[Image]]],
+    responses: List[ImageGenerationSynapse],
 ) -> torch.FloatTensor:
     """
     Returns a tensor of rewards for the given query and responses.

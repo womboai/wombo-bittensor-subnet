@@ -83,7 +83,7 @@ async def forward(self):
             **input_parameters,
             "generator": torch.Generator().manual_seed(seed),
         },
-        responses=[response.deserialize() for response in responses]
+        responses=responses
     )
 
     bt.logging.info(f"Scored responses: {rewards}")

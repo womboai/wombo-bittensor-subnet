@@ -47,6 +47,10 @@ class ImageGenerationSynapse(bt.Synapse):
     output_data: Optional[Tuple[List, List[bytes]]] = None
 
     def deserialize(self) -> Tuple[torch.Tensor, List[Image.Image]]:
+        """
+        This assumes this synapse has been filled by the axon.
+        """
+
         frames, image_data = self.output_data
 
         frames_tensor = torch.FloatTensor(frames, dtype=torch.float16)
