@@ -3,7 +3,7 @@ FROM python:3.10.10-slim
 WORKDIR /app/
 COPY . .
 
-RUN apt-get install -y gcc
+RUN apt update && apt-get install -y build-essential
 
 RUN python3 -m venv ./venv
 
