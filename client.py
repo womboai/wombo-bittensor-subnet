@@ -1,4 +1,3 @@
-import argparse
 from typing import Dict, Any, List
 
 import bittensor as bt
