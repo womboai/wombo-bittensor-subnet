@@ -22,7 +22,7 @@ import bittensor as bt
 from abc import ABC, abstractmethod
 
 # Sync calls set weights and also resyncs the metagraph.
-from tensor.config import check_config, add_args, config
+from neuron.config import check_config, add_args, config
 from neuron.misc import ttl_get_block
 
 

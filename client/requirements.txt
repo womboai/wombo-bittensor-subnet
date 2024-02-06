@@ -1,4 +1,0 @@
--r ../tensor/requirements.txt
-
-fastapi==0.99.1
-uvicorn==0.22.0

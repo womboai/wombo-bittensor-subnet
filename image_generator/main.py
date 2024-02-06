@@ -1,7 +1,10 @@
-from typing import Dict, Any, List
+import base64
+from io import BytesIO
+from typing import Dict, Any
 
 import torch
 import uvicorn
+from PIL import Image
 
 from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import (
     StableDiffusionXLPipeline
@@ -9,7 +12,6 @@ from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import
 from fastapi import FastAPI, Body
 
 from image_generation_protocol.output import ImageGenerationOutput
-from tensor.base64_images import save_image_base64
 
 
 class SDXLMinerPipeline(StableDiffusionXLPipeline):
@@ -31,6 +33,13 @@ class SDXLMinerPipeline(StableDiffusionXLPipeline):
         frames_tensor = torch.stack(frames)
 
         return frames_tensor, output.images
+
+
+def save_image_base64(image: Image.Image) -> bytes:
+    with BytesIO() as output:
+        image.save(output, format="jpeg")
+
+        return base64.b64encode(output.getvalue())
 
 
 if __name__ == "__main__":

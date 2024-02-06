@@ -18,15 +18,11 @@ import asyncio
 # DEALINGS IN THE SOFTWARE.
 
 import torch
-import random
-from typing import List, Optional, Union, Tuple, Dict, Any, Callable
+from typing import List, Dict, Any
 
 from aiohttp import ClientSession
-from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import (
-    StableDiffusionXLPipeline, retrieve_timesteps, rescale_noise_cfg
-)
 
-from tensor.protocol import ImageGenerationSynapse
+from neuron.protocol import ImageGenerationSynapse
 
 
 async def reward(scoring_endpoint: str, query: Dict[str, Any], response: ImageGenerationSynapse) -> float:

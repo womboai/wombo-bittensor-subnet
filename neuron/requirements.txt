@@ -1,3 +1,5 @@
--r ../tensor/requirements.txt
+bittensor==6.7.1
+torch==2.2.0
+pillow==10.2.0
 
 aiohttp==3.9.0
