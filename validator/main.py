@@ -154,7 +154,6 @@ class Validator(BaseValidatorNeuron):
 
             allowed_ip_addresses = await response.json()
 
-        # TODO(developer): Define how validators should blacklist requests.
         if synapse.dendrite.ip not in allowed_ip_addresses:
             # Ignore requests from unrecognized entities.
             bt.logging.trace(
