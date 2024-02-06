@@ -1,3 +1,4 @@
+from asyncio import Semaphore
 from typing import Dict, Any, List
 
 import torch
@@ -13,7 +14,11 @@ from tensor.base64_images import save_image_base64
 
 
 class SDXLMinerPipeline(StableDiffusionXLPipeline):
-    def generate(self, **inputs):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.gpu_semaphore = Semaphore()
+
+    async def generate(self, **inputs):
         frames = []
 
         inputs["generator"] = torch.Generator().manual_seed(inputs["seed"])
@@ -23,10 +28,11 @@ class SDXLMinerPipeline(StableDiffusionXLPipeline):
             frames.append(callback_kwargs["latents"])
             return callback_kwargs
 
-        output = self(
-            **inputs,
-            callback_on_step_end=save_frames,
-        )
+        async with self.gpu_semaphore:
+            output = self(
+                **inputs,
+                callback_on_step_end=save_frames,
+            )
 
         frames_tensor = torch.stack(frames)
 
@@ -43,8 +49,8 @@ if __name__ == "__main__":
     )
 
     @app.post("/api/generate")
-    def generate(input_parameters: Dict[str, Any] = Body()) -> ImageGenerationOutput:
-        frames_tensor, images = pipeline.generate(**input_parameters)
+    async def generate(input_parameters: Dict[str, Any] = Body()) -> ImageGenerationOutput:
+        frames_tensor, images = await pipeline.generate(**input_parameters)
 
         return ImageGenerationOutput(
             frames=frames_tensor.tolist(),
