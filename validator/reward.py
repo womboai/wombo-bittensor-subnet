@@ -41,7 +41,7 @@ async def reward(scoring_endpoint: str, query: Dict[str, Any], response: ImageGe
             scoring_endpoint,
             headers={"Content-Type": "application/json"},
             data={
-                "query": query,
+                "input_parameters": query,
                 "frames": frames,
             },
         )

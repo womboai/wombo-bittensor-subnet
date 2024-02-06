@@ -21,12 +21,12 @@ from typing import Dict, List, Any
 import bittensor as bt
 from PIL import Image
 
-from image_generation_protocol.output import ImageGenerationOutput
+from image_generation_protocol.io import ImageGenerationInputs, ImageGenerationOutput
 from tensor.base64_images import load_base64_image
 
 
 class ImageGenerationRequestSynapse(bt.Synapse):
-    input_parameters: Dict[str, Any]
+    input_parameters: ImageGenerationInputs
 
 
 class ImageGenerationOutputSynapse(bt.Synapse, ImageGenerationOutput):

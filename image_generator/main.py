@@ -9,7 +9,7 @@ from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import
 )
 from fastapi import FastAPI, Body
 
-from image_generation_protocol.output import ImageGenerationOutput
+from image_generation_protocol.io import ImageGenerationInputs, ImageGenerationOutput
 from tensor.base64_images import save_image_base64
 
 
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     )
 
     @app.post("/api/generate")
-    async def generate(input_parameters: Dict[str, Any] = Body()) -> ImageGenerationOutput:
+    async def generate(input_parameters: ImageGenerationInputs = Body()) -> ImageGenerationOutput:
         frames_tensor, images = await pipeline.generate(**input_parameters)
 
         return ImageGenerationOutput(
