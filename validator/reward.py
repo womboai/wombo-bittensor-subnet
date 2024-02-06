@@ -19,10 +19,11 @@ from typing import List, Dict, Any
 import torch
 from aiohttp import ClientSession
 
+from image_generation_protocol.io import ImageGenerationInputs
 from tensor.protocol import ImageGenerationOutputSynapse
 
 
-async def reward(scoring_endpoint: str, query: Dict[str, Any], response: ImageGenerationOutputSynapse) -> float:
+async def reward(scoring_endpoint: str, query: ImageGenerationInputs, response: ImageGenerationOutputSynapse) -> float:
     """
     Reward the miner response to the generation request. This method returns a reward
     value for the miner, which is used to update the miner's score.
@@ -53,7 +54,7 @@ async def reward(scoring_endpoint: str, query: Dict[str, Any], response: ImageGe
 
 async def get_rewards(
     self,
-    query: Dict[str, Any],
+    query: ImageGenerationInputs,
     responses: List[ImageGenerationOutputSynapse],
 ) -> torch.FloatTensor:
     """

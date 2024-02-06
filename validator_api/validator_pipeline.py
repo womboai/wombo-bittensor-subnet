@@ -266,19 +266,6 @@ class SDXLValidatorPipeline(StableDiffusionXLPipeline):
         # 4. Prepare timesteps
         timesteps, num_inference_steps = retrieve_timesteps(self.scheduler, num_inference_steps, device, timesteps)
 
-        # 5. Prepare latent variables
-        num_channels_latents = self.unet.config.in_channels
-        # latents = self.prepare_latents(
-        #     batch_size * num_images_per_prompt,
-        #     num_channels_latents,
-        #     height,
-        #     width,
-        #     prompt_embeds.dtype,
-        #     device,
-        #     generator,
-        #     latents,
-        # )
-
         # 6. Prepare extra step kwargs. TODO: Logic should ideally just be moved out of the pipeline
         extra_step_kwargs = self.prepare_extra_step_kwargs(generator, eta)
 
@@ -379,9 +366,8 @@ class SDXLValidatorPipeline(StableDiffusionXLPipeline):
 
         return self.all_close(latents, expected_next_latents)
     
-    def validate(self, miner_output, miner_inputs):
+    def validate(self, frames, miner_inputs):
         miner_inputs["generator"] = torch.Generator().manual_seed(miner_inputs["seed"])
-        frames, images = miner_output
         num_random_indices = 3
         random_indices = sorted(random.sample(
             range(frames.shape[0] - 1),
