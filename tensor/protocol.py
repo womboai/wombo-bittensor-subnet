@@ -16,36 +16,19 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from typing import Dict, Tuple, List, Optional, Any
+from typing import Dict, List, Any
 
-from PIL import Image
 import bittensor as bt
+from PIL import Image
 
+from image_generation_protocol.output import ImageGenerationOutput
 from tensor.base64_images import load_base64_image
 
 
-class ImageGenerationSynapse(bt.Synapse):
-    """
-    A simple image generation protocol representation which uses bt.Synapse as its base.
-    This protocol helps in handling image generation request and response communication between
-    the miner and the validator.
-
-    Attributes:
-    - input_parameters: A dictionary containing the image generation inputs
-    - output_data: An optional tuple value which, when filled, represents the response from the miner
-        which the frames tensor in the first argument and the list of images in the second.
-    """
-
+class ImageGenerationRequestSynapse(bt.Synapse):
     input_parameters: Dict[str, Any]
 
-    # Optional request output, filled by receiving axon.
-    output_data: Optional[Tuple[List, List[bytes]]] = None
 
+class ImageGenerationOutputSynapse(bt.Synapse, ImageGenerationOutput):
     def deserialize(self) -> List[Image.Image]:
-        """
-        This assumes this synapse has been filled by the axon.
-        """
-
-        _, image_data = self.output_data
-
-        return [load_base64_image(data) for data in image_data]
+        return [load_base64_image(data) for data in self.images]

@@ -24,7 +24,7 @@ from aiohttp import ClientSession
 from image_generation_protocol.output import ImageGenerationOutput
 # import base miner class which takes care of most of the boilerplate
 from miner.miner import BaseMinerNeuron
-from tensor.protocol import ImageGenerationSynapse
+from tensor.protocol import ImageGenerationRequestSynapse, ImageGenerationOutputSynapse
 
 
 class Miner(BaseMinerNeuron):
@@ -40,21 +40,8 @@ class Miner(BaseMinerNeuron):
         super(Miner, self).__init__(config=config)
 
     async def forward(
-        self, synapse: ImageGenerationSynapse
-    ) -> ImageGenerationSynapse:
-        """
-        Processes the incoming 'ImageGenerationSynapse' synapse by performing a predefined operation on the input data.
-        This method should be replaced with actual logic relevant to the miner's purpose.
-
-        Args:
-            synapse (base.protocol.ImageGenerationSynapse): The synapse object containing the 'input_parameters' data.
-
-        Returns:
-            base.protocol.ImageGenerationSynapse: The synapse object with the 'output_data' field set to the frames tensor and images list.
-
-        The 'forward' function is a placeholder and should be overridden with logic that is appropriate for
-        the miner's intended operation. This method demonstrates a basic transformation of input data.
-        """
+        self, synapse: ImageGenerationRequestSynapse
+    ) -> ImageGenerationOutputSynapse:
         async with ClientSession() as session:
             response = await session.post(
                 self.config.generation_endpoint,
@@ -62,13 +49,10 @@ class Miner(BaseMinerNeuron):
                 data=synapse.input_parameters,
             )
 
-            output = ImageGenerationOutput.model_validate(await response.json())
-            synapse.output_data = output.frames, output.images
-
-        return synapse
+            return ImageGenerationOutputSynapse.model_validate(await response.json())
 
     async def blacklist(
-        self, synapse: ImageGenerationSynapse
+        self, synapse: ImageGenerationRequestSynapse
     ) -> typing.Tuple[bool, str]:
         """
         Determines whether an incoming request should be blacklisted and thus ignored. Your implementation should
@@ -112,7 +96,7 @@ class Miner(BaseMinerNeuron):
         )
         return False, "Hotkey recognized!"
 
-    async def priority(self, synapse: ImageGenerationSynapse) -> float:
+    async def priority(self, synapse: ImageGenerationRequestSynapse) -> float:
         """
         The priority function determines the order in which requests are handled. More valuable or higher-priority
         requests are processed before others. You should design your own priority mechanism with care.

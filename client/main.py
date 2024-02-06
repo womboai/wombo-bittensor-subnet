@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 import bittensor as bt
 import uvicorn
@@ -6,8 +6,8 @@ from fastapi import FastAPI, Body, HTTPException
 from starlette import status
 
 from tensor.config import config, check_config, add_args
-from tensor.protocol import ImageGenerationSynapse
-from tensor.uids import get_random_uids
+from tensor.protocol import ImageGenerationRequestSynapse, ImageGenerationOutputSynapse
+from tensor.uids import get_random_uids, is_validator
 
 
 class Client:
@@ -57,23 +57,23 @@ class Client:
     def generate(
         self, input_parameters: Dict[str, Any],
     ) -> List[bytes]:
-        uid = get_random_uids(self, k=1)[0]
+        validator_uid = get_random_uids(self, k=1, availability_checker=is_validator)[0]
 
         # Grab the axon you're serving
-        axon = self.metagraph.axons[uid]
+        axon = self.metagraph.axons[validator_uid]
 
-        bt.logging.info(f"Sending request {input_parameters} to {uid}, axon {axon}")
+        bt.logging.info(f"Sending request {input_parameters} to validator {validator_uid}, axon {axon}")
 
-        resp: ImageGenerationSynapse = self.dendrite.query(
+        resp: Optional[ImageGenerationOutputSynapse] = self.dendrite.query(
             # Send the query to selected miner axon in the network.
             axons=[axon],
-            synapse=ImageGenerationSynapse(input_parameters=input_parameters),
+            synapse=ImageGenerationRequestSynapse(input_parameters=input_parameters),
             # All responses have the deserialize function called on them before returning.
             # You are encouraged to define your own deserialization function.
             deserialize=False,
         )[0]
 
-        if not resp.output_data:
+        if not resp:
             bt.logging.error(f"Failed to query subnetwork with {input_parameters} and axon {axon}")
 
             raise HTTPException(
@@ -81,9 +81,7 @@ class Client:
                 detail="Failed to query subnetwork",
             )
 
-        _, images = resp.output_data
-
-        return images
+        return resp.images
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-FROM python:3.10.10-slim
+FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
 
 WORKDIR /app/
 
@@ -23,3 +23,4 @@ ENTRYPOINT python \
     --wallet.name $WALLET_NAME \
     --wallet.hotkey $WALLET_HOTKEY \
     --generation_endpoint $GENERATION_ENDPOINT \
+    --blacklist.force_validator_permit \

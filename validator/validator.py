@@ -18,6 +18,8 @@
 
 
 import copy
+from abc import abstractmethod
+
 import torch
 import asyncio
 import threading
@@ -88,9 +90,13 @@ class BaseValidatorNeuron(BaseNeuron):
             )
             pass
 
-    async def concurrent_forward(self):
+    @abstractmethod
+    async def check_miners(self):
+        ...
+
+    async def check_miners_concurrently(self):
         coroutines = [
-            self.forward()
+            self.check_miners()
             for _ in range(self.config.neuron.num_concurrent_forwards)
         ]
         await asyncio.gather(*coroutines)
@@ -130,7 +136,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.info(f"step({self.step}) block({self.block})")
 
                 # Run multiple forwards concurrently.
-                self.loop.run_until_complete(self.concurrent_forward())
+                self.loop.run_until_complete(self.check_miners_concurrently())
 
                 # Check if we should exit.
                 if self.should_exit:

@@ -1,35 +1,28 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-import asyncio
-
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
 # and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
 # The above copyright notice and this permission notice shall be included in all copies or substantial portions of
 # the Software.
-
 # THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
 # THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
 # THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import asyncio
+from typing import List, Dict, Any
+
 import torch
-import random
-from typing import List, Optional, Union, Tuple, Dict, Any, Callable
-
 from aiohttp import ClientSession
-from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import (
-    StableDiffusionXLPipeline, retrieve_timesteps, rescale_noise_cfg
-)
 
-from tensor.protocol import ImageGenerationSynapse
+from tensor.protocol import ImageGenerationOutputSynapse
 
 
-async def reward(scoring_endpoint: str, query: Dict[str, Any], response: ImageGenerationSynapse) -> float:
+async def reward(scoring_endpoint: str, query: Dict[str, Any], response: ImageGenerationOutputSynapse) -> float:
     """
     Reward the miner response to the generation request. This method returns a reward
     value for the miner, which is used to update the miner's score.
@@ -61,7 +54,7 @@ async def reward(scoring_endpoint: str, query: Dict[str, Any], response: ImageGe
 async def get_rewards(
     self,
     query: Dict[str, Any],
-    responses: List[ImageGenerationSynapse],
+    responses: List[ImageGenerationOutputSynapse],
 ) -> torch.FloatTensor:
     """
     Returns a tensor of rewards for the given query and responses.
