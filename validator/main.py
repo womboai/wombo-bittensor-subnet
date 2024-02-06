@@ -25,8 +25,8 @@ from typing import List
 # Bittensor
 import bittensor as bt
 
-from neuron.protocol import ImageGenerationSynapse
-from neuron.uids import get_random_uids
+from tensor.protocol import ImageGenerationSynapse
+from tensor.uids import get_random_uids
 
 # import base validator class which takes care of most of the boilerplate
 from validator.validator import BaseValidatorNeuron
@@ -44,8 +44,6 @@ class Validator(BaseValidatorNeuron):
 
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
-
-        # self.axon.attach()
 
         bt.logging.info("load_state()")
         self.load_state()

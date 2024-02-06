@@ -1,8 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-import base64
-from io import BytesIO
+
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -22,10 +21,7 @@ from typing import Dict, Tuple, List, Optional, Any
 from PIL import Image
 import bittensor as bt
 
-
-def load_base64_image(data: bytes) -> Image.Image:
-    with BytesIO(base64.b64decode(data)) as input_data:
-        return Image.open(input_data)
+from tensor.base64_images import load_base64_image
 
 
 class ImageGenerationSynapse(bt.Synapse):
