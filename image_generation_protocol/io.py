@@ -16,14 +16,14 @@ MIN_IMAGES = 1
 MAX_IMAGES = 4
 
 
-GenerationRes = Annotated[int, Field(ge=MIN_SIZE, le=MAX_SIZE)]
+GenerationResolution = Annotated[int, Field(ge=MIN_SIZE, le=MAX_SIZE)]
 
 
 class ImageGenerationInputs(BaseModel):
     prompt: str
     prompt_2: Optional[str] = None
-    height: Optional[GenerationRes] = DEFAULT_HEIGHT
-    width: Optional[GenerationRes] = DEFAULT_WIDTH
+    height: Optional[GenerationResolution] = DEFAULT_HEIGHT
+    width: Optional[GenerationResolution] = DEFAULT_WIDTH
     num_inference_steps: Optional[Annotated[int, Field(gt=0, le=MAX_STEPS)]] = DEFAULT_STEPS
     guidance_scale: Optional[float] = DEFAULT_GUIDANCE
     negative_prompt: Optional[str] = None

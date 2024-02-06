@@ -25,8 +25,8 @@ from image_generation_protocol.io import ImageGenerationInputs, ImageGenerationO
 from tensor.base64_images import load_base64_image
 
 
-class ImageGenerationRequestSynapse(bt.Synapse):
-    input_parameters: ImageGenerationInputs
+class ImageGenerationRequestSynapse(bt.Synapse, ImageGenerationInputs):
+    pass
 
 
 class ImageGenerationOutputSynapse(bt.Synapse, ImageGenerationOutput):

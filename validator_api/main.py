@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import List
 
 from pydantic import BaseModel
 import uvicorn
@@ -6,16 +6,12 @@ import uvicorn
 from fastapi import FastAPI, Body
 
 from validator_api.validator_pipeline import SDXLValidatorPipeline
-from image_generation_protocol.io import ImageGenerationOutput
+from image_generation_protocol.io import ImageGenerationInputs
 
 
 class ValidationInputs(BaseModel):
-    input_parameters: Dict[str, Any]
+    input_parameters: ImageGenerationInputs
     frames: List
-
-
-class ValidationOutputs(BaseModel):
-    validity_score: float
 
 
 if __name__ == "__main__":
@@ -28,9 +24,9 @@ if __name__ == "__main__":
     )
 
     @app.post("/api/validate")
-    def validate(inputs: ValidationInputs = Body()) -> ImageGenerationOutput:
-        return ValidationOutputs(validity_score=pipeline.validate(
+    def validate(inputs: ValidationInputs = Body()) -> float:
+        return pipeline.validate(
             inputs.frames, inputs.input_parameters
-        ))
+        )
 
     uvicorn.run(app, host="0.0.0.0", port=8001)
