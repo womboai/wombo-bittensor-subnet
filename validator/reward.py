@@ -46,6 +46,7 @@ async def reward(scoring_endpoint: str, query: Dict[str, Any], response: ImageGe
     async with ClientSession() as session:
         response = await session.post(
             scoring_endpoint,
+            headers={"Content-Type": "application/json"},
             data={
                 "query": query,
                 "frames": frames,
