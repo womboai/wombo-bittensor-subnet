@@ -29,7 +29,7 @@ class ImageGenerationInputs(BaseModel):
     negative_prompt: Optional[str] = None
     negative_prompt_2: Optional[str] = None
     num_images_per_prompt: Optional[Annotated[int, Field(ge=MIN_IMAGES, le=MAX_IMAGES)]] = MIN_IMAGES
-    seed: Optional[int] = Field(default_factory=lambda: random.randint(0, int(1e9)))
+    seed: Optional[int] = Field(default_factory=lambda: random.randint(0, int(2e32)))
 
 
 class ImageGenerationOutput(BaseModel):
