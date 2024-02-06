@@ -8,6 +8,7 @@ from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import
 )
 from fastapi import FastAPI, Body
 
+from image_generation_protocol.output import ImageGenerationOutput
 from tensor.base64_images import save_image_base64
 
 
@@ -42,10 +43,13 @@ if __name__ == "__main__":
     )
 
     @app.post("/api/generate")
-    def generate(input_parameters: Dict[str, Any] = Body()) -> List[bytes]:
-        _, images = pipeline.generate(**input_parameters)
+    def generate(input_parameters: Dict[str, Any] = Body()) -> ImageGenerationOutput:
+        frames_tensor, images = pipeline.generate(**input_parameters)
 
-        return [save_image_base64(image) for image in images]
+        return ImageGenerationOutput(
+            frames=frames_tensor.tolist(),
+            images=[save_image_base64(image) for image in images]
+        )
 
 
     uvicorn.run(app, host="0.0.0.0", port=8001)

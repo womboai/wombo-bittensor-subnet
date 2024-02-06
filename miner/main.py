@@ -20,16 +20,11 @@ import time
 import typing
 import bittensor as bt
 from aiohttp import ClientSession
-from pydantic import BaseModel
 
+from image_generation_protocol.output import ImageGenerationOutput
 # import base miner class which takes care of most of the boilerplate
 from miner.miner import BaseMinerNeuron
 from tensor.protocol import ImageGenerationSynapse
-
-
-class ImageGenerationOutput(BaseModel):
-    frames: typing.List
-    images: typing.List[bytes]
 
 
 class Miner(BaseMinerNeuron):
