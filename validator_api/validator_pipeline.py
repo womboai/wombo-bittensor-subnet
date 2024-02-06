@@ -6,6 +6,8 @@ from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import
     StableDiffusionXLPipeline, retrieve_timesteps, rescale_noise_cfg
 )
 
+from image_generation_protocol.io import ImageGenerationInputs
+
 
 # Credits to Huggingface for the SDXL pipeline code
 class SDXLValidatorPipeline(StableDiffusionXLPipeline):
@@ -366,7 +368,7 @@ class SDXLValidatorPipeline(StableDiffusionXLPipeline):
 
         return self.all_close(latents, expected_next_latents)
     
-    def validate(self, frames, miner_inputs):
+    def validate(self, frames: List, miner_inputs: ImageGenerationInputs):
         miner_inputs["generator"] = torch.Generator().manual_seed(miner_inputs["seed"])
         num_random_indices = 3
         random_indices = sorted(random.sample(
