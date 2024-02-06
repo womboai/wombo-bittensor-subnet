@@ -20,10 +20,11 @@
 import random
 import torch
 import time
-from typing import List
+from typing import List, Tuple
 
 # Bittensor
 import bittensor as bt
+from aiohttp import ClientSession
 
 from tensor.protocol import ImageGenerationRequestSynapse, ImageGenerationOutputSynapse
 from tensor.uids import get_random_uids, is_miner
@@ -54,20 +55,6 @@ class Validator(BaseValidatorNeuron):
 
         bt.logging.info("load_state()")
         self.load_state()
-
-    async def forward(self, synapse: ImageGenerationRequestSynapse) -> ImageGenerationOutputSynapse:
-        miner_uid = get_random_uids(self, k=1, availability_checker=is_miner)[0]
-
-        # Grab the axon you're serving
-        axon = self.metagraph.axons[miner_uid]
-
-        response: ImageGenerationOutputSynapse = self.dendrite.query(
-            axons=[axon],
-            synapse=synapse,
-            deserialize=False,
-        )[0]
-
-        return response
 
     async def check_miners(self):
         """
@@ -141,6 +128,47 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info(f"Scored responses: {rewards}")
         # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
         self.update_scores(rewards, miner_uids)
+
+    async def forward(self, synapse: ImageGenerationRequestSynapse) -> ImageGenerationOutputSynapse:
+        miner_uid = get_random_uids(self, k=1, availability_checker=is_miner)[0]
+
+        # Grab the axon you're serving
+        axon = self.metagraph.axons[miner_uid]
+
+        response: ImageGenerationOutputSynapse = self.dendrite.query(
+            axons=[axon],
+            synapse=synapse,
+            deserialize=False,
+        )[0]
+
+        return response
+
+    async def blacklist(
+        self, synapse: ImageGenerationRequestSynapse
+    ) -> Tuple[bool, str]:
+        async with ClientSession() as session:
+            response = await session.get(
+                self.config.allowed_ip_addresses_endpoint,
+                headers={"Content-Type": "application/json"},
+            )
+
+            allowed_ip_addresses = await response.json()
+
+        # TODO(developer): Define how validators should blacklist requests.
+        if synapse.dendrite.ip not in allowed_ip_addresses:
+            # Ignore requests from unrecognized entities.
+            bt.logging.trace(
+                f"Blacklisting unrecognized IP Address {synapse.dendrite.ip}"
+            )
+            return True, "Unrecognized IP Address"
+
+        bt.logging.trace(
+            f"Not Blacklisting recognized IP Address {synapse.dendrite.ip}"
+        )
+        return False, "Hotkey recognized!"
+
+    async def priority(self, _: ImageGenerationRequestSynapse) -> float:
+        return 0.0
 
 
 # The main function parses the configuration and runs the validator.

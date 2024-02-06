@@ -110,6 +110,13 @@ def add_args(cls, parser):
         )
 
         parser.add_argument(
+            "--allowed_ip_addresses_endpoint",
+            type=str,
+            help="The endpoint to call for blacklisting requests",
+            default="http://localhost:8001/api/allowed_ip_addresses",
+        )
+
+        parser.add_argument(
             "--neuron.num_concurrent_forwards",
             type=int,
             help="The number of concurrent forwards running at any time.",
