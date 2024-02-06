@@ -22,3 +22,4 @@ ENTRYPOINT python \
     --subtensor.network $NETWORK \
     --wallet.name $WALLET_NAME \
     --wallet.hotkey $WALLET_HOTKEY \
+    --generation_endpoint $GENERATION_ENDPOINT \
