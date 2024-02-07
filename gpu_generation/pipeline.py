@@ -7,7 +7,7 @@ from diffusers import StableDiffusionXLPipeline
 def get_pipeline() -> Tuple[Semaphore, StableDiffusionXLPipeline]:
     pipeline = (
         StableDiffusionXLPipeline
-        .from_pretrained("stabilityai/stable-diffusion-xl-base-1.0")
+        .from_pretrained("stablediffusionapi/newdream-sdxl-20")
         .to("cuda")
     )
 
