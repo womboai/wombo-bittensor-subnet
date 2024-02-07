@@ -6,7 +6,7 @@ from typing import Tuple
 from diffusers import StableDiffusionXLPipeline
 
 
-def ensure_file_at_path(path: str, url: str) -> None:
+def ensure_file_at_path(path: str, url: str) -> str:
     if not os.path.exists(path):
         parent_dir = os.path.dirname(path)
         if parent_dir:
@@ -23,24 +23,26 @@ def ensure_file_at_path(path: str, url: str) -> None:
 def get_model_path() -> str:
     return ensure_file_at_path(
         path="newdreamxl_v10.safetensors",
-        url="https://civitai.com/api/download/models/173961"
+        url="https://civitai.com/api/download/models/173961",
     )
 
 
 def get_tau_lora_path() -> str:
     return ensure_file_at_path(
         path="tau_lora_v3_epoch3.safetensors",
-        url=None
+        url=str(None),
     )
 
 
 def get_pipeline() -> Tuple[Semaphore, StableDiffusionXLPipeline]:
-    pipe = (
+    pipeline = (
         StableDiffusionXLPipeline
         .from_pretrained(get_model_path())
         .to("cuda")
     )
+
     # TODO: uncomment once we're ready to use LORA
-    # pipe.load_lora_weights(get_tau_lora_path())
-    # pipe.fuse_lora()
-    return Semaphore(), pipe
+    # pipeline.load_lora_weights(get_tau_lora_path())
+    # pipeline.fuse_lora()
+
+    return Semaphore(), pipeline

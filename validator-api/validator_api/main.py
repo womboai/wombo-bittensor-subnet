@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 
 import uvicorn
@@ -21,5 +22,9 @@ if __name__ == "__main__":
             inputs.frames,
             inputs.input_parameters,
         )
+
+    @app.get("/")
+    def healthcheck():
+        return datetime.utcnow()
 
     uvicorn.run(app, host="0.0.0.0", port=8001)
