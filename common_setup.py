@@ -1,4 +1,6 @@
+import os.path
 import re
+from pathlib import Path
 
 
 def read_requirements(path):
@@ -9,7 +11,12 @@ def read_requirements(path):
         for req in requirements:
             # For git or other VCS links
             if req.startswith("file:"):
-                continue
+                path = os.path.join(os.getcwd(), req[len("file:"):])
+                package_name = os.path.basename(path)
+                uri = Path(path).as_uri()
+                requirement = f"wombo-bittensor-subnet-{package_name}@{uri}"
+
+                processed_requirements.append(requirement)
             elif req.startswith("git+") or "@" in req:
                 pkg_name = re.search(r"(#egg=)([\w\-_]+)", req)
                 if pkg_name:

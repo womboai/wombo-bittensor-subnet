@@ -6,13 +6,11 @@ RUN python3 -m venv ./miner/venv
 
 ENV PATH="/app/venv:$PATH"
 
-COPY tensor/requirements.txt ./tensor/requirements.txt
-COPY neuron/requirements.txt ./neuron/requirements.txt
-COPY miner/requirements.txt ./miner/requirements.txt
-
-RUN pip install -r miner/requirements.txt
-
 COPY . .
+
+WORKDIR /app/miner/
+
+RUN pip install -e .
 
 EXPOSE 8091
 

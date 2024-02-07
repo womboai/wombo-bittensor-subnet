@@ -8,11 +8,11 @@ RUN python3 -m venv ./validator_api/venv
 
 ENV PATH="/app/venv:$PATH"
 
-COPY validator_api/requirements.txt ./validator_api/requirements.txt
-
-RUN pip install -r validator_api/requirements.txt
-
 COPY . .
+
+WORKDIR /app/validator-api/
+
+RUN pip install -e .
 
 EXPOSE 8001
 

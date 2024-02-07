@@ -6,13 +6,11 @@ RUN python3 -m venv ./validator/venv
 
 ENV PATH="/app/venv:$PATH"
 
-COPY tensor/requirements.txt ./tensor/requirements.txt
-COPY neuron/requirements.txt ./neuron/requirements.txt
-COPY validator/requirements.txt ./validator/requirements.txt
-
-RUN pip install -r validator/requirements.txt
-
 COPY . .
+
+WORKDIR /app/validator/
+
+RUN pip install -e .
 
 EXPOSE 8091
 

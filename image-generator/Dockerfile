@@ -8,11 +8,11 @@ RUN python3 -m venv ./image_generator/venv
 
 ENV PATH="/app/venv:$PATH"
 
-COPY image_generator/requirements.txt ./image_generator/requirements.txt
-
-RUN pip install -r image_generator/requirements.txt
-
 COPY . .
+
+WORKDIR /app/image-generator/
+
+RUN pip install -e .
 
 EXPOSE 8001
 

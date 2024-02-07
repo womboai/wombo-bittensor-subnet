@@ -8,12 +8,11 @@ RUN python3 -m venv ./client/venv
 
 ENV PATH="/app/venv:$PATH"
 
-COPY tensor/requirements.txt ./tensor/requirements.txt
-COPY client/requirements.txt ./client/requirements.txt
-
-RUN pip install -r client/requirements.txt
-
 COPY . .
+
+WORKDIR /app/client/
+
+RUN pip install -e .
 
 EXPOSE 8000
 
