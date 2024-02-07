@@ -37,7 +37,7 @@ def get_tau_lora_path() -> str:
 def get_pipeline() -> Tuple[Semaphore, StableDiffusionXLPipeline]:
     pipeline = (
         StableDiffusionXLPipeline
-        .from_pretrained(get_model_path())
+        .from_single_file(get_model_path())
         .to("cuda")
     )
 
