@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Optional, Annotated
+from typing import List, Optional, Annotated
 
 import bittensor as bt
 import uvicorn

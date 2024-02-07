@@ -5,7 +5,7 @@ import uvicorn
 from fastapi import FastAPI, Body
 
 from gpu_generation.pipeline import get_pipeline
-from validator_api.validator_pipeline import validate_frames
+from validator_api import validate_frames
 from image_generation_protocol.io import ValidationInputs, ValidationOutputs
 
 if __name__ == "__main__":

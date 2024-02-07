@@ -1,12 +1,22 @@
+import base64
+from io import BytesIO
 from typing import Annotated
 
 import torch
 import uvicorn
+from PIL import Image
 from fastapi import FastAPI, Body
 
 from gpu_generation.pipeline import get_pipeline
-from image_generation_protocol.io import ImageGenerationInputs, ImageGenerationOutput
-from tensor.base64_images import save_image_base64
+from image_generation_protocol.image_generation_protocol.io import ImageGenerationInputs, ImageGenerationOutput
+
+
+def save_image_base64(image: Image.Image) -> bytes:
+    with BytesIO() as output:
+        image.save(output, format="jpeg")
+
+        return base64.b64encode(output.getvalue())
+
 
 if __name__ == "__main__":
     app = FastAPI()

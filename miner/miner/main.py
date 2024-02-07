@@ -21,7 +21,6 @@ import typing
 import bittensor as bt
 from aiohttp import ClientSession
 
-from image_generation_protocol.io import ImageGenerationOutput
 # import base miner class which takes care of most of the boilerplate
 from miner.miner import BaseMinerNeuron
 from tensor.protocol import ImageGenerationRequestSynapse, ImageGenerationOutputSynapse

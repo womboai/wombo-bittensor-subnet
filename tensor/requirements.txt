@@ -1,3 +1,5 @@
+../image_generation_protocol
+
 bittensor==6.7.1
 torch==2.2.0
 pillow==10.2.0

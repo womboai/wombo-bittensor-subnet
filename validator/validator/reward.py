@@ -14,7 +14,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import asyncio
-from typing import List, Dict, Any
+from typing import List
 
 import torch
 from aiohttp import ClientSession

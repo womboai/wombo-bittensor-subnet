@@ -16,13 +16,17 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from typing import Dict, List, Any
+from typing import List
 
 import bittensor as bt
 from PIL import Image
 
 from image_generation_protocol.io import ImageGenerationInputs, ImageGenerationOutput
-from tensor.base64_images import load_base64_image
+
+
+def load_base64_image(data: bytes) -> Image.Image:
+    with BytesIO(base64.b64decode(data)) as input_data:
+        return Image.open(input_data)
 
 
 class ImageGenerationRequestSynapse(bt.Synapse, ImageGenerationInputs):
