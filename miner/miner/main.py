@@ -126,9 +126,13 @@ class Miner(BaseMinerNeuron):
         return prirority
 
 
-# This is the main function, which runs the miner.
-if __name__ == "__main__":
-    with Miner() as miner:
+def main():
+    with Miner():
         while True:
             bt.logging.info("Miner running...", time.time())
             time.sleep(5)
+
+
+# This is the main function, which runs the miner.
+if __name__ == "__main__":
+    main()

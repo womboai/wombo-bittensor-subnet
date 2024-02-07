@@ -87,7 +87,7 @@ class Client:
         return resp.images
 
 
-if __name__ == "__main__":
+def main():
     app = FastAPI()
     client = Client()
 
@@ -96,3 +96,7 @@ if __name__ == "__main__":
         return await client.generate(input_parameters)
 
     uvicorn.run(app)
+
+
+if __name__ == "__main__":
+    main()
