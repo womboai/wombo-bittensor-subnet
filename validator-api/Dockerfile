@@ -1,4 +1,4 @@
-FROM python:3.10.10-slim
+FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
 
 RUN apt update && apt-get install -y build-essential
 
