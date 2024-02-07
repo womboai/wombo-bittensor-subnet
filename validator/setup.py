@@ -19,7 +19,7 @@
 from os import path
 from io import open
 from setuptools import setup, find_packages
-from ..common_setup import read_requirements
+from common_setup import read_requirements
 
 
 requirements = read_requirements("requirements.txt")

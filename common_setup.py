@@ -1,9 +1,12 @@
+# Used as symlink to individual projects, */common_setup.py should not be edited,
+# instead the root version of this file should be edited and changes should be reflected in all dependant files
+
 import os.path
 import re
 from pathlib import Path
 
 
-def read_requirements(path):
+def read_requirements(path: str):
     with open(path, "r") as f:
         requirements = f.read().splitlines()
         processed_requirements = []
@@ -14,9 +17,8 @@ def read_requirements(path):
                 path = os.path.join(os.getcwd(), req[len("file:"):])
                 package_name = os.path.basename(path)
                 uri = Path(path).as_uri()
-                requirement = f"wombo-bittensor-subnet-{package_name}@{uri}"
 
-                processed_requirements.append(requirement)
+                processed_requirements.append(f"wombo-bittensor-subnet-{package_name}@{uri}")
             elif req.startswith("git+") or "@" in req:
                 pkg_name = re.search(r"(#egg=)([\w\-_]+)", req)
                 if pkg_name:
