@@ -7,7 +7,7 @@ from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import
     retrieve_timesteps, rescale_noise_cfg, StableDiffusionXLPipeline
 )
 
-from image_generation_protocol.io import ImageGenerationInputs
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 
 
 # Credits to Huggingface for the SDXL pipeline code

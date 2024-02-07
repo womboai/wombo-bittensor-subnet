@@ -5,7 +5,7 @@ import uvicorn
 from fastapi import FastAPI, Body, HTTPException
 from starlette import status
 
-from image_generation_protocol.io import ImageGenerationInputs
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.config import config, check_config, add_args
 from tensor.protocol import ImageGenerationRequestSynapse, ImageGenerationOutputSynapse
 from tensor.uids import get_random_uids, is_validator

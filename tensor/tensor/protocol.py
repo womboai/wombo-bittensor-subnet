@@ -21,7 +21,7 @@ from typing import List
 import bittensor as bt
 from PIL import Image
 
-from image_generation_protocol.io import ImageGenerationInputs, ImageGenerationOutput
+from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationOutput
 
 
 def load_base64_image(data: bytes) -> Image.Image:

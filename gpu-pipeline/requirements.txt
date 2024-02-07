@@ -1,4 +1,4 @@
-../image-generation-protocol
+file:../image-generation-protocol
 
 torch==2.2.0
 

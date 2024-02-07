@@ -19,7 +19,7 @@ from typing import List
 import torch
 from aiohttp import ClientSession
 
-from image_generation_protocol.io import ImageGenerationInputs, ValidationInputs
+from image_generation_protocol.io_protocol import ImageGenerationInputs, ValidationInputs
 from tensor.protocol import ImageGenerationOutputSynapse
 
 

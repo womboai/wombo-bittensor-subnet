@@ -8,7 +8,7 @@ from PIL import Image
 from fastapi import FastAPI, Body
 
 from gpu_generation.pipeline import get_pipeline
-from image_generation_protocol.image_generation_protocol.io import ImageGenerationInputs, ImageGenerationOutput
+from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationOutput
 
 
 def save_image_base64(image: Image.Image) -> bytes:
