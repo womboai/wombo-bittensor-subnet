@@ -44,8 +44,7 @@ class Miner(BaseMinerNeuron):
         async with ClientSession() as session:
             response = await session.post(
                 self.config.generation_endpoint,
-                headers={"Content-Type": "application/json"},
-                data=synapse.input_parameters,
+                json=synapse.input_parameters,
             )
 
             return ImageGenerationOutputSynapse.model_validate(await response.json())

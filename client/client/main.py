@@ -55,7 +55,7 @@ class Client:
     def client_config(cls):
         return config(cls)
 
-    def generate(
+    async def generate(
         self,
         input_parameters: ImageGenerationInputs,
     ) -> List[bytes]:
@@ -66,14 +66,15 @@ class Client:
 
         bt.logging.info(f"Sending request {input_parameters} to validator {validator_uid}, axon {axon}")
 
-        resp: Optional[ImageGenerationOutputSynapse] = self.dendrite.query(
-            # Send the query to selected miner axon in the network.
-            axons=[axon],
-            synapse=ImageGenerationRequestSynapse(**input_parameters.model_dump()),
-            # All responses have the deserialize function called on them before returning.
-            # You are encouraged to define your own deserialization function.
-            deserialize=False,
-        )[0]
+        async with self.dendrite as dendrite:
+            resp: Optional[ImageGenerationOutputSynapse] = (await dendrite.forward(
+                # Send the query to selected miner axon in the network.
+                axons=[axon],
+                synapse=ImageGenerationRequestSynapse(**input_parameters.model_dump()),
+                # All responses have the deserialize function called on them before returning.
+                # You are encouraged to define your own deserialization function.
+                deserialize=False,
+            ))[0]
 
         if not resp:
             bt.logging.error(f"Failed to query subnetwork with {input_parameters} and axon {axon}")
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     client = Client()
 
     @app.post("/api/generate")
-    def generate(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> List[bytes]:
-        return client.generate(input_parameters)
+    async def generate(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> List[bytes]:
+        return await client.generate(input_parameters)
 
     uvicorn.run(app)

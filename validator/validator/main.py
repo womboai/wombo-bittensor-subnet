@@ -89,15 +89,16 @@ class Validator(BaseValidatorNeuron):
 
         bt.logging.info(f"Sending request {input_parameters} to {miner_uids} which have axons {axons}")
 
-        # The dendrite client queries the network.
-        responses: List[ImageGenerationOutputSynapse] = self.dendrite.query(
-            # Send the query to selected miner axons in the network.
-            axons=axons,
-            synapse=ImageGenerationRequestSynapse(**input_parameters),
-            # All responses have the deserialize function called on them before returning.
-            # You are encouraged to define your own deserialization function.
-            deserialize=False,
-        )
+        async with self.dendrite as dendrite:
+            # The dendrite client queries the network.
+            responses: List[ImageGenerationOutputSynapse] = await dendrite.forward(
+                # Send the query to selected miner axons in the network.
+                axons=axons,
+                synapse=ImageGenerationRequestSynapse(**input_parameters),
+                # All responses have the deserialize function called on them before returning.
+                # You are encouraged to define your own deserialization function.
+                deserialize=False,
+            )
 
         working_miner_uids = []
         finished_responses = []
@@ -135,11 +136,12 @@ class Validator(BaseValidatorNeuron):
         # Grab the axon you're serving
         axon = self.metagraph.axons[miner_uid]
 
-        response: ImageGenerationOutputSynapse = self.dendrite.query(
-            axons=[axon],
-            synapse=synapse,
-            deserialize=False,
-        )[0]
+        async with self.dendrite as dendrite:
+            response: ImageGenerationOutputSynapse = (await dendrite.forward(
+                axons=[axon],
+                synapse=synapse,
+                deserialize=False,
+            ))[0]
 
         return response
 

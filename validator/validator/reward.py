@@ -44,8 +44,7 @@ async def reward(scoring_endpoint: str, query: ImageGenerationInputs, synapse: I
 
         response = await session.post(
             scoring_endpoint,
-            headers={"Content-Type": "application/json"},
-            data=data.model_dump(),
+            json=data.dict(),
         )
 
         score = await response.json()
