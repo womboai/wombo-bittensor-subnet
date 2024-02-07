@@ -1,4 +1,4 @@
-../image_generation_protocol
+../image-generation-protocol
 
 bittensor==6.7.1
 torch==2.2.0
