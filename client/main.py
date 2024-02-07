@@ -1,10 +1,11 @@
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Annotated
 
 import bittensor as bt
 import uvicorn
 from fastapi import FastAPI, Body, HTTPException
 from starlette import status
 
+from image_generation_protocol.io import ImageGenerationInputs
 from tensor.config import config, check_config, add_args
 from tensor.protocol import ImageGenerationRequestSynapse, ImageGenerationOutputSynapse
 from tensor.uids import get_random_uids, is_validator
@@ -55,7 +56,8 @@ class Client:
         return config(cls)
 
     def generate(
-        self, input_parameters: Dict[str, Any],
+        self,
+        input_parameters: ImageGenerationInputs,
     ) -> List[bytes]:
         validator_uid = get_random_uids(self, k=1, availability_checker=is_validator)[0]
 
@@ -67,7 +69,7 @@ class Client:
         resp: Optional[ImageGenerationOutputSynapse] = self.dendrite.query(
             # Send the query to selected miner axon in the network.
             axons=[axon],
-            synapse=ImageGenerationRequestSynapse(input_parameters=input_parameters),
+            synapse=ImageGenerationRequestSynapse(**input_parameters.model_dump()),
             # All responses have the deserialize function called on them before returning.
             # You are encouraged to define your own deserialization function.
             deserialize=False,
@@ -89,7 +91,7 @@ if __name__ == "__main__":
     client = Client()
 
     @app.post("/api/generate")
-    def generate(input_parameters: Dict[str, Any] = Body()) -> List[bytes]:
+    def generate(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> List[bytes]:
         return client.generate(input_parameters)
 
     uvicorn.run(app)

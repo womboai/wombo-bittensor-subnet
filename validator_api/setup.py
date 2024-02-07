@@ -50,18 +50,9 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
-# loading version from setup.py
-with codecs.open(
-    os.path.join(here, "base/__init__.py"), encoding="utf-8"
-) as init_file:
-    version_match = re.search(
-        r"^__version__ = ['\"]([^'\"]*)['\"]", init_file.read(), re.M
-    )
-    version_string = version_match.group(1)
-
 setup(
-    name="wombo-bittensor-subnet",
-    version=version_string,
+    name="wombo-bittensor-subnet-validator-api",
+    version="1.0.0",
     description="wombo-bittensor-subnet",
     long_description=long_description,
     long_description_content_type="text/markdown",

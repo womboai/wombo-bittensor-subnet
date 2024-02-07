@@ -1,5 +1,5 @@
 import random
-from typing import List, Optional, Annotated
+from typing import List, Optional, Annotated, TypeAlias
 
 from pydantic import BaseModel, Field
 
@@ -17,6 +17,7 @@ MAX_IMAGES = 4
 
 
 GenerationResolution = Annotated[int, Field(ge=MIN_SIZE, le=MAX_SIZE)]
+Frames: TypeAlias = List
 
 
 class ImageGenerationInputs(BaseModel):
@@ -29,9 +30,17 @@ class ImageGenerationInputs(BaseModel):
     negative_prompt: Optional[str] = None
     negative_prompt_2: Optional[str] = None
     num_images_per_prompt: Optional[Annotated[int, Field(ge=MIN_IMAGES, le=MAX_IMAGES)]] = MIN_IMAGES
-    seed: Optional[int] = Field(default_factory=lambda: random.randint(0, int(2e32)))
+    seed: Optional[int] = Field(default_factory=lambda: random.randint(0, 2**32))
 
 
 class ImageGenerationOutput(BaseModel):
-    frames: List
+    frames: Frames
     images: List[bytes]
+
+
+class ValidationInputs(BaseModel):
+    input_parameters: ImageGenerationInputs
+    frames: Frames
+
+
+ValidationOutputs: TypeAlias = float

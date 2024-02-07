@@ -1,24 +1,20 @@
-from asyncio import Semaphore
-from typing import Dict, Any, List
+from typing import Annotated
 
 import torch
 import uvicorn
-
-from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import (
-    StableDiffusionXLPipeline
-)
 from fastapi import FastAPI, Body
 
+from gpu_generation.pipeline import get_pipeline
 from image_generation_protocol.io import ImageGenerationInputs, ImageGenerationOutput
 from tensor.base64_images import save_image_base64
 
+if __name__ == "__main__":
+    app = FastAPI()
 
-class SDXLMinerPipeline(StableDiffusionXLPipeline):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.gpu_semaphore = Semaphore()
+    gpu_semaphore, pipeline = get_pipeline()
 
-    async def generate(self, **inputs):
+
+    async def generate(**inputs):
         frames = []
 
         inputs["generator"] = torch.Generator().manual_seed(inputs["seed"])
@@ -28,8 +24,8 @@ class SDXLMinerPipeline(StableDiffusionXLPipeline):
             frames.append(callback_kwargs["latents"])
             return callback_kwargs
 
-        async with self.gpu_semaphore:
-            output = self(
+        async with gpu_semaphore:
+            output = pipeline(
                 **inputs,
                 callback_on_step_end=save_frames,
             )
@@ -38,19 +34,9 @@ class SDXLMinerPipeline(StableDiffusionXLPipeline):
 
         return frames_tensor, output.images
 
-
-if __name__ == "__main__":
-    app = FastAPI()
-
-    pipeline: SDXLMinerPipeline = (
-        SDXLMinerPipeline
-        .from_pretrained("stabilityai/stable-diffusion-xl-base-1.0")
-        .to("cuda")
-    )
-
     @app.post("/api/generate")
-    async def generate(input_parameters: ImageGenerationInputs = Body()) -> ImageGenerationOutput:
-        frames_tensor, images = await pipeline.generate(**input_parameters)
+    async def generate_image(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> ImageGenerationOutput:
+        frames_tensor, images = await generate(**input_parameters.model_dump())
 
         return ImageGenerationOutput(
             frames=frames_tensor.tolist(),
