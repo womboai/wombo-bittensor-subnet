@@ -71,7 +71,7 @@ class Client:
             response: Optional[ImageGenerationSynapse] = (await dendrite.forward(
                 # Send the query to selected miner axon in the network.
                 axons=[axon],
-                synapse=ImageGenerationSynapse(**input_parameters.model_dump()),
+                synapse=ImageGenerationSynapse(**input_parameters.dict()),
                 # All responses have the deserialize function called on them before returning.
                 # You are encouraged to define your own deserialization function.
                 deserialize=False,
@@ -85,7 +85,7 @@ class Client:
                 detail="Failed to query subnetwork",
             )
 
-        return response.images
+        return response.output.images
 
 
 def main():

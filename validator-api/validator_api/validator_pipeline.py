@@ -390,7 +390,7 @@ async def validate_frames(
                 i + 1,
                 (frames_tensor[i], frames_tensor[i + 1]),
                 generator=torch.Generator().manual_seed(miner_inputs.seed),
-                **miner_inputs.model_dump()
+                **miner_inputs.dict()
             )
             for i in random_indices
         )

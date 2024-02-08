@@ -52,7 +52,7 @@ class Miner(BaseMinerNeuron):
                 json=json,
             )
 
-            synapse.output = ImageGenerationOutput.model_validate(await response.json())
+            synapse.output = ImageGenerationOutput.parse_obj(await response.json())
 
         return synapse
 

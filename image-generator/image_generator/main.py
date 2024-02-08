@@ -49,7 +49,7 @@ def main():
 
     @app.post("/api/generate")
     async def generate_image(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> ImageGenerationOutput:
-        frames_tensor, images = await generate(gpu_semaphore, pipeline, **input_parameters.model_dump())
+        frames_tensor, images = await generate(gpu_semaphore, pipeline, **input_parameters.dict())
 
         return ImageGenerationOutput(
             frames=frames_tensor.tolist(),
