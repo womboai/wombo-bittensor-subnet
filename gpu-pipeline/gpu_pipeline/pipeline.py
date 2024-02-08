@@ -9,7 +9,8 @@ from typing import Tuple, Dict, Union
 import cv2
 import numpy as np
 from diffusers import (
-    StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline, ControlNetModel
+    StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline, ControlNetModel,
+    AutoencoderKL,
 )
 import torch
 
@@ -102,7 +103,7 @@ def get_pipeline() -> Tuple[Semaphore, SDXLPipelines]:
 
     cn_pipeline = StableDiffusionXLControlNetPipeline(
         **pipeline.components,
-        controlnet=ControlNetModel.from_pretrained("diffusers/controlnet-canny-sdxl-1.0"),
+        controlnet=ControlNetModel.from_pretrained("diffusers/controlnet-canny-sdxl-1.0", torch_dtype=torch.float16),
     ).to(device)
 
     return Semaphore(), SDXLPipelines(t2i_pipe=pipeline, cn_pipe=cn_pipeline)
