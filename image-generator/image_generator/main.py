@@ -7,7 +7,6 @@ from typing import Annotated
 import torch
 import uvicorn
 from PIL import Image
-from diffusers import StableDiffusionXLPipeline
 from fastapi import FastAPI, Body
 
 from gpu_pipeline.pipeline import get_pipeline, SDXLPipelines, parse_input_parameters

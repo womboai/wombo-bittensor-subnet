@@ -60,7 +60,7 @@ def parse_input_parameters(
         selected_pipeline = pipelines.t2i_pipe
         input_kwargs.pop("controlnet_conditioning_scale")
 
-    return input_kwargs, selected_pipeline
+    return selected_pipeline, input_kwargs
 
 
 def ensure_file_at_path(path: str, url: str) -> str:
