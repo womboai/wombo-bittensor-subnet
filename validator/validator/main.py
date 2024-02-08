@@ -26,7 +26,7 @@ from typing import List, Tuple
 import bittensor as bt
 from aiohttp import ClientSession
 
-from tensor.protocol import ImageGenerationRequestSynapse, ImageGenerationOutputSynapse
+from tensor.protocol import ImageGenerationSynapse
 from tensor.uids import get_random_uids, is_miner
 
 # import base validator class which takes care of most of the boilerplate
@@ -90,10 +90,10 @@ class Validator(BaseValidatorNeuron):
 
         async with self.dendrite as dendrite:
             # The dendrite client queries the network.
-            responses: List[ImageGenerationOutputSynapse] = await dendrite.forward(
+            responses: List[ImageGenerationSynapse] = await dendrite.forward(
                 # Send the query to selected miner axons in the network.
                 axons=axons,
-                synapse=ImageGenerationRequestSynapse(**input_parameters),
+                synapse=ImageGenerationSynapse(**input_parameters),
                 # All responses have the deserialize function called on them before returning.
                 # You are encouraged to define your own deserialization function.
                 deserialize=False,
@@ -103,7 +103,7 @@ class Validator(BaseValidatorNeuron):
         finished_responses = []
 
         for uid, response in zip(miner_uids, responses):
-            if not response:
+            if not response.output:
                 continue
 
             working_miner_uids.append(uid)
@@ -129,14 +129,14 @@ class Validator(BaseValidatorNeuron):
         # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
         self.update_scores(rewards, miner_uids)
 
-    async def forward(self, synapse: ImageGenerationRequestSynapse) -> ImageGenerationOutputSynapse:
+    async def forward(self, synapse: ImageGenerationSynapse) -> ImageGenerationSynapse:
         miner_uid = get_random_uids(self, k=1, availability_checker=is_miner)[0]
 
         # Grab the axon you're serving
         axon = self.metagraph.axons[miner_uid]
 
         async with self.dendrite as dendrite:
-            response: ImageGenerationOutputSynapse = (await dendrite.forward(
+            response: ImageGenerationSynapse = (await dendrite.forward(
                 axons=[axon],
                 synapse=synapse,
                 deserialize=False,
@@ -145,7 +145,7 @@ class Validator(BaseValidatorNeuron):
         return response
 
     async def blacklist(
-        self, synapse: ImageGenerationRequestSynapse
+        self, synapse: ImageGenerationSynapse
     ) -> Tuple[bool, str]:
         if self.config.subtensor.network != "finney":
             return False, "Test Network"

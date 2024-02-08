@@ -21,10 +21,11 @@ import torch
 from aiohttp import ClientSession
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs, ValidationInputs
-from tensor.protocol import ImageGenerationOutputSynapse
+
+from tensor.protocol import ImageGenerationSynapse
 
 
-async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse: ImageGenerationOutputSynapse) -> float:
+async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse: ImageGenerationSynapse) -> float:
     """
     Reward the miner response to the generation request. This method returns a reward
     value for the miner, which is used to update the miner's score.
@@ -39,7 +40,7 @@ async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse
     async with ClientSession() as session:
         data = ValidationInputs(
             input_parameters=query,
-            frames=synapse.frames,
+            frames=synapse.output.frames,
         )
 
         response = await session.post(
@@ -55,7 +56,7 @@ async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse
 async def get_rewards(
     self,
     query: ImageGenerationInputs,
-    responses: List[ImageGenerationOutputSynapse],
+    responses: List[ImageGenerationSynapse],
 ) -> torch.FloatTensor:
     """
     Returns a tensor of rewards for the given query and responses.

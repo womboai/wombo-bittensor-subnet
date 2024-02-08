@@ -23,7 +23,7 @@ from aiohttp import ClientSession
 
 # import base miner class which takes care of most of the boilerplate
 from miner.miner import BaseMinerNeuron
-from tensor.protocol import ImageGenerationRequestSynapse, ImageGenerationOutputSynapse
+from image_generation_protocol.io_protocol import ImageGenerationOutput
 
 
 class Miner(BaseMinerNeuron):
@@ -39,18 +39,20 @@ class Miner(BaseMinerNeuron):
         super(Miner, self).__init__(config=config)
 
     async def forward(
-        self, synapse: ImageGenerationRequestSynapse
-    ) -> ImageGenerationOutputSynapse:
+        self, synapse: ImageGenerationSynapse
+    ) -> ImageGenerationSynapse:
         async with ClientSession() as session:
             response = await session.post(
                 self.config.generation_endpoint,
                 json=synapse.input_parameters,
             )
 
-            return ImageGenerationOutputSynapse.model_validate(await response.json())
+            synapse.output = ImageGenerationOutput.model_validate(await response.json())
+
+        return synapse
 
     async def blacklist(
-        self, synapse: ImageGenerationRequestSynapse
+        self, synapse: ImageGenerationSynapse
     ) -> typing.Tuple[bool, str]:
         """
         Determines whether an incoming request should be blacklisted and thus ignored. Your implementation should
@@ -94,7 +96,7 @@ class Miner(BaseMinerNeuron):
         )
         return False, "Hotkey recognized!"
 
-    async def priority(self, synapse: ImageGenerationRequestSynapse) -> float:
+    async def priority(self, synapse: ImageGenerationSynapse) -> float:
         """
         The priority function determines the order in which requests are handled. More valuable or higher-priority
         requests are processed before others. You should design your own priority mechanism with care.

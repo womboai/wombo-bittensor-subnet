@@ -16,7 +16,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from typing import List
+from typing import List, Optional
 
 import bittensor as bt
 from PIL import Image
@@ -29,10 +29,11 @@ def load_base64_image(data: bytes) -> Image.Image:
         return Image.open(input_data)
 
 
-class ImageGenerationRequestSynapse(bt.Synapse, ImageGenerationInputs):
-    pass
+class ImageGenerationSynapse(bt.Synapse, ImageGenerationInputs):
+    output: Optional[ImageGenerationOutput]
 
-
-class ImageGenerationOutputSynapse(bt.Synapse, ImageGenerationOutput):
     def deserialize(self) -> List[Image.Image]:
-        return [load_base64_image(data) for data in self.images]
+        f"""
+        Assumes the {self.output} field is filled by axon
+        """
+        return [load_base64_image(data) for data in self.output.images]
