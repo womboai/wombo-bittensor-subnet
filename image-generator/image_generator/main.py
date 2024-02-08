@@ -60,7 +60,7 @@ def main():
     def healthcheck():
         return datetime.utcnow()
 
-    uvicorn.run(app, port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
 
 
 if __name__ == "__main__":

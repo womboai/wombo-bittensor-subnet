@@ -115,7 +115,7 @@ def add_args(cls, parser):
             "--allowed_ip_addresses_endpoint",
             type=str,
             help="The endpoint to call for blacklisting requests",
-            default="http://localhost:8001/api/allowed_ip_addresses",
+            default="http://localhost:8002/api/allowed_ip_addresses",
         )
 
         parser.add_argument(
