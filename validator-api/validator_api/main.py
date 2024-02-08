@@ -13,13 +13,13 @@ from image_generation_protocol.io_protocol import ValidationInputs
 def main():
     app = FastAPI()
 
-    gpu_semaphore, pipeline = get_pipeline()
+    gpu_semaphore, pipelines = get_pipeline()
 
     @app.post("/api/validate")
     async def validate(inputs: Annotated[ValidationInputs, Body()]) -> float:
         return await validate_frames(
             gpu_semaphore,
-            pipeline,
+            pipelines,
             inputs.frames,
             inputs.input_parameters,
         )

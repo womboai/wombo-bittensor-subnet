@@ -10,7 +10,7 @@ from PIL import Image
 from diffusers import StableDiffusionXLPipeline
 from fastapi import FastAPI, Body
 
-from gpu_pipeline.pipeline import get_pipeline
+from gpu_pipeline.pipeline import get_pipeline, SDXLPipelines, parse_input_parameters
 from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationOutput
 
 
@@ -21,19 +21,17 @@ def save_image_base64(image: Image.Image) -> bytes:
         return base64.b64encode(output.getvalue())
 
 
-async def generate(gpu_semaphore: Semaphore, pipeline: StableDiffusionXLPipeline, **inputs):
+async def generate(gpu_semaphore: Semaphore, pipelines: SDXLPipelines, inputs: ImageGenerationInputs):
     frames = []
-
-    inputs["generator"] = torch.Generator().manual_seed(inputs["seed"])
-    inputs["output_type"] = "pil"
 
     def save_frames(_pipe, _step_index, _timestep, callback_kwargs):
         frames.append(callback_kwargs["latents"])
         return callback_kwargs
 
+    selected_pipeline, input_kwargs = parse_input_parameters(pipelines, inputs)
     async with gpu_semaphore:
-        output = pipeline(
-            **inputs,
+        output = selected_pipeline(
+            **input_kwargs,
             callback_on_step_end=save_frames,
         )
 
@@ -45,11 +43,11 @@ async def generate(gpu_semaphore: Semaphore, pipeline: StableDiffusionXLPipeline
 def main():
     app = FastAPI()
 
-    gpu_semaphore, pipeline = get_pipeline()
+    gpu_semaphore, pipelines = get_pipeline()
 
     @app.post("/api/generate")
     async def generate_image(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> ImageGenerationOutput:
-        frames_tensor, images = await generate(gpu_semaphore, pipeline, **input_parameters.dict())
+        frames_tensor, images = await generate(gpu_semaphore, pipelines, input_parameters)
 
         return ImageGenerationOutput(
             frames=frames_tensor.tolist(),
