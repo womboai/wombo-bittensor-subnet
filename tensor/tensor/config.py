@@ -18,6 +18,8 @@
 
 import os
 import argparse
+from typing import Optional
+
 import bittensor as bt
 from loguru import logger
 
@@ -103,10 +105,10 @@ def add_args(cls, parser):
 
     if neuron_type == "validator":
         parser.add_argument(
-            "--scoring_endpoint",
-            type=str,
+            "--validation_endpoint",
+            type=Optional[str],
             help="The endpoint to call for validator scoring",
-            default="http://localhost:8001/api/score",
+            default=None,
         )
 
         parser.add_argument(

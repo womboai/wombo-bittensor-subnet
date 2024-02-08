@@ -24,7 +24,7 @@ from image_generation_protocol.io_protocol import ImageGenerationInputs, Validat
 from tensor.protocol import ImageGenerationOutputSynapse
 
 
-async def reward(scoring_endpoint: str, query: ImageGenerationInputs, synapse: ImageGenerationOutputSynapse) -> float:
+async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse: ImageGenerationOutputSynapse) -> float:
     """
     Reward the miner response to the generation request. This method returns a reward
     value for the miner, which is used to update the miner's score.
@@ -43,7 +43,7 @@ async def reward(scoring_endpoint: str, query: ImageGenerationInputs, synapse: I
         )
 
         response = await session.post(
-            scoring_endpoint,
+            validation_endpoint,
             json=data.dict(),
         )
 
@@ -67,7 +67,15 @@ async def get_rewards(
     Returns:
     - torch.FloatTensor: A tensor of rewards for the given query and responses.
     """
+
+    if self.config.validation_endpoint:
+        validation_endpoint = self.config.validation_endpoint
+    elif self.config.subtensor.network == "finney":
+        validation_endpoint = "https://validate.api.wombo.ai/api/validate"
+    else:
+        validation_endpoint = "https://dev-validate.api.wombo.ai/api/validate"
+
     # Get all the reward results by iteratively calling your reward() function.
     return torch.FloatTensor(
-        await asyncio.gather(*[reward(self.config.scoring_endpoint, query, response) for response in responses])
+        await asyncio.gather(*[reward(validation_endpoint, query, response) for response in responses])
     ).to(self.device)
