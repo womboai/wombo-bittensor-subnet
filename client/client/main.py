@@ -29,10 +29,6 @@ class Client:
         # These are core Bittensor classes to interact with the network.
         bt.logging.info("Setting up bittensor objects.")
 
-        # The wallet holds the cryptographic key pairs for the miner.
-        self.wallet = bt.wallet(config=client_config)
-        bt.logging.info(f"Wallet: {self.wallet}")
-
         self.subtensor = bt.subtensor(config=client_config)
         bt.logging.info(f"Subtensor: {self.subtensor}")
 
@@ -41,7 +37,7 @@ class Client:
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
         # Dendrite lets us send messages to other nodes (axons) in the network.
-        self.dendrite = bt.dendrite(wallet=self.wallet)
+        self.dendrite = bt.dendrite()
         bt.logging.info(f"Dendrite: {self.dendrite}")
 
     @classmethod
