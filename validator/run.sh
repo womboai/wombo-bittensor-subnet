@@ -2,7 +2,7 @@
 
 set -e
 
-docker container rm validator
+docker container rm validator || true
 
 docker build -f Dockerfile -t wombo_subnet:validator ../
 
