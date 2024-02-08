@@ -23,6 +23,7 @@ from aiohttp import ClientSession
 
 # import base miner class which takes care of most of the boilerplate
 from miner.miner import BaseMinerNeuron
+from tensor.protocol import ImageGenerationSynapse
 from image_generation_protocol.io_protocol import ImageGenerationOutput
 
 
