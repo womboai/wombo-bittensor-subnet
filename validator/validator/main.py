@@ -49,7 +49,6 @@ class Validator(BaseValidatorNeuron):
         self.axon.attach(
             forward_fn=self.forward,
             blacklist_fn=self.blacklist,
-            priority_fn=self.priority,
         )
         bt.logging.info(f"Axon created: {self.axon}")
 
@@ -170,9 +169,6 @@ class Validator(BaseValidatorNeuron):
             f"Not Blacklisting recognized IP Address {synapse.dendrite.ip}"
         )
         return False, "IP Address recognized!"
-
-    def priority(self, _: ImageGenerationRequestSynapse) -> float:
-        return 0.0
 
 
 def main():
