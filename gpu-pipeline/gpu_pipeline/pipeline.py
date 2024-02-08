@@ -25,12 +25,12 @@ TAO_PATTERN = r'\b(?:' + '|'.join(re.escape(keyword) for keyword in sorted([
 ], key=len, reverse=True)) + r')\b'
 
 
-def get_tau_img(width: int, height: int):
-    tau_img = Image.open("tao.jpg")
-    scale_factor = min(width / tau_img.width, height / tau_img.height)
-    tau_img = tau_img.resize((int(tau_img.width * scale_factor), int(tau_img.height * scale_factor)))
+def get_tao_img(width: int, height: int):
+    tao_img = Image.open("tao.jpg")
+    scale_factor = min(width / tao_img.width, height / tao_img.height)
+    tao_img = tao_img.resize((int(tao_img.width * scale_factor), int(tao_img.height * scale_factor)))
     new_img = Image.new("RGB", (width, height), (255, 255, 255))
-    new_img.paste(tau_img, (int((width - tau_img.width) / 2), int((height - tau_img.height) * 0.2)))
+    new_img.paste(tao_img, (int((width - tao_img.width) / 2), int((height - tao_img.height) * 0.2)))
     new_img = Image.fromarray(255 - np.array(new_img))
     image = np.array(new_img)
     image = cv2.Canny(image, 100, 200)
@@ -54,7 +54,7 @@ def parse_input_parameters(
 
     if inputs.controlnet_conditioning_scale > 0:
         selected_pipeline = pipelines.cn_pipe
-        input_kwargs["image"] = get_tau_img(inputs.width, inputs.height)
+        input_kwargs["image"] = get_tao_img(inputs.width, inputs.height)
     else:
         selected_pipeline = pipelines.t2i_pipe
         input_kwargs.pop("controlnet_conditioning_scale")
@@ -83,7 +83,7 @@ def get_model_path() -> str:
     )
 
 
-def get_tau_lora_path() -> str:
+def get_tao_lora_path() -> str:
     return ensure_file_at_path(
         path="bittensor_tao_lora.safetensors",
         url="https://civitai.com/api/download/models/334777",
@@ -97,7 +97,7 @@ def get_pipeline() -> Tuple[Semaphore, SDXLPipelines]:
         .from_single_file(get_model_path())
         .to(device)
     )
-    pipeline.load_lora_weights(get_tau_lora_path())
+    pipeline.load_lora_weights(get_tao_lora_path())
     pipeline.fuse_lora()
 
     cn_pipeline = StableDiffusionXLControlNetPipeline(
