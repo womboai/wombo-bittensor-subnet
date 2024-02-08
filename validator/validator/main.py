@@ -156,6 +156,8 @@ class Validator(BaseValidatorNeuron):
                 headers={"Content-Type": "application/json"},
             )
 
+            response.raise_for_status()
+
             allowed_ip_addresses = await response.json()
 
         if synapse.dendrite.ip not in allowed_ip_addresses:

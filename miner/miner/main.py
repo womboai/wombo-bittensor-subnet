@@ -52,6 +52,8 @@ class Miner(BaseMinerNeuron):
                 json=json,
             )
 
+            response.raise_for_status()
+
             synapse.output = ImageGenerationOutput.parse_obj(await response.json())
 
         return synapse

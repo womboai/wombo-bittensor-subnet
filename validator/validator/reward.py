@@ -48,6 +48,8 @@ async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse
             json=data.dict(),
         )
 
+        response.raise_for_status()
+
         score = await response.json()
 
     return score + time_reward
