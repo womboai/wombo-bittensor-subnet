@@ -86,7 +86,7 @@ def get_model_path() -> str:
 def get_tao_lora_path() -> str:
     return ensure_file_at_path(
         path="bittensor_tao_lora.safetensors",
-        url="https://civitai.com/api/download/models/334777",
+        url="https://civitai.com/api/download/models/335008",
     )
 
 
