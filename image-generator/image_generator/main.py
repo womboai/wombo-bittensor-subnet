@@ -1,5 +1,6 @@
 import base64
 from asyncio import Semaphore
+from datetime import datetime
 from io import BytesIO
 from typing import Annotated
 
@@ -55,7 +56,11 @@ def main():
             images=[save_image_base64(image) for image in images]
         )
 
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    @app.get("/")
+    def healthcheck():
+        return datetime.utcnow()
+
+    uvicorn.run(app, port=8001)
 
 
 if __name__ == "__main__":

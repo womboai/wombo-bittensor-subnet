@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional, Annotated
 
 import bittensor as bt
@@ -94,6 +95,10 @@ def main():
     @app.post("/api/generate")
     async def generate(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> List[bytes]:
         return await client.generate(input_parameters)
+
+    @app.get("/")
+    def healthcheck():
+        return datetime.utcnow()
 
     uvicorn.run(app)
 
