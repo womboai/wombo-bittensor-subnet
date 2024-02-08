@@ -41,6 +41,3 @@ class ImageGenerationOutput(BaseModel):
 class ValidationInputs(BaseModel):
     input_parameters: ImageGenerationInputs
     frames: Frames
-
-
-ValidationOutputs: TypeAlias = float
