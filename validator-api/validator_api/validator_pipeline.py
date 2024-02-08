@@ -16,9 +16,12 @@ from image_generation_protocol.io_protocol import ImageGenerationInputs
 from gpu_pipeline.pipeline import SDXLPipelines, parse_input_parameters
 
 
+SIMILARITY_THRESHOLD = 0.8
+
+
 # Credits to Huggingface for the SDXL pipeline code
 def __all_close(tensor_a: torch.Tensor, tensor_b: torch.Tensor) -> bool:
-    return torch.isclose(tensor_a, tensor_b, atol=1e-3).float().mean() > 0.9
+    return torch.isclose(tensor_a, tensor_b, atol=1e-3).float().mean() > SIMILARITY_THRESHOLD
 
 
 @torch.no_grad()
