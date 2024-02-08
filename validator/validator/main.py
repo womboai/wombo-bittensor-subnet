@@ -171,7 +171,7 @@ class Validator(BaseValidatorNeuron):
         )
         return False, "IP Address recognized!"
 
-    async def priority(self, _: ImageGenerationRequestSynapse) -> float:
+    def priority(self, _: ImageGenerationRequestSynapse) -> float:
         return 0.0
 
 
