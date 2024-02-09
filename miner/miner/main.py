@@ -1,7 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-
+import base64
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -19,7 +19,7 @@
 import time
 import typing
 import bittensor as bt
-from aiohttp import ClientSession
+from aiohttp import ClientSession, MultipartReader
 
 # import base miner class which takes care of most of the boilerplate
 from miner.miner import BaseMinerNeuron
@@ -54,7 +54,32 @@ class Miner(BaseMinerNeuron):
 
             response.raise_for_status()
 
-            synapse.output = ImageGenerationOutput.parse_obj(await response.json())
+            reader = MultipartReader.from_response(response)
+
+            frames_tensor: typing.Optional[bytes] = None
+            images: typing.List[bytes] = []
+
+            while True:
+                part = await reader.next()
+
+                if part is None:
+                    break
+
+                if part.name == "frames":
+                    frames_tensor = await part.read()
+                elif part.name.startswith("image_"):
+                    index = int(part.name[len("image_"):])
+
+                    while len(images) <= index:
+                        # This is assuming that it will be overridden when the actual index is found
+                        images.append(b"")
+
+                    images[index] = base64.b64encode(await part.read())
+
+            synapse.output = ImageGenerationOutput(
+                frames=base64.b64encode(frames_tensor),
+                images=images,
+            )
 
         return synapse
 
