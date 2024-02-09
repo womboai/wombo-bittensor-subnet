@@ -374,7 +374,7 @@ async def validate_frames(
     frames: List,
     miner_inputs: ImageGenerationInputs,
 ):
-    frames_tensor = torch.FloatTensor(frames, dtype=torch.float16).to("cuda")
+    frames_tensor = torch.FloatTensor(frames).to(device="cuda", dtype=torch.float16)
 
     num_random_indices = 3
 
