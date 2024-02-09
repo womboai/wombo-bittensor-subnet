@@ -17,6 +17,8 @@
 # DEALINGS IN THE SOFTWARE.
 
 from typing import List, Optional
+from io import BytesIO
+import base64
 
 import bittensor as bt
 from PIL import Image

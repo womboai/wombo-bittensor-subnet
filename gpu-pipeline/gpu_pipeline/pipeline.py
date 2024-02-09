@@ -1,9 +1,66 @@
 from asyncio import Semaphore
+from collections import namedtuple
 import os
+from PIL import Image
+import re
 import requests
-from typing import Tuple
+from typing import Tuple, Dict, Union
 
-from diffusers import StableDiffusionXLPipeline
+import cv2
+import numpy as np
+from diffusers import (
+    StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline, ControlNetModel,
+    AutoencoderKL,
+)
+import torch
+
+from image_generation_protocol.io_protocol import ImageGenerationInputs
+
+
+SDXLPipelines = namedtuple('SDXLPipelines', ['t2i_pipe', 'cn_pipe'])
+TAO_PATTERN = r'\b(?:' + '|'.join(re.escape(keyword) for keyword in sorted([
+    "bittensor symbol", "bittensor logo",
+    "tao symbol", "tao logo",
+    "tau symbol", "tau logo",
+    "bittensor", "tao", "tau",
+], key=len, reverse=True)) + r')\b'
+
+
+def get_tao_img(width: int, height: int):
+    tao_img = Image.open("tao.jpg")
+    scale_factor = min(width / tao_img.width, height / tao_img.height)
+    tao_img = tao_img.resize((int(tao_img.width * scale_factor), int(tao_img.height * scale_factor)))
+    new_img = Image.new("RGB", (width, height), (255, 255, 255))
+    new_img.paste(tao_img, (int((width - tao_img.width) / 2), int((height - tao_img.height) * 0.2)))
+    new_img = Image.fromarray(255 - np.array(new_img))
+    image = np.array(new_img)
+    image = cv2.Canny(image, 100, 200)
+    image = image[:, :, None]
+    image = np.concatenate([image, image, image], axis=2)
+    new_img = Image.fromarray(image)
+    return new_img
+
+
+def replace_keywords_with_tau_symbol(input_string):
+    replaced_string = re.sub(TAO_PATTERN, "tau symbol", input_string, flags=re.IGNORECASE)
+    return replaced_string
+
+
+def parse_input_parameters(
+    pipelines: SDXLPipelines, inputs: ImageGenerationInputs
+) -> Tuple[Dict[str, any], Union[StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline]]:
+    input_kwargs = inputs.model_dump()
+    input_kwargs["prompt"] = replace_keywords_with_tau_symbol(inputs.prompt)
+    input_kwargs["generator"] = torch.Generator().manual_seed(input_kwargs.pop("seed"))
+
+    if inputs.controlnet_conditioning_scale > 0:
+        selected_pipeline = pipelines.cn_pipe
+        input_kwargs["image"] = get_tao_img(inputs.width, inputs.height)
+    else:
+        selected_pipeline = pipelines.t2i_pipe
+        input_kwargs.pop("controlnet_conditioning_scale")
+
+    return selected_pipeline, input_kwargs
 
 
 def ensure_file_at_path(path: str, url: str) -> str:
@@ -27,22 +84,26 @@ def get_model_path() -> str:
     )
 
 
-def get_tau_lora_path() -> str:
+def get_tao_lora_path() -> str:
     return ensure_file_at_path(
-        path="tau_lora_v3_epoch3.safetensors",
-        url=str(None),
+        path="bittensor_tao_lora.safetensors",
+        url="https://civitai.com/api/download/models/335008",
     )
 
 
-def get_pipeline() -> Tuple[Semaphore, StableDiffusionXLPipeline]:
+def get_pipeline() -> Tuple[Semaphore, SDXLPipelines]:
+    device = "cuda"
     pipeline = (
         StableDiffusionXLPipeline
         .from_single_file(get_model_path())
-        .to("cuda")
+        .to(device)
     )
+    pipeline.load_lora_weights(get_tao_lora_path())
+    pipeline.fuse_lora()
 
-    # TODO: uncomment once we're ready to use LORA
-    # pipeline.load_lora_weights(get_tau_lora_path())
-    # pipeline.fuse_lora()
+    cn_pipeline = StableDiffusionXLControlNetPipeline(
+        **pipeline.components,
+        controlnet=ControlNetModel.from_pretrained("diffusers/controlnet-canny-sdxl-1.0"),
+    ).to(device)
 
-    return Semaphore(), pipeline
+    return Semaphore(), SDXLPipelines(t2i_pipe=pipeline, cn_pipe=cn_pipeline)
