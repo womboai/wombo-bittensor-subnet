@@ -128,6 +128,12 @@ class BaseMinerNeuron(BaseNeuron):
         except Exception as e:
             bt.logging.error(traceback.format_exc())
 
+    def save_state(self):
+        return
+
+    def load_state(self):
+        return
+
     def run_in_background_thread(self):
         """
         Starts the miner's operations in a separate background thread.
