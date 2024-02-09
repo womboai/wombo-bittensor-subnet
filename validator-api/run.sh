@@ -8,5 +8,5 @@ docker run \
   --network="host" \
   --gpus=all \
   -v ~/.cache:/root/.cache/ \
-  --it \
+  -i \
   wombo_subnet:validator_api \
