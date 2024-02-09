@@ -15,7 +15,7 @@ MAX_STEPS = 100
 
 
 GenerationResolution = Annotated[int, Field(ge=MIN_SIZE, le=MAX_SIZE)]
-Frames: TypeAlias = List
+Frames: TypeAlias = bytes
 
 
 class ImageGenerationInputs(BaseModel):
