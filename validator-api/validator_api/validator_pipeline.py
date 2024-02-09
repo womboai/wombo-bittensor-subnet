@@ -11,6 +11,7 @@ from diffusers.pipelines.controlnet.pipeline_controlnet_sd_xl import (
     is_compiled_module, StableDiffusionXLControlNetPipeline, is_torch_version,
     ControlNetModel, MultiControlNetModel,
 )
+from safetensors.torch import load as load_tensor
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from gpu_pipeline.pipeline import SDXLPipelines, parse_input_parameters
@@ -831,13 +832,11 @@ def __validate_internal_cn(
 async def validate_frames(
     gpu_semaphore: Semaphore,
     pipelines: SDXLPipelines,
-    frames: List,
+    frames: bytes,
     miner_inputs: ImageGenerationInputs,
 ):
-    frames_tensor = torch.FloatTensor(frames, dtype=torch.float16).to("cuda")
-
+    frames_tensor = load_tensor(frames)
     num_random_indices = 3
-
     random_indices = sorted(random.sample(
         range(frames_tensor.shape[0] - 1),
         k=num_random_indices

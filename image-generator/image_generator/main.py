@@ -8,6 +8,7 @@ import torch
 import uvicorn
 from PIL import Image
 from fastapi import FastAPI, Body
+from safetensors.torch import save as save_tensor
 
 from gpu_pipeline.pipeline import get_pipeline, SDXLPipelines, parse_input_parameters
 from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationOutput
@@ -34,9 +35,9 @@ async def generate(gpu_semaphore: Semaphore, pipelines: SDXLPipelines, inputs: I
             callback_on_step_end=save_frames,
         )
 
-    frames_tensor = torch.stack(frames)
+    frame_st_bytes = save_tensor({"frames": torch.stack(frames)})
 
-    return frames_tensor, output.images
+    return frame_st_bytes, output.images
 
 
 def main():
