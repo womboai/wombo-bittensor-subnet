@@ -8,4 +8,5 @@ docker run \
   --network="host" \
   --env-file .env \
   -v ~/.bittensor:/root/.bittensor/ \
+  --it \
   wombo_subnet:client \
