@@ -2,7 +2,7 @@ import base64
 from asyncio import Semaphore
 from datetime import datetime
 from io import BytesIO
-from typing import Annotated
+from typing import Annotated, Tuple, List
 
 import torch
 import uvicorn
@@ -21,7 +21,11 @@ def save_image_base64(image: Image.Image) -> bytes:
         return base64.b64encode(output.getvalue())
 
 
-async def generate(gpu_semaphore: Semaphore, pipelines: SDXLPipelines, inputs: ImageGenerationInputs):
+async def generate(
+    gpu_semaphore: Semaphore,
+    pipelines: SDXLPipelines,
+    inputs: ImageGenerationInputs,
+) -> Tuple[bytes, List[bytes]]:
     frames = []
 
     def save_frames(_pipe, _step_index, _timestep, callback_kwargs):
@@ -37,7 +41,7 @@ async def generate(gpu_semaphore: Semaphore, pipelines: SDXLPipelines, inputs: I
 
     frame_st_bytes = save_tensor({"frames": torch.stack(frames)})
 
-    return frame_st_bytes, output.images
+    return frame_st_bytes, [save_image_base64(image) for image in output.images]
 
 
 def main():
@@ -50,8 +54,8 @@ def main():
         frames_tensor, images = await generate(gpu_semaphore, pipelines, input_parameters)
 
         return ImageGenerationOutput(
-            frames=frames_tensor.tolist(),
-            images=[save_image_base64(image) for image in images]
+            frames=frames_tensor,
+            images=images,
         )
 
     @app.get("/")
