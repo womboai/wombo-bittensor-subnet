@@ -25,10 +25,15 @@ import asyncio
 import threading
 import bittensor as bt
 
+import random
+import time
 from typing import List
 from traceback import print_exception
 
 from neuron.neuron import BaseNeuron
+
+
+TWO_MINUTES = 120
 
 
 class BaseValidatorNeuron(BaseNeuron):
@@ -146,6 +151,8 @@ class BaseValidatorNeuron(BaseNeuron):
                 self.sync()
 
                 self.step += 1
+
+                time.sleep(random.random() * TWO_MINUTES)
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
