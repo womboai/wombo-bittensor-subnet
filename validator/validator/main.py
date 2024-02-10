@@ -18,20 +18,47 @@
 
 
 import random
-import torch
 import time
 from typing import List, Tuple
+from PIL import Image
+from io import BytesIO
 
 # Bittensor
 import bittensor as bt
 from aiohttp import ClientSession
 
-from tensor.protocol import ImageGenerationSynapse
+from tensor.protocol import ImageGenerationSynapse, ImageGenerationInputs
 from tensor.uids import get_random_uids, is_miner
 
 # import base validator class which takes care of most of the boilerplate
 from validator.validator import BaseValidatorNeuron
 from validator.reward import get_rewards
+
+
+WATERMARK = Image.open("w_watermark.png")
+
+
+def watermark_image(image: Image.Image) -> Image.Image:
+    image_copy = image.copy()
+    wm = WATERMARK.resize((image_copy.size[0], int(image_copy.size[0] * WATERMARK.size[1] / WATERMARK.size[0])))
+    wm, alpha = wm.convert("RGB"), wm.split()[3]
+    image_copy.paste(wm, (0, image_copy.size[1] - wm.size[1]), alpha)
+    return image_copy
+
+
+def add_watermarks(response: ImageGenerationSynapse) -> ImageGenerationSynapse:
+    """
+    Add watermarks to the images.
+    """
+    # TODO: Ash, please make sure that the image encoding and decoding here is done correctly.
+    assert response.output is not None
+    for i, image_bytes in enumerate(response.output.images):
+        image = Image.open(BytesIO(image_bytes))
+        image = watermark_image(image)
+        image_bytes = BytesIO()
+        image.save(image_bytes, format="JPEG")
+        response.output.images[i] = image_bytes.getvalue()
+    return response
 
 
 class Validator(BaseValidatorNeuron):
@@ -118,10 +145,7 @@ class Validator(BaseValidatorNeuron):
         # Adjust the scores based on responses from miners.
         rewards = await get_rewards(
             self,
-            query={
-                **input_parameters,
-                "generator": torch.Generator().manual_seed(seed),
-            },
+            query=ImageGenerationInputs(**input_parameters),
             responses=finished_responses
         )
 
@@ -141,6 +165,8 @@ class Validator(BaseValidatorNeuron):
                 synapse=synapse,
                 deserialize=False,
             ))[0]
+
+        response = add_watermarks(response)
 
         return response
 
