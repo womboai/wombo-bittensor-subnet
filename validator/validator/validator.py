@@ -152,7 +152,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
                 self.step += 1
 
-                time.sleep(random.random() * TWO_MINUTES)
+                await asyncio.sleep(random.random() * TWO_MINUTES)
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
