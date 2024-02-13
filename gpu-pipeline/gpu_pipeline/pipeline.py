@@ -46,9 +46,10 @@ def replace_keywords_with_tau_symbol(input_string):
 
 
 def parse_input_parameters(
-    pipelines: SDXLPipelines, inputs: ImageGenerationInputs
+    pipelines: SDXLPipelines,
+    inputs: ImageGenerationInputs,
 ) -> Tuple[Dict[str, any], Union[StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline]]:
-    input_kwargs = inputs.model_dump()
+    input_kwargs = inputs.dict()
     input_kwargs["prompt"] = replace_keywords_with_tau_symbol(inputs.prompt)
     input_kwargs["generator"] = torch.Generator().manual_seed(input_kwargs.pop("seed"))
     input_kwargs["output_type"] = "pil"
@@ -79,25 +80,27 @@ def ensure_file_at_path(path: str, url: str) -> str:
 
 def get_model_path() -> str:
     return ensure_file_at_path(
-        path="checkpoints/newdreamxl_v10.safetensors",
+        path="../checkpoints/newdreamxl_v10.safetensors",
         url="https://civitai.com/api/download/models/173961",
     )
 
 
 def get_tao_lora_path() -> str:
     return ensure_file_at_path(
-        path="checkpoints/bittensor_tao_lora.safetensors",
+        path="../checkpoints/bittensor_tao_lora.safetensors",
         url="https://civitai.com/api/download/models/335008",
     )
 
 
 def get_pipeline() -> Tuple[Semaphore, SDXLPipelines]:
     device = "cuda"
+
     pipeline = (
         StableDiffusionXLPipeline
         .from_single_file(get_model_path())
         .to(device)
     )
+
     pipeline.load_lora_weights(get_tao_lora_path())
     pipeline.fuse_lora()
 
