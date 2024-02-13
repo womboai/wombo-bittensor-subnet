@@ -18,6 +18,7 @@
 
 
 import copy
+import threading
 from abc import abstractmethod
 
 import torch
@@ -68,7 +69,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # Instantiate runners
         self.should_exit: bool = False
         self.is_running: bool = False
-        self.future: asyncio.Future
+        self.thread: threading.Thread = None
         self.lock = asyncio.Lock()
 
     def serve_axon(self):
@@ -139,7 +140,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.info(f"step({self.step}) block({self.block})")
 
                 # Run multiple forwards concurrently.
-                self.loop.run_until_complete(self.check_miners_concurrently())
+                await self.check_miners_concurrently()
 
                 # Check if we should exit.
                 if self.should_exit:
@@ -165,6 +166,11 @@ class BaseValidatorNeuron(BaseNeuron):
                 print_exception(type(err), err, err.__traceback__)
             )
 
+    def run_sync(self):
+        loop = asyncio.get_event_loop()
+
+        loop.run_until_complete(self.run())
+
     def run_in_background_thread(self):
         """
         Starts the validator's operations in a background thread upon entering the context.
@@ -173,7 +179,8 @@ class BaseValidatorNeuron(BaseNeuron):
         if not self.is_running:
             bt.logging.debug("Starting validator in background thread.")
             self.should_exit = False
-            self.future = asyncio.ensure_future(self.run())
+            self.thread = threading.Thread(target=self.run_sync, daemon=True)
+            self.thread.start()
             self.is_running = True
             bt.logging.debug("Started")
 
@@ -184,7 +191,7 @@ class BaseValidatorNeuron(BaseNeuron):
         if self.is_running:
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
-            asyncio.run(asyncio.wait_for(self.future, 5))
+            self.thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
@@ -208,7 +215,7 @@ class BaseValidatorNeuron(BaseNeuron):
         if self.is_running:
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
-            asyncio.run(asyncio.wait_for(self.future, 5))
+            self.thread.join(5)
             self.is_running = False
             bt.logging.debug("Stopped")
 
