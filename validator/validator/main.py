@@ -1,7 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-
+import base64
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -26,8 +26,8 @@ from io import BytesIO
 # Bittensor
 import bittensor as bt
 from aiohttp import ClientSession
-
-from tensor.protocol import ImageGenerationSynapse, ImageGenerationInputs
+from image_generation_protocol.io_protocol import ImageGenerationInputs
+from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse
 from tensor.uids import get_random_uids, is_miner
 
 # import base validator class which takes care of most of the boilerplate
@@ -46,19 +46,18 @@ def watermark_image(image: Image.Image) -> Image.Image:
     return image_copy
 
 
-def add_watermarks(response: ImageGenerationSynapse) -> ImageGenerationSynapse:
+def add_watermarks(images: List[Image.Image]) -> List[bytes]:
     """
     Add watermarks to the images.
     """
-    # TODO: Ash, please make sure that the image encoding and decoding here is done correctly.
-    assert response.output is not None
-    for i, image_bytes in enumerate(response.output.images):
-        image = Image.open(BytesIO(image_bytes))
+    def save_image(image: Image.Image) -> bytes:
         image = watermark_image(image)
         image_bytes = BytesIO()
         image.save(image_bytes, format="JPEG")
-        response.output.images[i] = image_bytes.getvalue()
-    return response
+
+        return base64.b64encode(image_bytes.getvalue())
+
+    return [save_image(image) for image in images]
 
 
 class Validator(BaseValidatorNeuron):
@@ -113,6 +112,8 @@ class Validator(BaseValidatorNeuron):
             "steps": 15,
         }
 
+        inputs = ImageGenerationInputs(**input_parameters)
+
         bt.logging.info(f"Sending request {input_parameters} to {miner_uids} which have axons {axons}")
 
         async with self.dendrite as dendrite:
@@ -120,7 +121,7 @@ class Validator(BaseValidatorNeuron):
             responses: List[ImageGenerationSynapse] = await dendrite.forward(
                 # Send the query to selected miner axons in the network.
                 axons=axons,
-                synapse=ImageGenerationSynapse(**input_parameters),
+                synapse=ImageGenerationSynapse(inputs=inputs),
                 # All responses have the deserialize function called on them before returning.
                 # You are encouraged to define your own deserialization function.
                 deserialize=False,
@@ -145,7 +146,7 @@ class Validator(BaseValidatorNeuron):
         # Adjust the scores based on responses from miners.
         rewards = await get_rewards(
             self,
-            query=ImageGenerationInputs(**input_parameters),
+            query=inputs,
             responses=finished_responses
         )
 
@@ -153,7 +154,7 @@ class Validator(BaseValidatorNeuron):
         # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
         self.update_scores(rewards, miner_uids)
 
-    async def forward(self, synapse: ImageGenerationSynapse) -> ImageGenerationSynapse:
+    async def forward(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uid = get_random_uids(self, k=1, availability_checker=is_miner)[0]
 
         # Grab the axon you're serving
@@ -166,9 +167,11 @@ class Validator(BaseValidatorNeuron):
                 deserialize=False,
             ))[0]
 
-        response = add_watermarks(response)
+        if response.output:
+            synapse.images = response.output.images
+            synapse.images = add_watermarks(synapse.deserialize())
 
-        return response
+        return synapse
 
     async def blacklist(
         self, synapse: ImageGenerationSynapse

@@ -3,11 +3,11 @@ from typing import Annotated
 
 import uvicorn
 
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, Form
 
 from gpu_pipeline.pipeline import get_pipeline
 from validator_api.validator_pipeline import validate_frames
-from image_generation_protocol.io_protocol import ValidationInputs
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 
 
 def main():
@@ -16,12 +16,15 @@ def main():
     gpu_semaphore, pipelines = get_pipeline()
 
     @app.post("/api/validate")
-    async def validate(inputs: Annotated[ValidationInputs, Body()]) -> float:
+    async def validate(
+        input_parameters: Annotated[ImageGenerationInputs, Form()],
+        frames: Annotated[bytes, Form()],
+    ) -> float:
         return await validate_frames(
             gpu_semaphore,
             pipelines,
-            inputs.frames,
-            inputs.input_parameters,
+            frames,
+            input_parameters,
         )
 
     @app.get("/")

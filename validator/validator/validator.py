@@ -22,11 +22,9 @@ from abc import abstractmethod
 
 import torch
 import asyncio
-import threading
 import bittensor as bt
 
 import random
-import time
 from typing import List
 from traceback import print_exception
 
@@ -70,7 +68,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # Instantiate runners
         self.should_exit: bool = False
         self.is_running: bool = False
-        self.thread: threading.Thread = None
+        self.future: asyncio.Future
         self.lock = asyncio.Lock()
 
     def serve_axon(self):
@@ -106,7 +104,7 @@ class BaseValidatorNeuron(BaseNeuron):
         ]
         await asyncio.gather(*coroutines)
 
-    def run(self):
+    async def run(self):
         """
         Initiates and manages the main loop for the miner on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
 
@@ -175,8 +173,7 @@ class BaseValidatorNeuron(BaseNeuron):
         if not self.is_running:
             bt.logging.debug("Starting validator in background thread.")
             self.should_exit = False
-            self.thread = threading.Thread(target=self.run, daemon=True)
-            self.thread.start()
+            self.future = asyncio.ensure_future(self.run())
             self.is_running = True
             bt.logging.debug("Started")
 
@@ -187,7 +184,7 @@ class BaseValidatorNeuron(BaseNeuron):
         if self.is_running:
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
-            self.thread.join(5)
+            asyncio.run(asyncio.wait_for(self.future, 5))
             self.is_running = False
             bt.logging.debug("Stopped")
 
@@ -211,7 +208,7 @@ class BaseValidatorNeuron(BaseNeuron):
         if self.is_running:
             bt.logging.debug("Stopping validator in background thread.")
             self.should_exit = True
-            self.thread.join(5)
+            asyncio.run(asyncio.wait_for(self.future, 5))
             self.is_running = False
             bt.logging.debug("Stopped")
 

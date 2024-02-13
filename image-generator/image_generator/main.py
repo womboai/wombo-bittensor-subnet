@@ -1,4 +1,3 @@
-import base64
 from asyncio import Semaphore
 from datetime import datetime
 from io import BytesIO
@@ -8,24 +7,27 @@ import torch
 import uvicorn
 from PIL import Image
 from fastapi import FastAPI, Body
+from requests_toolbelt import MultipartEncoder
 from safetensors.torch import save as save_tensor
 
 from gpu_pipeline.pipeline import get_pipeline, SDXLPipelines, parse_input_parameters
-from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationOutput
+from image_generation_protocol.io_protocol import ImageGenerationInputs
+from starlette.responses import Response
 
 
-def save_image_base64(image: Image.Image) -> bytes:
-    with BytesIO() as output:
-        image.save(output, format="jpeg")
+def image_stream(image: Image.Image) -> BytesIO:
+    output = BytesIO()
+    image.save(output, format="jpeg")
+    output.seek(0)
 
-        return base64.b64encode(output.getvalue())
+    return output
 
 
 async def generate(
     gpu_semaphore: Semaphore,
     pipelines: SDXLPipelines,
     inputs: ImageGenerationInputs,
-) -> Tuple[bytes, List[bytes]]:
+) -> Tuple[bytes, List[BytesIO]]:
     frames = []
 
     def save_frames(_pipe, _step_index, _timestep, callback_kwargs):
@@ -41,7 +43,7 @@ async def generate(
 
     frame_st_bytes = save_tensor({"frames": torch.stack(frames)})
 
-    return frame_st_bytes, [save_image_base64(image) for image in output.images]
+    return frame_st_bytes, [image_stream(image) for image in output.images]
 
 
 def main():
@@ -50,12 +52,22 @@ def main():
     gpu_semaphore, pipelines = get_pipeline()
 
     @app.post("/api/generate")
-    async def generate_image(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> ImageGenerationOutput:
+    async def generate_image(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> Response:
         frames_bytes, images = await generate(gpu_semaphore, pipelines, input_parameters)
 
-        return ImageGenerationOutput(
-            frames=frames_bytes,
-            images=images,
+        multipart = MultipartEncoder(
+            fields={
+                "frames": frames_bytes,
+                **{
+                    f"image_{index}": image
+                    for index, image in enumerate(images)
+                },
+            }
+        )
+
+        return Response(
+            multipart.to_string(),
+            media_type=multipart.content_type,
         )
 
     @app.get("/")

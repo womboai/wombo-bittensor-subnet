@@ -1,1 +1,3 @@
 file:../gpu-pipeline
+
+requests-toolbelt==1.0.0
