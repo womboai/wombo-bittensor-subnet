@@ -174,10 +174,14 @@ class Validator(BaseValidatorNeuron):
         return synapse
 
     async def blacklist(
-        self, synapse: ImageGenerationSynapse
+        self,
+        synapse: ImageGenerationClientSynapse,
     ) -> Tuple[bool, str]:
         if self.config.subtensor.network != "finney":
             return False, "Test Network"
+
+        if not synapse.dendrite.ip:
+            return True, "No IP Address associated with request"
 
         async with ClientSession() as session:
             response = await session.get(
@@ -199,6 +203,7 @@ class Validator(BaseValidatorNeuron):
         bt.logging.trace(
             f"Not Blacklisting recognized IP Address {synapse.dendrite.ip}"
         )
+
         return False, "IP Address recognized!"
 
 
