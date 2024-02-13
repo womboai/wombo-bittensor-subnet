@@ -10,7 +10,6 @@ docker run \
   --network="host" \
   --env-file .env \
   -v ~/.bittensor:/root/.bittensor/ \
-  -it \
   --rm \
   --name wombo-validator \
   wombo-subnet:validator &
@@ -48,7 +47,6 @@ while true; do
     --network="host" \
     --env-file .env \
     -v ~/.bittensor:/root/.bittensor/ \
-    -it \
     --rm \
     --name wombo-validator \
     wombo-subnet:validator &
