@@ -27,7 +27,7 @@ from io import BytesIO
 import bittensor as bt
 from aiohttp import ClientSession
 from image_generation_protocol.io_protocol import ImageGenerationInputs
-from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse
+from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse
 from tensor.uids import get_random_uids, is_miner
 
 # import base validator class which takes care of most of the boilerplate
@@ -60,6 +60,12 @@ def add_watermarks(images: List[Image.Image]) -> List[bytes]:
     return [save_image(image) for image in images]
 
 
+def validator_forward_info(synapse: NeuronInfoSynapse):
+    synapse.validator = True
+
+    return synapse
+
+
 class Validator(BaseValidatorNeuron):
     """
     Your validator neuron class. You should use this class to define your validator's behavior. In particular, you should replace the forward function with your own logic.
@@ -72,10 +78,13 @@ class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
 
+        self.axon.attach(forward_fn=validator_forward_info)
+
         self.axon.attach(
-            forward_fn=self.forward,
-            blacklist_fn=self.blacklist,
+            forward_fn=self.forward_image,
+            blacklist_fn=self.blacklist_image,
         )
+
         bt.logging.info(f"Axon created: {self.axon}")
 
         bt.logging.info("load_state()")
@@ -93,7 +102,7 @@ class Validator(BaseValidatorNeuron):
 
         # TODO(developer): Define how the validator selects a miner to query, how often, etc.
         # get_random_uids is an example method, but you can replace it with your own.
-        miner_uids = get_random_uids(self, k=self.config.neuron.sample_size, availability_checker=is_miner)
+        miner_uids = await get_random_uids(self, k=self.config.neuron.sample_size, availability_checker=is_miner)
 
         if not len(miner_uids):
             return
@@ -156,8 +165,8 @@ class Validator(BaseValidatorNeuron):
         # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
         self.update_scores(rewards, miner_uids)
 
-    async def forward(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
-        miner_uid = get_random_uids(self, k=1, availability_checker=is_miner)[0]
+    async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
+        miner_uid = await get_random_uids(self, k=1, availability_checker=is_miner)[0]
 
         # Grab the axon you're serving
         axon = self.metagraph.axons[miner_uid]
@@ -177,7 +186,7 @@ class Validator(BaseValidatorNeuron):
 
         return synapse
 
-    async def blacklist(
+    async def blacklist_image(
         self,
         synapse: ImageGenerationClientSynapse,
     ) -> Tuple[bool, str]:

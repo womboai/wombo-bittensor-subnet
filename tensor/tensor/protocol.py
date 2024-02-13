@@ -31,6 +31,10 @@ def load_base64_image(data: bytes) -> Image.Image:
         return Image.open(input_data)
 
 
+class NeuronInfoSynapse(bt.Synapse):
+    validator: bool = False
+
+
 class ImageGenerationSynapse(bt.Synapse):
     inputs: ImageGenerationInputs
     output: Optional[ImageGenerationOutput]

@@ -23,8 +23,12 @@ from aiohttp import ClientSession, MultipartReader, ClientResponse
 
 # import base miner class which takes care of most of the boilerplate
 from miner.miner import BaseMinerNeuron
-from tensor.protocol import ImageGenerationSynapse
+from tensor.protocol import ImageGenerationSynapse, NeuronInfoSynapse
 from image_generation_protocol.io_protocol import ImageGenerationOutput
+
+
+def miner_forward_info(synapse: NeuronInfoSynapse):
+    return synapse
 
 
 class Miner(BaseMinerNeuron):
@@ -39,7 +43,20 @@ class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
 
-    async def forward(
+        # Attach determiners which functions are called when servicing a request.
+        bt.logging.info(f"Attaching forward function to miner axon.")
+
+        self.axon.attach(forward_fn=miner_forward_info)
+
+        self.axon.attach(
+            forward_fn=self.forward_image,
+            blacklist_fn=self.blacklist_image,
+            priority_fn=self.priority_image,
+        )
+
+        bt.logging.info(f"Axon created: {self.axon}")
+
+    async def forward_image(
         self, synapse: ImageGenerationSynapse
     ) -> ImageGenerationSynapse:
         async with ClientSession() as session:
@@ -78,7 +95,7 @@ class Miner(BaseMinerNeuron):
 
         return synapse
 
-    async def blacklist(
+    async def blacklist_image(
         self, synapse: ImageGenerationSynapse
     ) -> typing.Tuple[bool, str]:
         """
@@ -123,7 +140,7 @@ class Miner(BaseMinerNeuron):
         )
         return False, "Hotkey recognized!"
 
-    async def priority(self, synapse: ImageGenerationSynapse) -> float:
+    async def priority_image(self, synapse: ImageGenerationSynapse) -> float:
         """
         The priority function determines the order in which requests are handled. More valuable or higher-priority
         requests are processed before others. You should design your own priority mechanism with care.
