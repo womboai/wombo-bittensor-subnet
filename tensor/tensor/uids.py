@@ -31,6 +31,8 @@ async def get_random_uids(
 
     neuron_infos = zip(uids, infos)
 
+    bt.logging.info(f"Getting {k} from {neuron_infos}")
+
     candidate_uids = [
         uid
         for uid, info in neuron_infos
