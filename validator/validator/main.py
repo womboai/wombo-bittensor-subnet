@@ -166,7 +166,7 @@ class Validator(BaseValidatorNeuron):
         self.update_scores(rewards, miner_uids)
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
-        miner_uid = await get_random_uids(self, k=1, availability_checker=is_miner)[0]
+        miner_uid = (await get_random_uids(self, k=1, availability_checker=is_miner))[0]
 
         # Grab the axon you're serving
         axon = self.metagraph.axons[miner_uid]

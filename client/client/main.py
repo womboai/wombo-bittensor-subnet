@@ -60,7 +60,7 @@ class Client:
         self,
         input_parameters: ImageGenerationInputs,
     ) -> List[bytes]:
-        validator_uid = await get_random_uids(self, k=1, availability_checker=is_validator)[0]
+        validator_uid = (await get_random_uids(self, k=1, availability_checker=is_validator))[0]
 
         # Grab the axon you're serving
         axon = self.metagraph.axons[validator_uid]
