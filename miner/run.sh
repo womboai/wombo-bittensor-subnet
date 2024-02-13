@@ -10,5 +10,6 @@ docker run \
   --network="host" \
   --env-file .env \
   -v ~/.bittensor:/root/.bittensor/ \
-  -i \
+  -it \
+  --rm \
   wombo-subnet:miner \

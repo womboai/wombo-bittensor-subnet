@@ -2,8 +2,6 @@
 
 set -e
 
-docker container rm wombo-validator || true
-
 docker build -f ../tensor/Dockerfile -t wombo-subnet:tensor ../
 docker build -f ../neuron/Dockerfile -t wombo-subnet:neuron ../
 docker build -f Dockerfile -t wombo-subnet:validator ../
@@ -12,6 +10,8 @@ docker run \
   --network="host" \
   --env-file .env \
   -v ~/.bittensor:/root/.bittensor/ \
+  -it \
+  --rm \
   --name wombo-validator \
   wombo-subnet:validator &
 
@@ -40,8 +40,6 @@ while true; do
     docker image prune -f
   fi
 
-  docker container rm wombo-validator
-
   docker build -f ../tensor/Dockerfile -t wombo-subnet:tensor ../
   docker build -f ../neuron/Dockerfile -t wombo-subnet:neuron ../
   docker build -f Dockerfile -t wombo-subnet:validator ../
@@ -50,6 +48,8 @@ while true; do
     --network="host" \
     --env-file .env \
     -v ~/.bittensor:/root/.bittensor/ \
+    -it \
+    --rm \
     --name wombo-validator \
     wombo-subnet:validator &
 done
