@@ -2,11 +2,13 @@
 
 set -e
 
-docker build -f Dockerfile -t wombo_subnet:miner ../
+docker build -f ../tensor/Dockerfile -t wombo-subnet:tensor ../
+docker build -f ../neuron/Dockerfile -t wombo-subnet:neuron ../
+docker build -f Dockerfile -t wombo-subnet:miner ../
 
 docker run \
   --network="host" \
   --env-file .env \
   -v ~/.bittensor:/root/.bittensor/ \
   -i \
-  wombo_subnet:miner \
+  wombo-subnet:miner \
