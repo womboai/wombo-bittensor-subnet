@@ -154,12 +154,16 @@ class Validator(BaseValidatorNeuron):
         if not len(finished_responses):
             return
 
-        # Adjust the scores based on responses from miners.
-        rewards = await get_rewards(
-            self,
-            query=inputs,
-            responses=finished_responses
-        )
+        try:
+            # Adjust the scores based on responses from miners.
+            rewards = await get_rewards(
+                self,
+                query=inputs,
+                responses=finished_responses
+            )
+        except Exception as e:
+            bt.logging.error("Failed to get rewards for responses", e)
+            return
 
         bt.logging.info(f"Scored responses: {rewards}")
         # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
