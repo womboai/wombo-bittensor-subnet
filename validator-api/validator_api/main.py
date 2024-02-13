@@ -17,8 +17,8 @@ def main():
 
     @app.post("/api/validate")
     async def validate(
-        input_parameters: Annotated[ImageGenerationInputs, File()],
-        frames: Annotated[bytes, File()],
+        input_parameters: Annotated[ImageGenerationInputs, File(media_type="application/json")],
+        frames: Annotated[bytes, File(media_type="application/octet-stream")],
     ) -> float:
         return await validate_frames(
             gpu_semaphore,

@@ -57,9 +57,9 @@ def main():
 
         multipart = MultipartEncoder(
             fields={
-                "frames": frames_bytes,
+                "frames": ("frames.bin", frames_bytes, "application/octet-stream"),
                 **{
-                    f"image_{index}": image
+                    f"image_{index}": (f"image_{index + 1}.jpeg", image, "image/jpeg")
                     for index, image in enumerate(images)
                 },
             }

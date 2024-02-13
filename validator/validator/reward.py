@@ -40,8 +40,20 @@ async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse
 
     async with ClientSession() as session:
         data = FormData()
-        data.add_field("input_parameters", query.json(), content_type="application/json")
-        data.add_field("frames", base64.b64decode(synapse.output.frames), content_type="application/octet-stream")
+
+        data.add_field(
+            "input_parameters",
+            query.json(),
+            content_type="application/json",
+            filename="inputs.json",
+        )
+
+        data.add_field(
+            "frames",
+            base64.b64decode(synapse.output.frames),
+            content_type="application/octet-stream",
+            filename="frames.bin",
+        )
 
         response = await session.post(
             validation_endpoint,
