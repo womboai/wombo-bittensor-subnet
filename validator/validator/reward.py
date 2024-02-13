@@ -51,7 +51,6 @@ async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse
             "frames",
             base64.b64decode(synapse.output.frames),
             content_type="application/octet-stream",
-            content_transfer_encoding="binary",
         )
 
         async with session.post(

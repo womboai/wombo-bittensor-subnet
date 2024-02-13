@@ -9,6 +9,7 @@ docker run \
   --network="host" \
   --gpus=all \
   -v ~/.cache:/root/.cache \
+  -v $(pwd)/cache:/app/validator-api/cache \
   -v $(pwd)/../checkpoints:/app/checkpoints \
   -it \
   --rm \
