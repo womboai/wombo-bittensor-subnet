@@ -54,14 +54,13 @@ async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse
             content_transfer_encoding="binary",
         )
 
-        response = await session.post(
+        async with session.post(
             validation_endpoint,
             data=data,
-        )
+        ) as response:
+            response.raise_for_status()
 
-        response.raise_for_status()
-
-        score = await response.json()
+            score = await response.json()
 
     return score + time_reward
 
