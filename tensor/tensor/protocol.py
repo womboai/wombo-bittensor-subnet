@@ -35,12 +35,6 @@ class ImageGenerationSynapse(bt.Synapse):
     inputs: ImageGenerationInputs
     output: Optional[ImageGenerationOutput]
 
-    def deserialize(self) -> List[Image.Image]:
-        f"""
-        Assumes the {self.output} field is filled by axon
-        """
-        return [load_base64_image(data) for data in self.output.images]
-
 
 class ImageGenerationClientSynapse(bt.Synapse):
     inputs: ImageGenerationInputs

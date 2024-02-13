@@ -20,7 +20,7 @@ Frames: TypeAlias = bytes
 
 
 class ImageGenerationInputs(BaseModel):
-    prompt: str = ""  # Has a default as it needs to be default constructable
+    prompt: str
     prompt_2: Optional[str] = None
     height: GenerationResolution = DEFAULT_HEIGHT
     width: GenerationResolution = DEFAULT_WIDTH
