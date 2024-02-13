@@ -2,7 +2,7 @@ import torch
 from safetensors.torch import save, load
 
 
-__TENSOR_KEY = "tensor"
+__TENSOR_KEY = "frames"
 
 
 def save_tensor(tensor: torch.Tensor) -> bytes:
