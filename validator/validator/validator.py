@@ -167,7 +167,7 @@ class BaseValidatorNeuron(BaseNeuron):
             )
 
     def run_sync(self):
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
 
         loop.run_until_complete(self.run())
 
