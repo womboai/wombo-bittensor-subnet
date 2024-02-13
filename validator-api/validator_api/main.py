@@ -3,7 +3,7 @@ from typing import Annotated
 
 import uvicorn
 
-from fastapi import FastAPI, Form, File
+from fastapi import FastAPI, Form, File, UploadFile
 from pydantic import Json
 
 from gpu_pipeline.pipeline import get_pipeline
@@ -19,8 +19,9 @@ def main():
     @app.post("/api/validate")
     async def validate(
         input_parameters: Annotated[Json[ImageGenerationInputs], Form(media_type="application/json")],
-        frames: Annotated[bytes, File(media_type="application/octet-stream")],
+        frames: Annotated[UploadFile, File(media_type="application/octet-stream")],
     ) -> float:
+        frames = await frames.read()
         return await validate_frames(
             gpu_semaphore,
             pipelines,

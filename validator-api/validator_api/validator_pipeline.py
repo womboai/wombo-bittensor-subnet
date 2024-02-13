@@ -845,7 +845,7 @@ async def validate_frames(
 
     selected_pipeline, input_kwargs = parse_input_parameters(pipelines, miner_inputs)
     frames_tensor = frames_tensor.to(selected_pipeline.unet.device, selected_pipeline.unet.dtype)
-    validation_func = __validate_internal_cn if miner_inputs.uses_controlnet() else __validate_internal
+    validation_func = __validate_internal_cn if miner_inputs.controlnet_conditioning_scale > 0.0 else __validate_internal
 
     async with gpu_semaphore:
         return all(
