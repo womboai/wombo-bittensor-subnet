@@ -127,6 +127,8 @@ class Validator(BaseValidatorNeuron):
                 deserialize=False,
             )
 
+        # TODO Punish miners without responses
+
         working_miner_uids = []
         finished_responses = []
 
@@ -166,6 +168,8 @@ class Validator(BaseValidatorNeuron):
                 synapse=synapse,
                 deserialize=False,
             ))[0]
+
+        # TODO Set miner score based on response
 
         if response.output:
             synapse.images = response.output.images

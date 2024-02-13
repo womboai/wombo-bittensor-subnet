@@ -1,14 +1,6 @@
-FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
+FROM wombo-subnet:gpu-pipeline
 
-RUN apt update && apt-get install -y build-essential
-
-WORKDIR /app/
-
-RUN python3 -m venv ./image_generator/venv
-
-ENV PATH="/app/venv:$PATH"
-
-COPY . .
+COPY ./image-generator ./image-generator/
 
 WORKDIR /app/image-generator/
 
