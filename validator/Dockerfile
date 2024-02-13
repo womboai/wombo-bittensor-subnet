@@ -1,12 +1,6 @@
-FROM python:3.10.10-slim
+FROM wombo-subnet:neuron
 
-WORKDIR /app/
-
-RUN python3 -m venv ./validator/venv
-
-ENV PATH="/app/venv:$PATH"
-
-COPY . .
+COPY ./validator ./validator/
 
 WORKDIR /app/validator/
 
