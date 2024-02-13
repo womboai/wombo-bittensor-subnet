@@ -25,8 +25,9 @@ from typing import List, Tuple
 # Bittensor
 import bittensor as bt
 from aiohttp import ClientSession
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 
-from tensor.protocol import ImageGenerationSynapse
+from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse
 from tensor.uids import get_random_uids, is_miner
 
 # import base validator class which takes care of most of the boilerplate
@@ -93,7 +94,7 @@ class Validator(BaseValidatorNeuron):
             responses: List[ImageGenerationSynapse] = await dendrite.forward(
                 # Send the query to selected miner axons in the network.
                 axons=axons,
-                synapse=ImageGenerationSynapse(**input_parameters),
+                synapse=ImageGenerationSynapse(inputs=ImageGenerationInputs(**input_parameters)),
                 # All responses have the deserialize function called on them before returning.
                 # You are encouraged to define your own deserialization function.
                 deserialize=False,
@@ -129,7 +130,7 @@ class Validator(BaseValidatorNeuron):
         # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
         self.update_scores(rewards, miner_uids)
 
-    async def forward(self, synapse: ImageGenerationSynapse) -> ImageGenerationSynapse:
+    async def forward(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uid = get_random_uids(self, k=1, availability_checker=is_miner)[0]
 
         # Grab the axon you're serving
@@ -142,7 +143,10 @@ class Validator(BaseValidatorNeuron):
                 deserialize=False,
             ))[0]
 
-        return response
+        if response.output:
+            synapse.images = response.output.images
+
+        return synapse
 
     async def blacklist(
         self, synapse: ImageGenerationSynapse

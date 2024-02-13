@@ -18,7 +18,7 @@ import asyncio
 from typing import List
 
 import torch
-from aiohttp import ClientSession, MultipartWriter
+from aiohttp import ClientSession, MultipartWriter, FormData
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs, ValidationInputs
 
@@ -37,18 +37,14 @@ async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse
     target_time = 0.09375
     time_reward = target_time / synapse.dendrite.process_time
 
-    with MultipartWriter() as writer:
-        writer.append_json(query)
-
     async with ClientSession() as session:
-        data = ValidationInputs(
-            input_parameters=query,
-            frames=synapse.output.frames,
-        )
+        data = FormData()
+        data.add_field("input_parameters", query, content_type="application/json")
+        data.add_field("frames", synapse.output.frames, content_type="application/octet-stream")
 
         response = await session.post(
             validation_endpoint,
-            json=data.dict(),
+            data=data,
         )
 
         response.raise_for_status()

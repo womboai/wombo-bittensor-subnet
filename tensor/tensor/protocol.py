@@ -31,7 +31,8 @@ def load_base64_image(data: bytes) -> Image.Image:
         return Image.open(input_data)
 
 
-class ImageGenerationSynapse(bt.Synapse, ImageGenerationInputs):
+class ImageGenerationSynapse(bt.Synapse):
+    inputs: ImageGenerationInputs
     output: Optional[ImageGenerationOutput]
 
     def deserialize(self) -> List[Image.Image]:
@@ -39,3 +40,14 @@ class ImageGenerationSynapse(bt.Synapse, ImageGenerationInputs):
         Assumes the {self.output} field is filled by axon
         """
         return [load_base64_image(data) for data in self.output.images]
+
+
+class ImageGenerationClientSynapse(bt.Synapse):
+    inputs: ImageGenerationInputs
+    images: Optional[List[bytes]]
+
+    def deserialize(self) -> List[Image.Image]:
+        f"""
+        Assumes the {self.images} field is filled by axon
+        """
+        return [load_base64_image(data) for data in self.images]

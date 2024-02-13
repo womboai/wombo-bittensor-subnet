@@ -4,11 +4,11 @@ from typing import List, Optional, Annotated
 import bittensor as bt
 import uvicorn
 from fastapi import FastAPI, Body, HTTPException
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 from starlette import status
 
-from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.config import config, check_config, add_args
-from tensor.protocol import ImageGenerationSynapse
+from tensor.protocol import ImageGenerationClientSynapse
 from tensor.uids import get_random_uids, is_validator
 
 
@@ -68,16 +68,16 @@ class Client:
         bt.logging.info(f"Sending request {input_parameters} to validator {validator_uid}, axon {axon}")
 
         async with self.dendrite as dendrite:
-            response: Optional[ImageGenerationSynapse] = (await dendrite.forward(
+            response: Optional[ImageGenerationClientSynapse] = (await dendrite.forward(
                 # Send the query to selected miner axon in the network.
                 axons=[axon],
-                synapse=ImageGenerationSynapse(**input_parameters.dict()),
+                synapse=ImageGenerationClientSynapse(inputs=input_parameters),
                 # All responses have the deserialize function called on them before returning.
                 # You are encouraged to define your own deserialization function.
                 deserialize=False,
             ))[0]
 
-        if not response.output:
+        if not response.images:
             bt.logging.error(f"Failed to query subnetwork with {input_parameters} and axon {axon}")
 
             raise HTTPException(
@@ -85,7 +85,7 @@ class Client:
                 detail="Failed to query subnetwork",
             )
 
-        return response.output.images
+        return response.images
 
 
 def main():
