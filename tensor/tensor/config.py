@@ -106,9 +106,9 @@ def add_args(cls, parser):
     if neuron_type == "validator":
         parser.add_argument(
             "--validation_endpoint",
-            type=Optional[str],
+            type=str,
             help="The endpoint to call for validator scoring",
-            default=None,
+            default="",
         )
 
         parser.add_argument(
