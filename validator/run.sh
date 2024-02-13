@@ -2,6 +2,8 @@
 
 set -e
 
+docker stop wombo-validator || true
+
 docker build -f ../tensor/Dockerfile -t wombo-subnet:tensor ../
 docker build -f ../neuron/Dockerfile -t wombo-subnet:neuron ../
 docker build -f Dockerfile -t wombo-subnet:validator ../
