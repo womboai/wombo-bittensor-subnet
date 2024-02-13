@@ -8,9 +8,9 @@ import uvicorn
 from PIL import Image
 from fastapi import FastAPI, Body
 from requests_toolbelt import MultipartEncoder
-from safetensors.torch import save as save_tensor
 
 from gpu_pipeline.pipeline import get_pipeline, SDXLPipelines, parse_input_parameters
+from gpu_pipeline.tensor import save_tensor
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from starlette.responses import Response
 
@@ -35,13 +35,14 @@ async def generate(
         return callback_kwargs
 
     selected_pipeline, input_kwargs = parse_input_parameters(pipelines, inputs)
+
     async with gpu_semaphore:
         output = selected_pipeline(
             **input_kwargs,
             callback_on_step_end=save_frames,
         )
 
-    frame_st_bytes = save_tensor({"frames": torch.stack(frames)})
+    frame_st_bytes = save_tensor(torch.stack(frames))
 
     return frame_st_bytes, [image_stream(image) for image in output.images]
 
@@ -57,9 +58,9 @@ def main():
 
         multipart = MultipartEncoder(
             fields={
-                "frames": ("frames.bin", frames_bytes, "application/octet-stream"),
+                "frames": (None, frames_bytes, "application/octet-stream"),
                 **{
-                    f"image_{index}": (f"image_{index + 1}.jpeg", image, "image/jpeg")
+                    f"image_{index}": (None, image, "image/jpeg")
                     for index, image in enumerate(images)
                 },
             }

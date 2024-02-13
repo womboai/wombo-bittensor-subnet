@@ -11,8 +11,8 @@ from diffusers.pipelines.controlnet.pipeline_controlnet_sd_xl import (
     is_compiled_module, StableDiffusionXLControlNetPipeline, is_torch_version,
     ControlNetModel, MultiControlNetModel,
 )
-from safetensors.torch import load as load_tensor
 
+from gpu_pipeline.tensor import load_tensor
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from gpu_pipeline.pipeline import SDXLPipelines, parse_input_parameters
 

@@ -48,7 +48,7 @@ def replace_keywords_with_tau_symbol(input_string):
 def parse_input_parameters(
     pipelines: SDXLPipelines,
     inputs: ImageGenerationInputs,
-) -> Tuple[Dict[str, any], Union[StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline]]:
+) -> Tuple[Union[StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline], Dict[str, any]]:
     input_kwargs = inputs.dict()
     input_kwargs["prompt"] = replace_keywords_with_tau_symbol(inputs.prompt)
     input_kwargs["generator"] = torch.Generator().manual_seed(input_kwargs.pop("seed"))
