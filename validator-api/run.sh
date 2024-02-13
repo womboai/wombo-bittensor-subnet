@@ -2,11 +2,12 @@
 
 set -e
 
-docker build -f Dockerfile -t wombo_subnet:validator_api ../
+docker build -f ../gpu-pipeline/Dockerfile -t wombo-subnet:gpu-pipeline ../
+docker build -f Dockerfile -t wombo-subnet:validator-api ../
 
 docker run \
   --network="host" \
   --gpus=all \
   -v ~/.cache:/root/.cache/ \
   -i \
-  wombo_subnet:validator_api \
+  wombo-subnet:validator-api \

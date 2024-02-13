@@ -2,11 +2,12 @@
 
 set -e
 
-docker build -f Dockerfile -t wombo_subnet:client ../
+docker build -f ../tensor/Dockerfile -t wombo-subnet:tensor ../
+docker build -f Dockerfile -t wombo-subnet:client ../
 
 docker run \
   --network="host" \
   --env-file .env \
   -v ~/.bittensor:/root/.bittensor/ \
   -i \
-  wombo_subnet:client \
+  wombo-subnet:client \

@@ -2,16 +2,18 @@
 
 set -e
 
-docker container rm validator || true
+docker container rm wombo-validator || true
 
-docker build -f Dockerfile -t wombo_subnet:validator ../
+docker build -f ../tensor/Dockerfile -t wombo-subnet:tensor ../
+docker build -f ../neuron/Dockerfile -t wombo-subnet:neuron ../
+docker build -f Dockerfile -t wombo-subnet:validator ../
 
 docker run \
   --network="host" \
   --env-file .env \
   -v ~/.bittensor:/root/.bittensor/ \
-  --name validator \
-  wombo_subnet:validator &
+  --name wombo-validator \
+  wombo-subnet:validator &
 
 while true; do
   sleep 1800
@@ -32,20 +34,22 @@ while true; do
   # The HEAD has changed, meaning there's a new version
   echo "Validator has received an update, restarting"
 
-  docker stop validator
+  docker stop wombo-validator
 
   if [ "$PRUNE" == "1" ]; then
     docker image prune -f
   fi
 
-  docker container rm validator
+  docker container rm wombo-validator
 
-  docker build -f Dockerfile -t wombo_subnet:validator ../
+  docker build -f ../tensor/Dockerfile -t wombo-subnet:tensor ../
+  docker build -f ../neuron/Dockerfile -t wombo-subnet:neuron ../
+  docker build -f Dockerfile -t wombo-subnet:validator ../
 
   docker run \
     --network="host" \
     --env-file .env \
     -v ~/.bittensor:/root/.bittensor/ \
-    --name validator \
-    wombo_subnet:validator &
+    --name wombo-validator \
+    wombo-subnet:validator &
 done

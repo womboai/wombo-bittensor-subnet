@@ -2,11 +2,12 @@
 
 set -e
 
-docker build -f Dockerfile -t wombo_subnet:image_generator ../
+docker build -f ../gpu-pipeline/Dockerfile -t wombo-subnet:gpu-pipeline ../
+docker build -f Dockerfile -t wombo-subnet:image-generator ../
 
 docker run \
   --network="host" \
   --gpus all \
   -v ~/.cache:/root/.cache/ \
   -i \
-  wombo_subnet:image_generator \
+  wombo-subnet:image-generator \

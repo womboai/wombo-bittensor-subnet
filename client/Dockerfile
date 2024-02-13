@@ -1,14 +1,8 @@
-FROM python:3.10.10-slim
+FROM wombo-subnet:tensor
 
 RUN apt update && apt-get install -y build-essential
 
-WORKDIR /app/
-
-RUN python3 -m venv ./client/venv
-
-ENV PATH="/app/venv:$PATH"
-
-COPY . .
+COPY ./client ./client/
 
 WORKDIR /app/client/
 
