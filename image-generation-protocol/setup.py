@@ -18,10 +18,8 @@
 
 from os import path
 from setuptools import setup, find_packages
-from common_setup import read_requirements
 
 
-requirements = read_requirements("requirements.txt")
 here = path.abspath(path.dirname(__file__))
 
 with open(path.join(here, "README.md"), encoding="utf-8") as f:
@@ -40,7 +38,7 @@ setup(
     author_email="hello@wombo.ai",
     license="MIT",
     python_requires=">=3.10",
-    install_requires=requirements,
+    install_requires=[],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

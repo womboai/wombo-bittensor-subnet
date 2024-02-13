@@ -1,7 +1,6 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,10 +15,39 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import os
+import re
 from os import path
 from io import open
+from pathlib import Path
+
 from setuptools import setup, find_packages
-from common_setup import read_requirements
+
+
+def read_requirements(path: str):
+    with open(path, "r") as f:
+        requirements = f.read().splitlines()
+        processed_requirements = []
+
+        for req in requirements:
+            # For git or other VCS links
+            if req.startswith("file:"):
+                path = os.path.join(os.getcwd(), req[len("file:"):])
+                package_name = os.path.basename(path)
+                uri = Path(path).as_uri()
+
+                processed_requirements.append(f"wombo-bittensor-subnet-{package_name}@{uri}")
+            elif req.startswith("git+") or "@" in req:
+                pkg_name = re.search(r"(#egg=)([\w\-_]+)", req)
+                if pkg_name:
+                    processed_requirements.append(pkg_name.group(2))
+                else:
+                    # You may decide to raise an exception here,
+                    # if you want to ensure every VCS link has an #egg=<package_name> at the end
+                    continue
+            else:
+                processed_requirements.append(req)
+        return processed_requirements
 
 
 requirements = read_requirements("requirements.txt")
