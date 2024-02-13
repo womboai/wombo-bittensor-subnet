@@ -79,14 +79,14 @@ def ensure_file_at_path(path: str, url: str) -> str:
 
 def get_model_path() -> str:
     return ensure_file_at_path(
-        path="newdreamxl_v10.safetensors",
+        path="checkpoints/newdreamxl_v10.safetensors",
         url="https://civitai.com/api/download/models/173961",
     )
 
 
 def get_tao_lora_path() -> str:
     return ensure_file_at_path(
-        path="bittensor_tao_lora.safetensors",
+        path="checkpoints/bittensor_tao_lora.safetensors",
         url="https://civitai.com/api/download/models/335008",
     )
 

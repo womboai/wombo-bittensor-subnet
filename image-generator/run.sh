@@ -8,7 +8,7 @@ docker build -f Dockerfile -t wombo-subnet:image-generator ../
 docker run \
   --network="host" \
   --gpus all \
-  -v ~/.cache:/root/.cache/ \
+  -v $(pwd)/../checkpoints:/app/checkpoints \
   -it \
   --rm \
   wombo-subnet:image-generator \
