@@ -102,7 +102,7 @@ class Validator(BaseValidatorNeuron):
 
         # TODO(developer): Define how the validator selects a miner to query, how often, etc.
         # get_random_uids is an example method, but you can replace it with your own.
-        miner_uids = await get_random_uids(self, k=self.config.neuron.sample_size, availability_checker=is_miner)
+        miner_uids = get_random_uids(self, k=self.config.neuron.sample_size, availability_checker=is_miner)
 
         if not len(miner_uids):
             return
@@ -166,7 +166,7 @@ class Validator(BaseValidatorNeuron):
         self.update_scores(rewards, miner_uids)
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
-        miner_uid = (await get_random_uids(self, k=1, availability_checker=is_miner))[0]
+        miner_uid = get_random_uids(self, k=1, availability_checker=is_miner)[0]
 
         # Grab the axon you're serving
         axon = self.metagraph.axons[miner_uid]
