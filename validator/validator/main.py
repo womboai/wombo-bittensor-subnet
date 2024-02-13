@@ -138,7 +138,7 @@ class Validator(BaseValidatorNeuron):
             finished_responses.append(response)
 
         # Log the results for monitoring purposes.
-        bt.logging.info(f"Received responses: {finished_responses}")
+        bt.logging.info(f"Received {len(finished_responses)} responses")
 
         if not len(finished_responses):
             return

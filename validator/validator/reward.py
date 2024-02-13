@@ -15,6 +15,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import asyncio
+import base64
 from typing import List
 
 import torch
@@ -40,7 +41,7 @@ async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse
     async with ClientSession() as session:
         data = FormData()
         data.add_field("input_parameters", query.json(), content_type="application/json")
-        data.add_field("frames", synapse.output.frames, content_type="application/octet-stream")
+        data.add_field("frames", base64.b64decode(synapse.output.frames), content_type="application/octet-stream")
 
         response = await session.post(
             validation_endpoint,
