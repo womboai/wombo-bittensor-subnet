@@ -11,7 +11,7 @@ from requests_toolbelt import MultipartEncoder
 from safetensors.torch import save as save_tensor
 
 from gpu_pipeline.pipeline import get_pipeline, SDXLPipelines, parse_input_parameters
-from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationOutput
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 from starlette.responses import Response
 
 
@@ -53,11 +53,11 @@ def main():
 
     @app.post("/api/generate")
     async def generate_image(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> Response:
-        frames_tensor, images = await generate(gpu_semaphore, pipelines, input_parameters)
+        frames_bytes, images = await generate(gpu_semaphore, pipelines, input_parameters)
 
         multipart = MultipartEncoder(
             fields={
-                "frames": frames_tensor,
+                "frames": frames_bytes,
                 **{
                     f"image_{index}": image
                     for index, image in enumerate(images)

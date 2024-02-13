@@ -1,7 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-
+import base64
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -18,21 +18,46 @@
 
 
 import random
-import torch
 import time
 from typing import List, Tuple
+from PIL import Image
+from io import BytesIO
 
 # Bittensor
 import bittensor as bt
 from aiohttp import ClientSession
 from image_generation_protocol.io_protocol import ImageGenerationInputs
-
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse
 from tensor.uids import get_random_uids, is_miner
 
 # import base validator class which takes care of most of the boilerplate
 from validator.validator import BaseValidatorNeuron
 from validator.reward import get_rewards
+
+
+WATERMARK = Image.open("w_watermark.png")
+
+
+def watermark_image(image: Image.Image) -> Image.Image:
+    image_copy = image.copy()
+    wm = WATERMARK.resize((image_copy.size[0], int(image_copy.size[0] * WATERMARK.size[1] / WATERMARK.size[0])))
+    wm, alpha = wm.convert("RGB"), wm.split()[3]
+    image_copy.paste(wm, (0, image_copy.size[1] - wm.size[1]), alpha)
+    return image_copy
+
+
+def add_watermarks(images: List[Image.Image]) -> List[bytes]:
+    """
+    Add watermarks to the images.
+    """
+    def save_image(image: Image.Image) -> bytes:
+        image = watermark_image(image)
+        image_bytes = BytesIO()
+        image.save(image_bytes, format="JPEG")
+
+        return base64.b64encode(image_bytes.getvalue())
+
+    return [save_image(image) for image in images]
 
 
 class Validator(BaseValidatorNeuron):
@@ -87,6 +112,8 @@ class Validator(BaseValidatorNeuron):
             "steps": 15,
         }
 
+        inputs = ImageGenerationInputs(**input_parameters)
+
         bt.logging.info(f"Sending request {input_parameters} to {miner_uids} which have axons {axons}")
 
         async with self.dendrite as dendrite:
@@ -94,7 +121,7 @@ class Validator(BaseValidatorNeuron):
             responses: List[ImageGenerationSynapse] = await dendrite.forward(
                 # Send the query to selected miner axons in the network.
                 axons=axons,
-                synapse=ImageGenerationSynapse(inputs=ImageGenerationInputs(**input_parameters)),
+                synapse=ImageGenerationSynapse(inputs=inputs),
                 # All responses have the deserialize function called on them before returning.
                 # You are encouraged to define your own deserialization function.
                 deserialize=False,
@@ -119,10 +146,7 @@ class Validator(BaseValidatorNeuron):
         # Adjust the scores based on responses from miners.
         rewards = await get_rewards(
             self,
-            query={
-                **input_parameters,
-                "generator": torch.Generator().manual_seed(seed),
-            },
+            query=inputs,
             responses=finished_responses
         )
 
@@ -145,6 +169,7 @@ class Validator(BaseValidatorNeuron):
 
         if response.output:
             synapse.images = response.output.images
+            synapse.images = add_watermarks(synapse.deserialize())
 
         return synapse
 

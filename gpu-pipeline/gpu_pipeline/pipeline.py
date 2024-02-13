@@ -10,7 +10,6 @@ import cv2
 import numpy as np
 from diffusers import (
     StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline, ControlNetModel,
-    AutoencoderKL,
 )
 import torch
 
@@ -52,6 +51,7 @@ def parse_input_parameters(
     input_kwargs = inputs.model_dump()
     input_kwargs["prompt"] = replace_keywords_with_tau_symbol(inputs.prompt)
     input_kwargs["generator"] = torch.Generator().manual_seed(input_kwargs.pop("seed"))
+    input_kwargs["output_type"] = "pil"
 
     if inputs.controlnet_conditioning_scale > 0:
         selected_pipeline = pipelines.cn_pipe
