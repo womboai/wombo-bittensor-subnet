@@ -115,7 +115,14 @@ def add_args(cls, parser):
             "--allowed_ip_addresses_endpoint",
             type=str,
             help="The endpoint to call for blacklisting requests",
-            default="http://localhost:8002/api/allowed_ip_addresses",
+            default="",
+        )
+
+        parser.add_argument(
+            "--is_wombo_neuron_endpoint",
+            type=str,
+            help="The endpoint to call to check if this is a WOMBO miner, which we give a reward advantage for",
+            default="",
         )
 
         parser.add_argument(

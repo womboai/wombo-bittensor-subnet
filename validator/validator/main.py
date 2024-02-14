@@ -201,9 +201,16 @@ class Validator(BaseValidatorNeuron):
         if not synapse.dendrite.ip:
             return True, "No IP Address associated with request"
 
+        allowed_ip_addresses_endpoint = select_endpoint(
+            self.config.allowed_ip_addresses_endpoint,
+            self.config.subtensor.network,
+            "https://dev-neuron-identifier.api.wombo.ai/api/allowed_ip_addresses",
+            "https://neuron-identifier.api.wombo.ai/api/allowed_ip_addresses"
+        )
+
         async with ClientSession() as session:
             response = await session.get(
-                self.config.allowed_ip_addresses_endpoint,
+                allowed_ip_addresses_endpoint,
                 headers={"Content-Type": "application/json"},
             )
 

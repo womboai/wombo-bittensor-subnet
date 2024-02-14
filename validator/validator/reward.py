@@ -26,7 +26,12 @@ from image_generation_protocol.io_protocol import ImageGenerationInputs, Validat
 from tensor.protocol import ImageGenerationSynapse
 
 
-async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse: ImageGenerationSynapse) -> float:
+async def reward(
+    validation_endpoint: str,
+    is_wombo_neuron_endpoint: str,
+    query: ImageGenerationInputs,
+    synapse: ImageGenerationSynapse,
+) -> float:
     """
     Reward the miner response to the generation request. This method returns a reward
     value for the miner, which is used to update the miner's score.
@@ -61,7 +66,15 @@ async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse
 
             score = await response.json()
 
-    return score + time_reward
+        async with session.get(
+            is_wombo_neuron_endpoint,
+            headers={"Content-Type": "application/json"},
+        ) as response:
+            response.raise_for_status()
+
+            wombo_advantage = 1.0 if await response.json() else 0.0
+
+    return score + time_reward + wombo_advantage
 
 
 async def get_rewards(
@@ -80,14 +93,29 @@ async def get_rewards(
     - torch.FloatTensor: A tensor of rewards for the given query and responses.
     """
 
-    if self.config.validation_endpoint:
-        validation_endpoint = self.config.validation_endpoint
-    elif self.config.subtensor.network == "finney":
-        validation_endpoint = "https://validate.api.wombo.ai/api/validate"
-    else:
-        validation_endpoint = "https://dev-validate.api.wombo.ai/api/validate"
+    validation_endpoint = select_endpoint(
+        self.config.validation_endpoint,
+        self.config.subtensor.network,
+        "https://dev-validate.api.wombo.ai/api/validate",
+        "https://validate.api.wombo.ai/api/validate"
+    )
+
+    is_wombo_neuron_endpoint = select_endpoint(
+        self.config.is_wombo_neuron_endpoint,
+        self.config.subtensor.network,
+        "https://dev-neuron-identifier.api.wombo.ai/api/is_wombo_neuron",
+        "https://neuron-identifier.api.wombo.ai/api/is_wombo_neuron"
+    )
 
     # Get all the reward results by iteratively calling your reward() function.
     return torch.FloatTensor(
-        await asyncio.gather(*[reward(validation_endpoint, query, response) for response in responses])
+        await asyncio.gather(*[
+            reward(
+                validation_endpoint,
+                is_wombo_neuron_endpoint,
+                query,
+                response,
+            )
+            for response in responses
+        ])
     ).to(self.device)

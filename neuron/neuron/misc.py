@@ -110,3 +110,12 @@ def ttl_get_block(self) -> int:
     Note: self here is the miner or validator instance
     """
     return self.subtensor.get_current_block()
+
+
+def select_endpoint(config: str, network: str, dev: str, prod: str) -> str:
+    if config:
+        return config
+    elif network == "finney":
+        return prod
+    else:
+        return dev
