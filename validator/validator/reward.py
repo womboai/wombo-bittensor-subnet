@@ -26,6 +26,15 @@ from image_generation_protocol.io_protocol import ImageGenerationInputs, Validat
 from tensor.protocol import ImageGenerationSynapse
 
 
+def select_endpoint(config: str, network: str, dev: str, prod: str) -> str:
+    if config:
+        return config
+    elif network == "finney":
+        return prod
+    else:
+        return dev
+
+
 async def reward(
     validation_endpoint: str,
     is_wombo_neuron_endpoint: str,

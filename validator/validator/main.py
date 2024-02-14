@@ -32,8 +32,7 @@ from tensor.uids import get_random_uids, is_miner
 
 # import base validator class which takes care of most of the boilerplate
 from validator.validator import BaseValidatorNeuron
-from validator.reward import get_rewards
-
+from validator.reward import get_rewards, select_endpoint
 
 WATERMARK = Image.open("w_watermark.png")
 
