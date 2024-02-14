@@ -10,6 +10,7 @@ EXPOSE 8091
 
 ENTRYPOINT python \
     -m miner.main \
+    --logging.$LOG_LEVEL \
     --netuid $NETUID \
     --subtensor.network $NETWORK \
     --wallet.name $WALLET_NAME \
