@@ -167,7 +167,7 @@ class Validator(BaseValidatorNeuron):
 
         bt.logging.info(f"Scored responses: {rewards}")
         # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
-        self.update_scores(rewards, miner_uids)
+        self.update_scores(rewards, working_miner_uids)
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uid = get_random_uids(self, k=1, availability_checker=is_miner)[0]

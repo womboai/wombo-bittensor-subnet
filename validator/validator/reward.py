@@ -35,7 +35,7 @@ async def reward(validation_endpoint: str, query: ImageGenerationInputs, synapse
     - float: The reward value for the miner.
     """
 
-    target_time = 0.5
+    target_time = 1.25
     time_reward = target_time / synapse.dendrite.process_time
 
     async with ClientSession() as session:
