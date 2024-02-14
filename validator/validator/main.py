@@ -136,15 +136,14 @@ class Validator(BaseValidatorNeuron):
                 timeout=60,
             )
 
-        # TODO Punish miners without responses
-
         working_miner_uids = []
         finished_responses = []
 
-        for uid, response in zip(miner_uids, responses):
-            if not response.output:
+        for response in responses:
+            if not (response.output and response.axon and response.axon.uuid):
                 continue
 
+            uid = response.axon.uuid
             working_miner_uids.append(uid)
             finished_responses.append(response)
 
@@ -168,6 +167,10 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info(f"Scored responses: {rewards}")
         # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
         self.update_scores(rewards, working_miner_uids)
+
+        # punish bad miners
+        bad_miner_uids = [uid for uid in miner_uids if uid not in working_miner_uids]
+        self.update_scores([-5.0] * len(bad_miner_uids), bad_miner_uids)
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uid = get_random_uids(self, k=1, availability_checker=is_miner)[0]
