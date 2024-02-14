@@ -134,6 +134,7 @@ class Validator(BaseValidatorNeuron):
                 # All responses have the deserialize function called on them before returning.
                 # You are encouraged to define your own deserialization function.
                 deserialize=False,
+                timeout=60,
             )
 
         # TODO Punish miners without responses
