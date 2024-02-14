@@ -140,10 +140,10 @@ class Validator(BaseValidatorNeuron):
         finished_responses = []
 
         for response in responses:
-            if not (response.output and response.axon and response.axon.uuid):
+            if not (response.output and response.axon and response.axon.hotkey):
                 continue
 
-            uid = response.axon.uuid
+            uid = [uid for uid, axon in zip(miner_uids, axons) if axon.hotkey == response.axon.hotkey][0]
             working_miner_uids.append(uid)
             finished_responses.append(response)
 
