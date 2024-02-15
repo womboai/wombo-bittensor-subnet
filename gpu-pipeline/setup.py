@@ -56,9 +56,6 @@ setup(
         "omegaconf==2.3.0",
         "opencv-python-headless==4.8.0.76",
     ],
-    dependency_links=[
-        Path(os.path.join(os.getcwd(), "../image-generation-protocol")).as_uri(),
-    ],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

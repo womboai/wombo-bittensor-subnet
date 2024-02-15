@@ -45,9 +45,6 @@ setup(
         "wombo-bittensor-subnet-gpu-pipeline",
         "python-multipart==0.0.7",
     ],
-    dependency_links=[
-        Path(os.path.join(os.getcwd(), "../gpu-pipeline")).as_uri(),
-    ],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
