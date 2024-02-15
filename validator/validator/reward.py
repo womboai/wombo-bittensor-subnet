@@ -82,9 +82,9 @@ async def reward(
         ) as response:
             response.raise_for_status()
 
-            wombo_advantage = 1.0 if await response.json() else 0.0
+            wombo_advantage = 0.5 if await response.json() else 0.0
 
-    return score + time_reward + wombo_advantage
+    return (score + time_reward + wombo_advantage) * 5.0
 
 
 async def get_rewards(
