@@ -8,9 +8,8 @@ RUN python3 -m venv /app/venv
 
 ENV PATH="/app/venv:$PATH"
 
-RUN pip config set global.find-links "/app/image-generation-protocol /app/gpu-pipeline"
-
 COPY ./image-generation-protocol ./image-generation-protocol/
 COPY ./gpu-pipeline ./gpu-pipeline/
 
-RUN pip install --no-cache-dir ./gpu-pipeline
+RUN pip install --no-cache-dir -e ./image-generation-protocol
+RUN pip install --no-cache-dir -e ./gpu-pipeline

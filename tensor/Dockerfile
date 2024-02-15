@@ -6,10 +6,10 @@ RUN python3 -m venv /app/venv
 
 ENV PATH="/app/venv:$PATH"
 
-RUN pip config set global.find-links "/app/image-generation-protocol /app/tensor"
 RUN pip config set global.extra-index-url "https://download.pytorch.org/whl/cpu/"
 
 COPY ./image-generation-protocol ./image-generation-protocol/
 COPY ./tensor ./tensor/
 
-RUN pip install --no-cache-dir ./tensor
+RUN pip install --no-cache-dir -e ./image-generation-protocol
+RUN pip install --no-cache-dir -e ./tensor
