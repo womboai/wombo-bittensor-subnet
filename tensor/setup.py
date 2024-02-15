@@ -44,14 +44,14 @@ setup(
     license="MIT",
     python_requires=">=3.10",
     install_requires=[
-        "wombo-bittensor-subnet-image-generation-protocol"
+        "wombo-bittensor-subnet-image-generation-protocol",
         "torch==2.2.0",
         "bittensor==6.7.1",
         "pillow==10.2.0",
     ],
     dependency_links=[
         "file:../image-generation-protocol"
-        "https://download.pytorch.org/whl/cpu",
+        "https://download.pytorch.org/whl/cpu/torch/",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
