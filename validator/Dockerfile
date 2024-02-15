@@ -4,7 +4,7 @@ COPY ./validator ./validator/
 
 WORKDIR /app/validator/
 
-RUN pip install -e .
+RUN pip install --no-cache-dir -e .
 
 EXPOSE 8091
 

@@ -11,4 +11,4 @@ ENV PATH="/app/venv:$PATH"
 COPY ./image-generation-protocol ./image-generation-protocol/
 COPY ./gpu-pipeline ./gpu-pipeline/
 
-RUN pip install ./gpu-pipeline
+RUN pip install --no-cache-dir ./gpu-pipeline

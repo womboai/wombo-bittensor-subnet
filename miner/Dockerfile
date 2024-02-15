@@ -4,7 +4,7 @@ COPY ./miner ./miner/
 
 WORKDIR /app/miner/
 
-RUN pip install -e .
+RUN pip install --no-cache-dir -e .
 
 EXPOSE 8091
 

@@ -9,4 +9,4 @@ ENV PATH="/app/venv:$PATH"
 COPY ./image-generation-protocol ./image-generation-protocol/
 COPY ./tensor ./tensor/
 
-RUN pip install ./tensor
+RUN pip install --no-cache-dir ./tensor
