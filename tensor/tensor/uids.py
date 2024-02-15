@@ -1,7 +1,9 @@
 import torch
 import random
 import bittensor as bt
-from typing import List, Callable
+from typing import Callable
+
+from bittensor import AxonInfo
 
 
 def is_validator(metagraph: "bt.metagraph.Metagraph", uid: int, vpermit_tao_limit: int) -> bool:
@@ -22,7 +24,7 @@ def get_random_uids(
     for uid in range(self.metagraph.n.item()):
         axon: AxonInfo = self.metagraph.axons[uid]
 
-        metagraph: bittensor.metagraph = self.metagraph
+        metagraph: bt.metagraph = self.metagraph
 
         active = False
 
