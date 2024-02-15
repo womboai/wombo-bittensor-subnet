@@ -36,9 +36,7 @@ def select_endpoint(config: str, network: str, dev: str, prod: str) -> str:
 
 
 async def reward(
-    uid: int,
     validation_endpoint: str,
-    is_wombo_neuron_endpoint: str,
     query: ImageGenerationInputs,
     synapse: ImageGenerationSynapse,
 ) -> float:
@@ -76,15 +74,7 @@ async def reward(
 
             score = await response.json()
 
-        async with session.get(
-            f"{is_wombo_neuron_endpoint}?uid={uid}",
-            headers={"Content-Type": "application/json"},
-        ) as response:
-            response.raise_for_status()
-
-            wombo_advantage = 0.5 if await response.json() else 0.0
-
-    return (score + time_reward + wombo_advantage) * 5.0
+    return (score + time_reward) * 5.0
 
 
 async def get_rewards(
@@ -110,23 +100,34 @@ async def get_rewards(
         "https://validate.api.wombo.ai/api/validate"
     )
 
-    is_wombo_neuron_endpoint = select_endpoint(
-        self.config.is_wombo_neuron_endpoint,
+    are_wombo_neurons_endpoint = select_endpoint(
+        self.config.are_wombo_neurons_endpoint,
         self.config.subtensor.network,
-        "https://dev-neuron-identifier.api.wombo.ai/api/is_wombo_neuron",
-        "https://neuron-identifier.api.wombo.ai/api/is_wombo_neuron"
+        "https://dev-neuron-identifier.api.wombo.ai/api/are_wombo_neurons",
+        "https://neuron-identifier.api.wombo.ai/api/are_wombo_neurons"
     )
 
+    async with ClientSession() as session:
+        uids = ",".join([str(uid) for uid, _ in responses])
+
+        async with session.get(
+            f"{are_wombo_neurons_endpoint}?uids={uids}",
+            headers={"Content-Type": "application/json"},
+        ) as response:
+            response.raise_for_status()
+
+            wombo_advantages = [2.5 if is_wombo_neuron else 0.0 for is_wombo_neuron in await response.json()]
+
     # Get all the reward results by iteratively calling your reward() function.
-    return torch.FloatTensor(
-        await asyncio.gather(*[
-            reward(
-                uid,
-                validation_endpoint,
-                is_wombo_neuron_endpoint,
-                query,
-                response,
-            )
-            for uid, response in responses
-        ])
-    ).to(self.device)
+    rewards = await asyncio.gather(*[
+        reward(
+            validation_endpoint,
+            query,
+            response,
+        )
+        for uid, response in responses
+    ])
+
+    scores = [uid_reward + wombo_advantage for uid_reward, wombo_advantage in zip(rewards, wombo_advantages)]
+
+    return torch.FloatTensor(scores).to(self.device)
