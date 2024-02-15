@@ -72,7 +72,7 @@ setup(
     python_requires=">=3.10",
     install_requires=requirements,
     dependency_links=[
-        "https://download.pytorch.org/whl/cpu",
+        "https://download.pytorch.org/whl/cpu/torch_stable.html",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
