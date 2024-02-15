@@ -17,7 +17,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import os
-import re
 from os import path
 from io import open
 from pathlib import Path
@@ -50,7 +49,7 @@ setup(
         "pillow==10.2.0",
     ],
     dependency_links=[
-        "file:../image-generation-protocol"
+        Path(os.path.join(os.getcwd(), "../image-generation-protocol")).as_uri(),
         "https://download.pytorch.org/whl/cpu/torch/",
     ],
     classifiers=[

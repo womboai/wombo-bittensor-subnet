@@ -17,7 +17,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import os
-import re
 from os import path
 from io import open
 from pathlib import Path
@@ -44,7 +43,9 @@ setup(
     license="MIT",
     python_requires=">=3.10",
     install_requires=["wombo-bittensor-subnet-neuron"],
-    depdendency_links=["file:../neuron"],
+    depdendency_links=[
+        Path(os.path.join(os.getcwd(), "../neuron")).as_uri(),
+    ],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

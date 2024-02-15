@@ -17,7 +17,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import os
-import re
 from os import path
 from io import open
 from pathlib import Path
@@ -48,7 +47,7 @@ setup(
         "requests-toolbelt==1.0.0",
     ],
     dependency_links=[
-        "file:../gpu-pipeline"
+        Path(os.path.join(os.getcwd(), "../gpu-pipeline")).as_uri(),
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",

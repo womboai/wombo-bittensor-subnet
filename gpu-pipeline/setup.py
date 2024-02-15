@@ -17,7 +17,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import os
-import re
 from os import path
 from io import open
 from pathlib import Path
@@ -58,7 +57,7 @@ setup(
         "opencv-python-headless==4.8.0.76",
     ],
     dependency_links=[
-        "file:../image-generation-protocol"
+        Path(os.path.join(os.getcwd(), "../image-generation-protocol")).as_uri(),
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",

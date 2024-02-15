@@ -17,7 +17,6 @@
 # DEALINGS IN THE SOFTWARE.
 
 import os
-import re
 from os import path
 from io import open
 from pathlib import Path
@@ -49,7 +48,9 @@ setup(
         "transformers==4.37.2",
         "accelerate==0.26.1",
     ],
-    dependency_links=["file:../neuron"],
+    dependency_links=[
+        Path(os.path.join(os.getcwd(), "../neuron")).as_uri(),
+    ],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

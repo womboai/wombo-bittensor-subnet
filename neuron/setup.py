@@ -1,7 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-
+import os
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -18,6 +18,7 @@
 
 from os import path
 from io import open
+from pathlib import Path
 
 from setuptools import setup, find_packages
 
@@ -45,7 +46,9 @@ setup(
         "aiohttp==3.9.0",
         "python-multipart==0.0.7",
     ],
-    dependency_links=["file:../tensor"],
+    dependency_links=[
+        Path(os.path.join(os.getcwd(), "../tensor")).as_uri(),
+    ],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
