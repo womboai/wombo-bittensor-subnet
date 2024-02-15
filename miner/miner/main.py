@@ -19,11 +19,11 @@ import base64
 import time
 import typing
 import bittensor as bt
-from aiohttp import ClientSession, MultipartReader, ClientResponse
+from aiohttp import ClientSession, MultipartReader
 
 # import base miner class which takes care of most of the boilerplate
 from miner.miner import BaseMinerNeuron
-from tensor.protocol import ImageGenerationSynapse, NeuronInfoSynapse
+from neuron.protocol import ImageGenerationSynapse, NeuronInfoSynapse
 from image_generation_protocol.io_protocol import ImageGenerationOutput
 
 

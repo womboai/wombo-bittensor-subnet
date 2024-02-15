@@ -19,11 +19,11 @@ import base64
 from typing import List, Tuple
 
 import torch
-from aiohttp import ClientSession, MultipartWriter, FormData
+from aiohttp import ClientSession, FormData
 
-from image_generation_protocol.io_protocol import ImageGenerationInputs, ValidationInputs
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 
-from tensor.protocol import ImageGenerationSynapse
+from neuron.protocol import ImageGenerationSynapse
 
 
 def select_endpoint(config: str, network: str, dev: str, prod: str) -> str:
