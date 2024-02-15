@@ -1,4 +1,0 @@
-file:../tensor
-
-aiohttp==3.9.0
-python-multipart==0.0.7

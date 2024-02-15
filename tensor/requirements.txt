@@ -1,5 +1,0 @@
-file:../image-generation-protocol
-
-torch==2.2.0
-bittensor==6.7.1
-pillow==10.2.0

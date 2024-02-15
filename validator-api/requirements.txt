@@ -1,3 +1,0 @@
-file:../gpu-pipeline
-
-python-multipart==0.0.7

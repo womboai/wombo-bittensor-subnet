@@ -25,33 +25,6 @@ from pathlib import Path
 from setuptools import setup, find_packages
 
 
-def read_requirements(path: str):
-    with open(path, "r") as f:
-        requirements = f.read().splitlines()
-        processed_requirements = []
-
-        for req in requirements:
-            # For git or other VCS links
-            if req.startswith("file:"):
-                path = os.path.join(os.getcwd(), req[len("file:"):])
-                package_name = os.path.basename(path)
-                uri = Path(path).as_uri()
-
-                processed_requirements.append(f"wombo-bittensor-subnet-{package_name}@{uri}")
-            elif req.startswith("git+") or "@" in req:
-                pkg_name = re.search(r"(#egg=)([\w\-_]+)", req)
-                if pkg_name:
-                    processed_requirements.append(pkg_name.group(2))
-                else:
-                    # You may decide to raise an exception here,
-                    # if you want to ensure every VCS link has an #egg=<package_name> at the end
-                    continue
-            else:
-                processed_requirements.append(req)
-        return processed_requirements
-
-
-requirements = read_requirements("requirements.txt")
 here = path.abspath(path.dirname(__file__))
 
 with open(path.join(here, "README.md"), encoding="utf-8") as f:
@@ -70,8 +43,14 @@ setup(
     author_email="hello@wombo.ai",
     license="MIT",
     python_requires=">=3.10",
-    install_requires=requirements,
+    install_requires=[
+        "wombo-bittensor-subnet-image-generation-protocol"
+        "torch==2.2.0",
+        "bittensor==6.7.1",
+        "pillow==10.2.0",
+    ],
     dependency_links=[
+        "file:../image-generation-protocol"
         "https://download.pytorch.org/whl/cpu",
     ],
     classifiers=[
