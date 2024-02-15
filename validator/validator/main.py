@@ -78,12 +78,12 @@ class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
 
-        self.axon.attach(forward_fn=validator_forward_info)
-
-        self.axon.attach(
-            forward_fn=self.forward_image,
-            blacklist_fn=self.blacklist_image,
-        )
+        # self.axon.attach(forward_fn=validator_forward_info)
+        #
+        # self.axon.attach(
+        #     forward_fn=self.forward_image,
+        #     blacklist_fn=self.blacklist_image,
+        # )
 
         bt.logging.info(f"Axon created: {self.axon}")
 

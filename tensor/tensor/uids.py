@@ -20,8 +20,20 @@ def get_random_uids(
     available_uids = []
 
     for uid in range(self.metagraph.n.item()):
+        axon: AxonInfo = self.metagraph.axons[uid]
+
+        metagraph: bittensor.metagraph = self.metagraph
+
+        active = False
+
+        for neuron in metagraph.neurons:
+            if neuron.uid == uid:
+                active = neuron.active
+                break
+
         uid_is_available = (
-            self.metagraph.axons[uid].is_serving and
+            active and
+            axon.is_serving and
             availability_checker(self.metagraph, uid, self.config.neuron.vpermit_tao_limit)
         )
 
