@@ -16,7 +16,7 @@
 
 import asyncio
 import base64
-from typing import List
+from typing import List, Tuple
 
 import torch
 from aiohttp import ClientSession, MultipartWriter, FormData
@@ -36,6 +36,7 @@ def select_endpoint(config: str, network: str, dev: str, prod: str) -> str:
 
 
 async def reward(
+    uid: int,
     validation_endpoint: str,
     is_wombo_neuron_endpoint: str,
     query: ImageGenerationInputs,
@@ -76,7 +77,7 @@ async def reward(
             score = await response.json()
 
         async with session.get(
-            is_wombo_neuron_endpoint,
+            f"{is_wombo_neuron_endpoint}?uid={uid}",
             headers={"Content-Type": "application/json"},
         ) as response:
             response.raise_for_status()
@@ -89,7 +90,7 @@ async def reward(
 async def get_rewards(
     self,
     query: ImageGenerationInputs,
-    responses: List[ImageGenerationSynapse],
+    responses: List[Tuple[int, ImageGenerationSynapse]],
 ) -> torch.FloatTensor:
     """
     Returns a tensor of rewards for the given query and responses.
@@ -120,11 +121,12 @@ async def get_rewards(
     return torch.FloatTensor(
         await asyncio.gather(*[
             reward(
+                uid,
                 validation_endpoint,
                 is_wombo_neuron_endpoint,
                 query,
                 response,
             )
-            for response in responses
+            for uid, response in responses
         ])
     ).to(self.device)
