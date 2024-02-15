@@ -144,7 +144,7 @@ class Validator(BaseValidatorNeuron):
             if not (response.output and response.axon and response.axon.hotkey):
                 continue
 
-            uid = [uid.item() for uid, axon in zip(miner_uids, axons) if axon.hotkey == response.axon.hotkey][0]
+            uid = [uid for uid, axon in zip(miner_uids, axons) if axon.hotkey == response.axon.hotkey][0]
             working_miner_uids.append(uid)
             finished_responses.append(response)
 
@@ -159,7 +159,8 @@ class Validator(BaseValidatorNeuron):
             rewards = await get_rewards(
                 self,
                 query=inputs,
-                responses=list(zip(working_miner_uids, finished_responses)),
+                uids_query=[uid.item() for uid in working_miner_uids],
+                responses=finished_responses,
             )
         except Exception as e:
             bt.logging.error("Failed to get rewards for responses", e)

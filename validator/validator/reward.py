@@ -80,7 +80,8 @@ async def reward(
 async def get_rewards(
     self,
     query: ImageGenerationInputs,
-    responses: List[Tuple[int, ImageGenerationSynapse]],
+    uids: List[int],
+    responses: List[ImageGenerationSynapse],
 ) -> torch.FloatTensor:
     """
     Returns a tensor of rewards for the given query and responses.
@@ -108,10 +109,10 @@ async def get_rewards(
     )
 
     async with ClientSession() as session:
-        uids = ",".join([str(uid) for uid, _ in responses])
+        uids_query = ",".join([str(uid) for uid in uids])
 
         async with session.get(
-            f"{are_wombo_neurons_endpoint}?uids={uids}",
+            f"{are_wombo_neurons_endpoint}?uids={uids_query}",
             headers={"Content-Type": "application/json"},
         ) as response:
             response.raise_for_status()
@@ -125,7 +126,7 @@ async def get_rewards(
             query,
             response,
         )
-        for uid, response in responses
+        for response in responses
     ])
 
     scores = [uid_reward + wombo_advantage for uid_reward, wombo_advantage in zip(rewards, wombo_advantages)]
