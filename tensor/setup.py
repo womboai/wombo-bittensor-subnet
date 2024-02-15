@@ -45,7 +45,7 @@ setup(
     python_requires=">=3.10",
     install_requires=[
         "wombo-bittensor-subnet-image-generation-protocol",
-        "torch==2.2.0",
+        "torch==2.2.0+cpu",
         "bittensor==6.7.1",
         "pillow==10.2.0",
     ],
