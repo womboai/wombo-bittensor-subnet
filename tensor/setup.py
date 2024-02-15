@@ -71,6 +71,9 @@ setup(
     license="MIT",
     python_requires=">=3.10",
     install_requires=requirements,
+    dependency_links=[
+        "https://download.pytorch.org/whl/cpu",
+    ],
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
