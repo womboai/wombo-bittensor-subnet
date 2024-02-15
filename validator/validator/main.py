@@ -159,7 +159,7 @@ class Validator(BaseValidatorNeuron):
             rewards = await get_rewards(
                 self,
                 query=inputs,
-                uids_query=[uid.item() for uid in working_miner_uids],
+                uids=[uid.item() for uid in working_miner_uids],
                 responses=finished_responses,
             )
         except Exception as e:
