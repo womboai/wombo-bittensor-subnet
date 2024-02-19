@@ -59,7 +59,7 @@ class Client:
 
                 await asyncio.sleep(12)
 
-        self.periodic_metagraph_resync = asyncio.create_task(resync_metagraph())
+        self.periodic_metagraph_resync = asyncio.get_event_loop().create_task(resync_metagraph())
 
         return self
 
