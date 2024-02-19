@@ -101,6 +101,14 @@ class BaseNeuron(ABC):
     def run(self):
         ...
 
+    @abstractmethod
+    def resync_metagraph(self):
+        ...
+
+    @abstractmethod
+    def set_weights(self):
+        ...
+
     def sync(self):
         """
         Wrapper for synchronizing the state of the network for the given miner or validator.

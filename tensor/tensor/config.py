@@ -126,10 +126,10 @@ def add_args(cls, parser):
         )
 
         parser.add_argument(
-            "--neuron.num_concurrent_forwards",
-            type=int,
-            help="The number of concurrent forwards running at any time.",
-            default=1,
+            "--period_validation_interval",
+            type=float,
+            help="The maximum amount of time(in seconds) between periodic validation",
+            default=120.0,
         )
 
         parser.add_argument(
@@ -161,13 +161,6 @@ def add_args(cls, parser):
             #   be blacklisted by the firewall of serving peers on the network.
             help="Set this flag to not attempt to serve an Axon.",
             default=False,
-        )
-
-        parser.add_argument(
-            "--neuron.vpermit_tao_limit",
-            type=int,
-            help="The maximum number of TAO allowed to query a validator with a vpermit.",
-            default=4096,
         )
 
     else:

@@ -15,10 +15,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import time
 import torch
 import asyncio
-import threading
 import traceback
 
 import bittensor as bt
@@ -47,13 +45,7 @@ class BaseMinerNeuron(BaseNeuron):
         # The axon handles request processing, allowing validators to send this miner requests.
         self.axon = bt.axon(wallet=self.wallet, port=self.config.axon.port)
 
-        # Instantiate runners
-        self.should_exit: bool = False
-        self.is_running: bool = False
-        self.thread: threading.Thread = None
-        self.lock = asyncio.Lock()
-
-    def run(self):
+    async def run(self):
         """
         Initiates and manages the main loop for the miner on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
 
@@ -93,17 +85,13 @@ class BaseMinerNeuron(BaseNeuron):
 
         # This loop maintains the miner's operations until intentionally stopped.
         try:
-            while not self.should_exit:
+            while True:
                 while (
                     self.block - self.metagraph.last_update[self.uid]
                     < self.config.neuron.epoch_length
                 ):
                     # Wait before checking again.
-                    time.sleep(1)
-
-                    # Check if we should exit.
-                    if self.should_exit:
-                        break
+                    await asyncio.sleep(1)
 
                 # Sync metagraph and potentially set weights.
                 self.sync()
@@ -124,53 +112,6 @@ class BaseMinerNeuron(BaseNeuron):
 
     def load_state(self):
         return
-
-    def run_in_background_thread(self):
-        """
-        Starts the miner's operations in a separate background thread.
-        This is useful for non-blocking operations.
-        """
-        if not self.is_running:
-            bt.logging.debug("Starting miner in background thread.")
-            self.should_exit = False
-            self.thread = threading.Thread(target=self.run, daemon=True)
-            self.thread.start()
-            self.is_running = True
-            bt.logging.debug("Started")
-
-    def stop_run_thread(self):
-        """
-        Stops the miner's operations that are running in the background thread.
-        """
-        if self.is_running:
-            bt.logging.debug("Stopping miner in background thread.")
-            self.should_exit = True
-            self.thread.join(5)
-            self.is_running = False
-            bt.logging.debug("Stopped")
-
-    def __enter__(self):
-        """
-        Starts the miner's operations in a background thread upon entering the context.
-        This method facilitates the use of the miner in a 'with' statement.
-        """
-        self.run_in_background_thread()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """
-        Stops the miner's background operations upon exiting the context.
-        This method facilitates the use of the miner in a 'with' statement.
-
-        Args:
-            exc_type: The type of the exception that caused the context to be exited.
-                      None if the context was exited without an exception.
-            exc_value: The instance of the exception that caused the context to be exited.
-                       None if the context was exited without an exception.
-            traceback: A traceback object encoding the stack trace.
-                       None if the context was exited without an exception.
-        """
-        self.stop_run_thread()
 
     def set_weights(self):
         """
@@ -197,12 +138,11 @@ class BaseMinerNeuron(BaseNeuron):
                 version_key=self.spec_version,
             )
 
+            bt.logging.info(f"Set weights: {chain_weights}")
         except Exception as e:
             bt.logging.error(
                 f"Failed to set weights on chain with exception: { e }"
             )
-
-        bt.logging.info(f"Set weights: {chain_weights}")
 
     def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""

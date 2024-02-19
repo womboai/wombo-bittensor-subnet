@@ -1,7 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-import base64
+
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -18,7 +18,8 @@ import base64
 
 
 import random
-import time
+import asyncio
+import base64
 from typing import List, Tuple
 from PIL import Image
 from io import BytesIO
@@ -100,8 +101,6 @@ class Validator(BaseValidatorNeuron):
         - Updating the scores
         """
 
-        # TODO(developer): Define how the validator selects a miner to query, how often, etc.
-        # get_random_uids is an example method, but you can replace it with your own.
         miner_uids = get_random_uids(self, k=self.config.neuron.sample_size, availability_checker=is_miner)
 
         if not len(miner_uids):
@@ -235,13 +234,10 @@ class Validator(BaseValidatorNeuron):
         return False, "IP Address recognized!"
 
 
-def main():
-    with Validator():
-        while True:
-            bt.logging.info("Validator running...", time.time())
-            time.sleep(5)
+async def main():
+    await Validator().run()
 
 
 # The main function parses the configuration and runs the validator.
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

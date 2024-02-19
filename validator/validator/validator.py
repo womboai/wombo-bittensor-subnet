@@ -32,9 +32,6 @@ from traceback import print_exception
 from neuron.neuron import BaseNeuron
 
 
-TWO_MINUTES = 120
-
-
 class BaseValidatorNeuron(BaseNeuron):
     """
     Base class for Bittensor validators. Your validator should inherit from this class.
@@ -63,15 +60,6 @@ class BaseValidatorNeuron(BaseNeuron):
         else:
             bt.logging.warning("axon off, not serving ip to chain.")
 
-        # Create asyncio event loop to manage async tasks.
-        self.loop = asyncio.get_event_loop()
-
-        # Instantiate runners
-        self.should_exit: bool = False
-        self.is_running: bool = False
-        self.thread: threading.Thread = None
-        self.lock = asyncio.Lock()
-
     def serve_axon(self):
         """Serve axon to enable external connections."""
 
@@ -97,13 +85,6 @@ class BaseValidatorNeuron(BaseNeuron):
     @abstractmethod
     async def check_miners(self):
         ...
-
-    async def check_miners_concurrently(self):
-        coroutines = [
-            self.check_miners()
-            for _ in range(self.config.neuron.num_concurrent_forwards)
-        ]
-        await asyncio.gather(*coroutines)
 
     async def run(self):
         """
@@ -140,18 +121,14 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.info(f"step({self.step}) block({self.block})")
 
                 # Run multiple forwards concurrently.
-                await self.check_miners_concurrently()
-
-                # Check if we should exit.
-                if self.should_exit:
-                    break
+                await self.check_miners()
 
                 # Sync metagraph and potentially set weights.
                 self.sync()
 
                 self.step += 1
 
-                await asyncio.sleep(random.random() * TWO_MINUTES)
+                await asyncio.sleep(random.random() * self.config.period_validation_interval)
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -165,59 +142,6 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug(
                 print_exception(type(err), err, err.__traceback__)
             )
-
-    def run_sync(self):
-        loop = asyncio.new_event_loop()
-
-        loop.run_until_complete(self.run())
-
-    def run_in_background_thread(self):
-        """
-        Starts the validator's operations in a background thread upon entering the context.
-        This method facilitates the use of the validator in a 'with' statement.
-        """
-        if not self.is_running:
-            bt.logging.debug("Starting validator in background thread.")
-            self.should_exit = False
-            self.thread = threading.Thread(target=self.run_sync, daemon=True)
-            self.thread.start()
-            self.is_running = True
-            bt.logging.debug("Started")
-
-    def stop_run_thread(self):
-        """
-        Stops the validator's operations that are running in the background thread.
-        """
-        if self.is_running:
-            bt.logging.debug("Stopping validator in background thread.")
-            self.should_exit = True
-            self.thread.join(5)
-            self.is_running = False
-            bt.logging.debug("Stopped")
-
-    def __enter__(self):
-        self.run_in_background_thread()
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """
-        Stops the validator's background operations upon exiting the context.
-        This method facilitates the use of the validator in a 'with' statement.
-
-        Args:
-            exc_type: The type of the exception that caused the context to be exited.
-                      None if the context was exited without an exception.
-            exc_value: The instance of the exception that caused the context to be exited.
-                       None if the context was exited without an exception.
-            traceback: A traceback object encoding the stack trace.
-                       None if the context was exited without an exception.
-        """
-        if self.is_running:
-            bt.logging.debug("Stopping validator in background thread.")
-            self.should_exit = True
-            self.thread.join(5)
-            self.is_running = False
-            bt.logging.debug("Stopped")
 
     def set_weights(self):
         """

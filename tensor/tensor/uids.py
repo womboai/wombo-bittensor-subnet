@@ -5,19 +5,21 @@ from typing import Callable
 
 from bittensor import AxonInfo
 
-
-def is_validator(metagraph: "bt.metagraph.Metagraph", uid: int, vpermit_tao_limit: int) -> bool:
-    return metagraph.validator_permit[uid] and metagraph.S[uid] > vpermit_tao_limit
+from tensor.protocol import NeuronInfoSynapse
 
 
-def is_miner(metagraph: "bt.metagraph.Metagraph", uid: int, vpermit_tao_limit: int) -> bool:
-    return not is_validator(metagraph, uid, vpermit_tao_limit)
+def is_validator(metagraph: "bt.metagraph.Metagraph", uid: int, info: NeuronInfoSynapse) -> bool:
+    return metagraph.validator_permit[uid] and info.validator
+
+
+def is_miner(metagraph: "bt.metagraph.Metagraph", uid: int, info: NeuronInfoSynapse) -> bool:
+    return not is_validator(metagraph, uid, info)
 
 
 def get_random_uids(
     self,
     k: int,
-    availability_checker: Callable[["bt.metagraph.Metagraph", int, int], bool],
+    availability_checker: Callable[["bt.metagraph.Metagraph", int, NeuronInfoSynapse], bool],
 ) -> torch.LongTensor:
     available_uids = []
 

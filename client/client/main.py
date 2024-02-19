@@ -1,3 +1,5 @@
+import asyncio
+from asyncio import Task
 from datetime import datetime
 from typing import List, Optional, Annotated
 
@@ -43,6 +45,26 @@ class Client:
         # Dendrite lets us send messages to other nodes (axons) in the network.
         self.dendrite = bt.dendrite(wallet=self.wallet)
         bt.logging.info(f"Dendrite: {self.dendrite}")
+
+        self.periodic_metagraph_resync: Task
+
+    def __enter__(self):
+        async def resync_metagraph():
+            while True:
+                """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
+                bt.logging.info("resync_metagraph()")
+
+                # Sync the metagraph.
+                self.metagraph.sync(subtensor=self.subtensor)
+
+                await asyncio.sleep(12)
+
+        self.periodic_metagraph_resync = asyncio.create_task(resync_metagraph())
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.periodic_metagraph_resync.cancel()
 
     @classmethod
     def check_config(cls, client_config: "bt.Config"):
@@ -90,17 +112,17 @@ class Client:
 
 def main():
     app = FastAPI()
-    client = Client()
 
-    @app.post("/api/generate")
-    async def generate(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> List[bytes]:
-        return await client.generate(input_parameters)
+    with Client() as client:
+        @app.post("/api/generate")
+        async def generate(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> List[bytes]:
+            return await client.generate(input_parameters)
 
-    @app.get("/")
-    def healthcheck():
-        return datetime.utcnow()
+        @app.get("/")
+        def healthcheck():
+            return datetime.utcnow()
 
-    uvicorn.run(app, host="0.0.0.0")
+        uvicorn.run(app, host="0.0.0.0")
 
 
 if __name__ == "__main__":

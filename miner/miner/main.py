@@ -1,7 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-import base64
+
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,7 +16,8 @@ import base64
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import time
+import asyncio
+import base64
 import typing
 import bittensor as bt
 from aiohttp import ClientSession, MultipartReader
@@ -172,13 +173,10 @@ class Miner(BaseMinerNeuron):
         return prirority
 
 
-def main():
-    with Miner():
-        while True:
-            bt.logging.info("Miner running...", time.time())
-            time.sleep(5)
+async def main():
+    await Miner().run()
 
 
 # This is the main function, which runs the miner.
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
