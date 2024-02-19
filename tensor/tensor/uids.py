@@ -3,8 +3,6 @@ import random
 import bittensor as bt
 from typing import Callable, List
 
-from bittensor import AxonInfo
-
 from tensor.protocol import NeuronInfoSynapse
 
 
