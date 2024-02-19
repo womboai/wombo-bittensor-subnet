@@ -1,7 +1,7 @@
 import torch
 import random
 import bittensor as bt
-from typing import Callable
+from typing import Callable, List
 
 from bittensor import AxonInfo
 
@@ -16,33 +16,39 @@ def is_miner(metagraph: "bt.metagraph.Metagraph", uid: int, info: NeuronInfoSyna
     return not is_validator(metagraph, uid, info)
 
 
-def get_random_uids(
+async def get_random_uids(
     self,
     k: int,
     availability_checker: Callable[["bt.metagraph.Metagraph", int, NeuronInfoSynapse], bool],
 ) -> torch.LongTensor:
-    available_uids = []
+    active_uids = {}
 
-    for uid in range(self.metagraph.n.item()):
-        axon: AxonInfo = self.metagraph.axons[uid]
+    for neuron in self.metagraph.neurons:
+        active_uids[neuron.uid] = neuron.active
 
-        metagraph: bt.metagraph = self.metagraph
+    available_uids = [
+        uid
+        for uid in range(self.metagraph.n.item())
+        if active_uids[uid] and self.metagraph.axons[uid].is_serving
+    ]
 
-        active = False
+    axons = [self.metagraph.axons[uid] for uid in available_uids]
 
-        for neuron in metagraph.neurons:
-            if neuron.uid == uid:
-                active = neuron.active
-                break
+    async with self.dendrite as dendrite:
+        responses: List[NeuronInfoSynapse] = (await dendrite.forward(
+            # Send the query to selected miner axon in the network.
+            axons=axons,
+            synapse=NeuronInfoSynapse(),
+            # All responses have the deserialize function called on them before returning.
+            # You are encouraged to define your own deserialization function.
+            deserialize=False,
+        ))
 
-        uid_is_available = (
-            active and
-            axon.is_serving and
-            availability_checker(self.metagraph, uid, self.config.neuron.vpermit_tao_limit)
-        )
-
-        if uid_is_available:
-            available_uids.append(uid)
+    available_uids = [
+        uid
+        for uid, info in zip(available_uids, responses)
+        if availability_checker(self.metagraph, uid, info)
+    ]
 
     uids = torch.tensor(random.sample(available_uids, min(k, len(available_uids))))
     return uids

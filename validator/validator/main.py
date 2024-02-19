@@ -79,12 +79,12 @@ class Validator(BaseValidatorNeuron):
     def __init__(self, config=None):
         super(Validator, self).__init__(config=config)
 
-        # self.axon.attach(forward_fn=validator_forward_info)
-        #
-        # self.axon.attach(
-        #     forward_fn=self.forward_image,
-        #     blacklist_fn=self.blacklist_image,
-        # )
+        self.axon.attach(forward_fn=validator_forward_info)
+
+        self.axon.attach(
+            forward_fn=self.forward_image,
+            blacklist_fn=self.blacklist_image,
+        )
 
         bt.logging.info(f"Axon created: {self.axon}")
 
@@ -101,7 +101,7 @@ class Validator(BaseValidatorNeuron):
         - Updating the scores
         """
 
-        miner_uids = get_random_uids(self, k=self.config.neuron.sample_size, availability_checker=is_miner)
+        miner_uids = await get_random_uids(self, k=self.config.neuron.sample_size, availability_checker=is_miner)
 
         if not len(miner_uids):
             return
@@ -173,7 +173,7 @@ class Validator(BaseValidatorNeuron):
         self.update_scores(torch.FloatTensor([-5.0] * len(bad_miner_uids)), bad_miner_uids)
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
-        miner_uid = get_random_uids(self, k=1, availability_checker=is_miner)[0]
+        miner_uid = (await get_random_uids(self, k=1, availability_checker=is_miner))[0]
 
         # Grab the axon you're serving
         axon = self.metagraph.axons[miner_uid]
