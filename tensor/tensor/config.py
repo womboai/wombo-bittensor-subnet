@@ -119,9 +119,9 @@ def add_args(cls, parser):
         )
 
         parser.add_argument(
-            "--is_wombo_neuron_endpoint",
+            "--are_wombo_neurons_endpoint",
             type=str,
-            help="The endpoint to call to check if this is a WOMBO miner, which we give a reward advantage for",
+            help="The endpoint to call to check if the uids are WOMBO owned, which we give a reward advantage for",
             default="",
         )
 

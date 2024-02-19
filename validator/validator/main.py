@@ -158,7 +158,8 @@ class Validator(BaseValidatorNeuron):
             rewards = await get_rewards(
                 self,
                 query=inputs,
-                responses=list(zip(working_miner_uids, finished_responses)),
+                uids=[uid.item() for uid in working_miner_uids],
+                responses=finished_responses,
             )
         except Exception as e:
             bt.logging.error("Failed to get rewards for responses", e)
