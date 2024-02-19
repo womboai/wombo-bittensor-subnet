@@ -7,7 +7,7 @@ from tensor.protocol import NeuronInfoSynapse
 
 
 def is_validator(metagraph: "bt.metagraph.Metagraph", uid: int, info: NeuronInfoSynapse) -> bool:
-    return metagraph.validator_permit[uid] and info.validator
+    return metagraph.validator_permit[uid] and info.is_validator
 
 
 def is_miner(metagraph: "bt.metagraph.Metagraph", uid: int, info: NeuronInfoSynapse) -> bool:

@@ -32,7 +32,7 @@ def load_base64_image(data: bytes) -> Image.Image:
 
 
 class NeuronInfoSynapse(bt.Synapse):
-    validator: bool = False
+    is_validator: Optional[bool] = None
 
 
 class ImageGenerationSynapse(bt.Synapse):

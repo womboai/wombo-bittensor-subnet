@@ -29,6 +29,8 @@ from image_generation_protocol.io_protocol import ImageGenerationOutput
 
 
 def miner_forward_info(synapse: NeuronInfoSynapse):
+    synapse.is_validator = False
+
     return synapse
 
 
