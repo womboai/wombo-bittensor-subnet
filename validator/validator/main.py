@@ -198,41 +198,35 @@ class Validator(BaseValidatorNeuron):
         self,
         synapse: ImageGenerationClientSynapse,
     ) -> Tuple[bool, str]:
-        if self.config.subtensor.network != "finney":
-            return False, "Test Network"
-
-        if not synapse.dendrite.ip:
-            return True, "No IP Address associated with request"
-
-        allowed_ip_addresses_endpoint = select_endpoint(
-            self.config.allowed_ip_addresses_endpoint,
+        is_hotkey_allowed_endpoint = select_endpoint(
+            self.config.is_hotkey_allowed_endpoint,
             self.config.subtensor.network,
-            "https://dev-neuron-identifier.api.wombo.ai/api/allowed_ip_addresses",
-            "https://neuron-identifier.api.wombo.ai/api/allowed_ip_addresses"
+            "https://dev-neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
+            "https://neuron-identifier.api.wombo.ai/api/is_hotkey_allowed"
         )
 
         async with ClientSession() as session:
             response = await session.get(
-                allowed_ip_addresses_endpoint,
+                f"{is_hotkey_allowed_endpoint}?hotkey={synapse.dendrite.hotkey}",
                 headers={"Content-Type": "application/json"},
             )
 
             response.raise_for_status()
 
-            allowed_ip_addresses = await response.json()
+            is_hotkey_allowed = await response.json()
 
-        if synapse.dendrite.ip not in allowed_ip_addresses:
+        if is_hotkey_allowed:
             # Ignore requests from unrecognized entities.
             bt.logging.trace(
-                f"Blacklisting unrecognized IP Address {synapse.dendrite.ip}"
+                f"Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}"
             )
-            return True, "Unrecognized IP Address"
+            return True, "Unrecognized hotkey"
 
         bt.logging.trace(
-            f"Not Blacklisting recognized IP Address {synapse.dendrite.ip}"
+            f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}"
         )
 
-        return False, "IP Address recognized!"
+        return False, "Hotkey recognized!"
 
 
 async def main():

@@ -112,9 +112,9 @@ def add_args(cls, parser):
         )
 
         parser.add_argument(
-            "--allowed_ip_addresses_endpoint",
+            "--is_hotkey_allowed_endpoint",
             type=str,
-            help="The endpoint to call for blacklisting requests",
+            help="The endpoint called when checking if the hotkey is accepted by validators",
             default="",
         )
 
