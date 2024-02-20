@@ -2,8 +2,7 @@
 
 set -e
 
-docker build -f ../tensor/Dockerfile -t wombo-subnet:tensor ../
-docker build -f Dockerfile -t wombo-subnet:client ../
+./build.sh wombo-subnet:client
 
 docker run \
   --network="host" \
