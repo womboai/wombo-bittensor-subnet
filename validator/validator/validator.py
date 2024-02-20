@@ -64,8 +64,6 @@ class BaseValidatorNeuron(BaseNeuron):
         else:
             bt.logging.warning("axon off, not serving ip to chain.")
 
-
-
     def serve_axon(self):
         """Serve axon to enable external connections."""
 

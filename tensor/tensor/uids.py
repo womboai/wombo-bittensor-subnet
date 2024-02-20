@@ -1,7 +1,6 @@
 import torch
 import random
-import bittensor as bt
-from typing import Callable, List
+from typing import List
 
 from tensor.protocol import NeuronInfoSynapse, NeuronType
 
