@@ -12,6 +12,7 @@ EXPOSE 8000
 
 ENTRYPOINT python \
     -m client.main \
+    --logging.$LOG_LEVEL \
     --netuid $NETUID \
     --subtensor.network $NETWORK \
     --wallet.name $WALLET_NAME \
