@@ -61,7 +61,7 @@ def add_watermarks(images: List[Image.Image]) -> List[bytes]:
 
 
 def validator_forward_info(synapse: NeuronInfoSynapse):
-    synapse.neuron_type = NeuronType.VALIDATOR.value
+    synapse.is_validator = True
 
     return synapse
 

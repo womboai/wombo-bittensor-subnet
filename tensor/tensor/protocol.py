@@ -30,14 +30,8 @@ def load_base64_image(data: bytes) -> Image.Image:
     return Image.open(BytesIO(base64.b64decode(data)))
 
 
-class NeuronType(Enum):
-    MINER = "miner"
-    VALIDATOR = "validator"
-    UNKNOWN = "unknown"
-
-
 class NeuronInfoSynapse(bt.Synapse):
-    neuron_type: Literal[NeuronType.UNKNOWN, NeuronType.MINER, NeuronType.VALIDATOR] = NeuronType.UNKNOWN.value
+    is_validator: Optional[bool] = None
 
 
 class ImageGenerationSynapse(bt.Synapse):

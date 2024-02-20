@@ -2,7 +2,7 @@ import torch
 import random
 from typing import List
 
-from tensor.protocol import NeuronInfoSynapse, NeuronType
+from tensor.protocol import NeuronInfoSynapse
 
 
 DEFAULT_NEURON_INFO = NeuronInfoSynapse()
@@ -37,12 +37,12 @@ def get_random_uids(
     if validators:
         def validator_condition(uid: int) -> bool:
             return (
-                self.neuron_info.get(uid, DEFAULT_NEURON_INFO).neuron_type == NeuronType.VALIDATOR.value and
-                self.metagraph.validator_permit[uid]
+                    self.neuron_info.get(uid, DEFAULT_NEURON_INFO).is_validator and
+                    self.metagraph.validator_permit[uid]
             )
     else:
         def validator_condition(uid: int) -> bool:
-            return not self.neuron_info.get(uid, DEFAULT_NEURON_INFO).neuron_type == NeuronType.MINER.value
+            return self.neuron_info.get(uid, DEFAULT_NEURON_INFO).is_validator is False
 
     available_uids = [
         uid
