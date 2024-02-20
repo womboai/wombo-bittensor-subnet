@@ -215,7 +215,7 @@ class Validator(BaseValidatorNeuron):
 
             is_hotkey_allowed = await response.json()
 
-        if is_hotkey_allowed:
+        if not is_hotkey_allowed:
             # Ignore requests from unrecognized entities.
             bt.logging.trace(
                 f"Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}"
