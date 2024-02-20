@@ -11,7 +11,7 @@ from starlette import status
 
 from tensor.config import config, check_config, add_args
 from tensor.protocol import ImageGenerationClientSynapse
-from tensor.uids import get_random_uids
+from tensor.uids import get_random_uids, sync_neuron_info
 
 
 class Client:
@@ -42,6 +42,9 @@ class Client:
         self.metagraph = self.subtensor.metagraph(client_config.netuid)
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
+        self.metagraph.sync(subtensor=self.subtensor)
+        sync_neuron_info(self)
+
         # Dendrite lets us send messages to other nodes (axons) in the network.
         self.dendrite = bt.dendrite(wallet=self.wallet)
         bt.logging.info(f"Dendrite: {self.dendrite}")
@@ -56,6 +59,7 @@ class Client:
 
                 # Sync the metagraph.
                 self.metagraph.sync(subtensor=self.subtensor)
+                sync_neuron_info(self)
 
                 await asyncio.sleep(12)
 
@@ -82,7 +86,7 @@ class Client:
         self,
         input_parameters: ImageGenerationInputs,
     ) -> List[bytes]:
-        validator_uid = (await get_random_uids(self, k=1, validators=True))[0]
+        validator_uid = get_random_uids(self, k=1, validators=True)[0]
 
         # Grab the axon you're serving
         axon = self.metagraph.axons[validator_uid]

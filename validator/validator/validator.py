@@ -30,6 +30,8 @@ from typing import List
 from traceback import print_exception
 
 from neuron.neuron import BaseNeuron
+from tensor.protocol import NeuronInfoSynapse
+from tensor.uids import sync_neuron_info
 
 
 class BaseValidatorNeuron(BaseNeuron):
@@ -47,6 +49,8 @@ class BaseValidatorNeuron(BaseNeuron):
         self.dendrite = bt.dendrite(wallet=self.wallet)
         bt.logging.info(f"Dendrite: {self.dendrite}")
 
+        sync_neuron_info(self)
+
         # Set up initial scoring weights for validation
         bt.logging.info("Building validation weights.")
         self.scores = torch.zeros_like(self.metagraph.S, dtype=torch.float32)
@@ -59,6 +63,8 @@ class BaseValidatorNeuron(BaseNeuron):
             self.serve_axon()
         else:
             bt.logging.warning("axon off, not serving ip to chain.")
+
+
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
@@ -229,7 +235,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # If so, we need to add new hotkeys and moving averages.
         if len(self.hotkeys) < len(self.metagraph.hotkeys):
             # Update the size of the moving average scores.
-            new_moving_average = torch.zeros((self.metagraph.n)).to(
+            new_moving_average = torch.zeros(self.metagraph.n).to(
                 self.device
             )
             min_len = min(len(self.hotkeys), len(self.scores))
@@ -238,6 +244,8 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
+
+        sync_neuron_info(self)
 
     def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""

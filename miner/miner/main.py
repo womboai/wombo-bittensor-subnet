@@ -24,12 +24,12 @@ from aiohttp import ClientSession, MultipartReader
 
 # import base miner class which takes care of most of the boilerplate
 from miner.miner import BaseMinerNeuron
-from tensor.protocol import ImageGenerationSynapse, NeuronInfoSynapse
+from tensor.protocol import ImageGenerationSynapse, NeuronInfoSynapse, NeuronType
 from image_generation_protocol.io_protocol import ImageGenerationOutput
 
 
 def miner_forward_info(synapse: NeuronInfoSynapse):
-    synapse.is_validator = False
+    synapse.neuron_type = NeuronType.MINER
 
     return synapse
 

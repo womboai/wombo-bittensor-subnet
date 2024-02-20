@@ -1,7 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-
+from enum import Enum
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -30,8 +30,14 @@ def load_base64_image(data: bytes) -> Image.Image:
     return Image.open(BytesIO(base64.b64decode(data)))
 
 
+class NeuronType(Enum):
+    MINER = "miner"
+    VALIDATOR = "validator"
+    UNKNOWN = "unknown"
+
+
 class NeuronInfoSynapse(bt.Synapse):
-    is_validator: Optional[bool] = None
+    neuron_type: NeuronType = NeuronType.UNKNOWN
 
 
 class ImageGenerationSynapse(bt.Synapse):
