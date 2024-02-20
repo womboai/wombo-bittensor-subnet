@@ -43,7 +43,7 @@ setup(
     license="MIT",
     python_requires=">=3.10",
     install_requires=[
-        "wombo-bittensor-subnet-image-generation-protocol"
+        "wombo-bittensor-subnet-image-generation-protocol",
         "torch==2.2.0",
         "pillow==10.2.0",
         "fastapi==0.109.2",
