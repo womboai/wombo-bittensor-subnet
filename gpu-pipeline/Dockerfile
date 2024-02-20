@@ -6,7 +6,7 @@ WORKDIR /app/
 
 RUN python3 -m venv /app/venv
 
-ENV PATH="/app/venv:$PATH"
+ENV PATH="/app/venv/bin:$PATH"
 
 COPY ./image-generation-protocol ./image-generation-protocol/
 COPY ./gpu-pipeline ./gpu-pipeline/

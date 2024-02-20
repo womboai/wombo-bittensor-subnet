@@ -4,7 +4,7 @@ WORKDIR /app/
 
 RUN python3 -m venv /app/venv
 
-ENV PATH="/app/venv:$PATH"
+ENV PATH="/app/venv/bin:$PATH"
 
 RUN pip config set global.extra-index-url "https://download.pytorch.org/whl/cpu/"
 
