@@ -182,7 +182,7 @@ class Validator(BaseValidatorNeuron):
         async with self.dendrite as dendrite:
             response: ImageGenerationSynapse = (await dendrite.forward(
                 axons=[axon],
-                synapse=synapse,
+                synapse=ImageGenerationSynapse(inputs=synapse.inputs),
                 deserialize=False,
             ))[0]
 
