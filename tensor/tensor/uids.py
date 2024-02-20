@@ -36,10 +36,13 @@ def get_random_uids(
 ) -> torch.LongTensor:
     if validators:
         def validator_condition(uid: int) -> bool:
-            return self.neuron_info.get(uid, DEFAULT_NEURON_INFO).neuron_type == NeuronType.VALIDATOR and self.metagraph.validator_permit[uid]
+            return (
+                self.neuron_info.get(uid, DEFAULT_NEURON_INFO).neuron_type == NeuronType.VALIDATOR.value and
+                self.metagraph.validator_permit[uid]
+            )
     else:
         def validator_condition(uid: int) -> bool:
-            return not self.neuron_info.get(uid, DEFAULT_NEURON_INFO).neuron_type == NeuronType.MINER
+            return not self.neuron_info.get(uid, DEFAULT_NEURON_INFO).neuron_type == NeuronType.MINER.value
 
     available_uids = [
         uid

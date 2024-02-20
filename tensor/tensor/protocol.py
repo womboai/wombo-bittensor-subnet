@@ -16,7 +16,7 @@ from enum import Enum
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from typing import List, Optional
+from typing import List, Optional, Literal
 from io import BytesIO
 import base64
 
@@ -37,7 +37,7 @@ class NeuronType(Enum):
 
 
 class NeuronInfoSynapse(bt.Synapse):
-    neuron_type: NeuronType = NeuronType.UNKNOWN
+    neuron_type: Literal[NeuronType.UNKNOWN, NeuronType.MINER, NeuronType.VALIDATOR] = NeuronType.UNKNOWN.value
 
 
 class ImageGenerationSynapse(bt.Synapse):

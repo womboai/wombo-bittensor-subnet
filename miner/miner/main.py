@@ -29,7 +29,7 @@ from image_generation_protocol.io_protocol import ImageGenerationOutput
 
 
 def miner_forward_info(synapse: NeuronInfoSynapse):
-    synapse.neuron_type = NeuronType.MINER
+    synapse.neuron_type = NeuronType.MINER.value
 
     return synapse
 
