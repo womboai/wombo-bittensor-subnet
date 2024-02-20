@@ -30,7 +30,7 @@ from aiohttp import ClientSession
 import torch
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse
-from tensor.uids import get_random_uids, is_miner
+from tensor.uids import get_random_uids
 
 # import base validator class which takes care of most of the boilerplate
 from validator.validator import BaseValidatorNeuron
@@ -101,7 +101,7 @@ class Validator(BaseValidatorNeuron):
         - Updating the scores
         """
 
-        miner_uids = await get_random_uids(self, k=self.config.neuron.sample_size, availability_checker=is_miner)
+        miner_uids = await get_random_uids(self, k=self.config.neuron.sample_size, validators=False)
 
         if not len(miner_uids):
             return
@@ -174,7 +174,7 @@ class Validator(BaseValidatorNeuron):
         self.update_scores(torch.FloatTensor([-5.0] * len(bad_miner_uids)), bad_miner_uids)
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
-        miner_uid = (await get_random_uids(self, k=1, availability_checker=is_miner))[0]
+        miner_uid = (await get_random_uids(self, k=1, validators=False))[0]
 
         # Grab the axon you're serving
         axon = self.metagraph.axons[miner_uid]

@@ -11,7 +11,7 @@ from starlette import status
 
 from tensor.config import config, check_config, add_args
 from tensor.protocol import ImageGenerationClientSynapse
-from tensor.uids import get_random_uids, is_validator
+from tensor.uids import get_random_uids
 
 
 class Client:
@@ -82,7 +82,7 @@ class Client:
         self,
         input_parameters: ImageGenerationInputs,
     ) -> List[bytes]:
-        validator_uid = (await get_random_uids(self, k=1, availability_checker=is_validator))[0]
+        validator_uid = (await get_random_uids(self, k=1, validators=True))[0]
 
         # Grab the axon you're serving
         axon = self.metagraph.axons[validator_uid]
