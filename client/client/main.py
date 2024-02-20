@@ -42,12 +42,12 @@ class Client:
         self.metagraph = self.subtensor.metagraph(client_config.netuid)
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
-        self.metagraph.sync(subtensor=self.subtensor)
-        sync_neuron_info(self)
-
         # Dendrite lets us send messages to other nodes (axons) in the network.
         self.dendrite = bt.dendrite(wallet=self.wallet)
         bt.logging.info(f"Dendrite: {self.dendrite}")
+
+        self.metagraph.sync(subtensor=self.subtensor)
+        sync_neuron_info(self)
 
         self.periodic_metagraph_resync: Task
 
