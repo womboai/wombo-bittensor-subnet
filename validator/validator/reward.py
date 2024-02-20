@@ -98,14 +98,14 @@ async def get_rewards(
         self.config.validation_endpoint,
         self.config.subtensor.network,
         "https://dev-validate.api.wombo.ai/api/validate",
-        "https://validate.api.wombo.ai/api/validate"
+        "https://validate.api.wombo.ai/api/validate",
     )
 
     are_wombo_neurons_endpoint = select_endpoint(
         self.config.are_wombo_neurons_endpoint,
         self.config.subtensor.network,
         "https://dev-neuron-identifier.api.wombo.ai/api/are_wombo_neurons",
-        "https://neuron-identifier.api.wombo.ai/api/are_wombo_neurons"
+        "https://neuron-identifier.api.wombo.ai/api/are_wombo_neurons",
     )
 
     async with ClientSession() as session:

@@ -53,10 +53,9 @@ def add_watermarks(images: List[Image.Image]) -> List[bytes]:
     """
     def save_image(image: Image.Image) -> bytes:
         image = watermark_image(image)
-        image_bytes = BytesIO()
-        image.save(image_bytes, format="JPEG")
-
-        return base64.b64encode(image_bytes.getvalue())
+        with BytesIO() as image_bytes:
+            image.save(image_bytes, format="JPEG")
+            return base64.b64encode(image_bytes.getvalue())
 
     return [save_image(image) for image in images]
 
@@ -202,7 +201,7 @@ class Validator(BaseValidatorNeuron):
             self.config.is_hotkey_allowed_endpoint,
             self.config.subtensor.network,
             "https://dev-neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
-            "https://neuron-identifier.api.wombo.ai/api/is_hotkey_allowed"
+            "https://neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
         )
 
         async with ClientSession() as session:

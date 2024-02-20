@@ -27,8 +27,7 @@ from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGe
 
 
 def load_base64_image(data: bytes) -> Image.Image:
-    with BytesIO(base64.b64decode(data)) as input_data:
-        return Image.open(input_data)
+    return Image.open(BytesIO(base64.b64decode(data)))
 
 
 class NeuronInfoSynapse(bt.Synapse):
