@@ -25,7 +25,7 @@ def sync_neuron_info(self):
 
     self.neuron_info = {
         uids_by_hotkey[hotkey]: info
-        for hotkey, info in info_by_hotkey
+        for hotkey, info in info_by_hotkey.items()
     }
 
 
