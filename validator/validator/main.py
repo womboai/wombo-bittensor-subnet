@@ -183,6 +183,7 @@ class Validator(BaseValidatorNeuron):
                 axons=[axon],
                 synapse=ImageGenerationSynapse(inputs=synapse.inputs),
                 deserialize=False,
+                timeout=60,
             ))[0]
 
         # TODO Set miner score based on response

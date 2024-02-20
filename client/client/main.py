@@ -97,6 +97,7 @@ class Client:
                 # All responses have the deserialize function called on them before returning.
                 # You are encouraged to define your own deserialization function.
                 deserialize=False,
+                timeout=60,
             ))[0]
 
         if not response.images:
