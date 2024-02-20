@@ -5,6 +5,9 @@ from typing import List
 from tensor.protocol import NeuronInfoSynapse, NeuronType
 
 
+DEFAULT_NEURON_INFO = NeuronInfoSynapse()
+
+
 def sync_neuron_info(self):
     axons = [self.metagraph.axons[uid] for uid in self.metagraph.uids]
     uids_by_hotkey = {axon.hotkey: uid for uid, axon in zip(self.metagraph.uids, axons)}
@@ -33,10 +36,10 @@ def get_random_uids(
 ) -> torch.LongTensor:
     if validators:
         def validator_condition(uid: int) -> bool:
-            return self.neuron_info[uid].neuron_type == NeuronType.VALIDATOR and self.metagraph.validator_permit[uid]
+            return self.neuron_info.get(uid, DEFAULT_NEURON_INFO).neuron_type == NeuronType.VALIDATOR and self.metagraph.validator_permit[uid]
     else:
         def validator_condition(uid: int) -> bool:
-            return not self.neuron_info[uid].neuron_type == NeuronType.MINER
+            return not self.neuron_info.get(uid, DEFAULT_NEURON_INFO).neuron_type == NeuronType.MINER
 
     available_uids = [
         uid
