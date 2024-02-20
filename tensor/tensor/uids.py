@@ -9,8 +9,14 @@ DEFAULT_NEURON_INFO = NeuronInfoSynapse()
 
 
 def sync_neuron_info(self):
-    axons = [self.metagraph.axons[uid] for uid in self.metagraph.uids]
-    uids_by_hotkey = {axon.hotkey: uid for uid, axon in zip(self.metagraph.uids, axons)}
+    uids = [
+        uid
+        for uid in self.metagraph.uids
+        if self.metagraph.axons[uid].is_serving and self.metagraph.active[uid]
+    ]
+
+    axons = [self.metagraph.axons[uid] for uid in uids]
+    uids_by_hotkey = {axon.hotkey: uid for uid, axon in zip(uids, axons)}
 
     neuron_info: List[NeuronInfoSynapse] = self.dendrite.query(
         axons=axons,
