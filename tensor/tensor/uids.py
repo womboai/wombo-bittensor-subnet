@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import torch
 import random
 from typing import List
@@ -11,7 +13,7 @@ DEFAULT_NEURON_INFO = NeuronInfoSynapse()
 def sync_neuron_info(self):
     uids = [
         uid
-        for uid in self.metagraph.uids
+        for uid in range(self.metagraph.n.item())
         if self.metagraph.axons[uid].is_serving and self.metagraph.active[uid]
     ]
 
