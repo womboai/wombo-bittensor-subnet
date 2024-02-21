@@ -6,7 +6,7 @@ COPY ./client ./client/
 
 WORKDIR /app/client/
 
-RUN pip install -e .
+RUN pip install --no-cache-dir -e .
 
 EXPOSE 8000
 

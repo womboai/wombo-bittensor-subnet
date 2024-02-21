@@ -31,7 +31,7 @@ from traceback import print_exception
 
 from neuron.neuron import BaseNeuron
 from tensor.protocol import NeuronInfoSynapse
-from tensor.uids import sync_neuron_info
+from neuron_selector.uids import sync_neuron_info
 
 
 class BaseValidatorNeuron(BaseNeuron):

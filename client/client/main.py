@@ -11,7 +11,7 @@ from starlette import status
 
 from tensor.config import config, check_config, add_args
 from tensor.protocol import ImageGenerationClientSynapse
-from tensor.uids import get_random_uids, sync_neuron_info
+from neuron_selector.uids import get_random_uids, sync_neuron_info
 
 
 class Client:
