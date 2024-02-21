@@ -1,7 +1,6 @@
-from dataclasses import dataclass
-
 import torch
 import random
+import bittensor
 from typing import List
 
 from tensor.protocol import NeuronInfoSynapse
@@ -43,23 +42,32 @@ def get_random_uids(
     validators: bool,
 ) -> torch.LongTensor:
     if validators:
-        def validator_condition(uid: int) -> bool:
-            return (
-                    self.neuron_info.get(uid, DEFAULT_NEURON_INFO).is_validator and
-                    self.metagraph.validator_permit[uid]
-            )
+        def validator_condition(uid: int, info: NeuronInfoSynapse) -> bool:
+            return info.is_validator and self.metagraph.validator_permit[uid]
     else:
-        def validator_condition(uid: int) -> bool:
-            return self.neuron_info.get(uid, DEFAULT_NEURON_INFO).is_validator is False
+        def validator_condition(uid: int, info: NeuronInfoSynapse) -> bool:
+            return info.is_validator is False
 
     available_uids = [
         uid
         for uid in range(self.metagraph.n.item())
         if (
                 self.metagraph.active[uid] and
-                self.metagraph.axons[uid].is_serving and
-                validator_condition(uid)
+                self.metagraph.axons[uid].is_serving
         )
+    ]
+
+    infos = {
+        uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
+        for uid in available_uids
+    }
+
+    bittensor.logging.info(f"Neuron info found: {infos}")
+
+    available_uids = [
+        uid
+        for uid in available_uids
+        if validator_condition(uid, infos[uid])
     ]
 
     uids = torch.tensor(random.sample(available_uids, min(k, len(available_uids))))
