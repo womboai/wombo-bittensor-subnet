@@ -85,6 +85,9 @@ class Validator(BaseValidatorNeuron):
             blacklist_fn=self.blacklist_image,
         )
 
+        self.axon.fast_config.timeout_keep_alive = 120
+        self.axon.fast_config.timeout_notify = 60
+
         bt.logging.info(f"Axon created: {self.axon}")
 
         bt.logging.info("load_state()")
