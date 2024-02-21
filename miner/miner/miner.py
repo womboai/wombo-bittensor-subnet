@@ -22,6 +22,7 @@ import traceback
 import bittensor as bt
 
 from neuron.neuron import BaseNeuron
+from tensor.config import add_args
 
 
 class BaseMinerNeuron(BaseNeuron):
@@ -44,6 +45,31 @@ class BaseMinerNeuron(BaseNeuron):
 
         # The axon handles request processing, allowing validators to send this miner requests.
         self.axon = bt.axon(wallet=self.wallet, port=self.config.axon.port)
+
+    @classmethod
+    def add_args(cls, parser):
+        add_args(cls, parser)
+
+        parser.add_argument(
+            "--generation_endpoint",
+            type=str,
+            help="The endpoint to call for miner generation",
+            default="http://localhost:8001/api/generate",
+        )
+
+        parser.add_argument(
+            "--blacklist.force_validator_permit",
+            action="store_true",
+            help="If set, we will force incoming requests to have a permit.",
+            default=False,
+        )
+
+        parser.add_argument(
+            "--blacklist.allow_non_registered",
+            action="store_true",
+            help="If set, miners will accept queries from non registered entities. (Dangerous!)",
+            default=False,
+        )
 
     async def run(self):
         """

@@ -38,8 +38,9 @@ class BaseNeuron(ABC):
         check_config(cls, config)
 
     @classmethod
+    @abstractmethod
     def add_args(cls, parser):
-        add_args(cls, parser)
+        ...
 
     @classmethod
     def config(cls):

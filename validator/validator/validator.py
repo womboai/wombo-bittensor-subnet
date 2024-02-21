@@ -30,6 +30,7 @@ from typing import List
 from traceback import print_exception
 
 from neuron.neuron import BaseNeuron
+from tensor.config import add_args
 from tensor.protocol import NeuronInfoSynapse
 from neuron_selector.uids import sync_neuron_info
 
@@ -59,10 +60,7 @@ class BaseValidatorNeuron(BaseNeuron):
         self.sync()
 
         # Serve axon to enable external connections.
-        if not self.config.neuron.axon_off:
-            self.serve_axon()
-        else:
-            bt.logging.warning("axon off, not serving ip to chain.")
+        self.serve_axon()
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
@@ -89,6 +87,59 @@ class BaseValidatorNeuron(BaseNeuron):
     @abstractmethod
     async def check_miners(self):
         ...
+
+    @classmethod
+    def add_args(cls, parser):
+        add_args(cls, parser)
+
+        parser.add_argument(
+            "--validation_endpoint",
+            type=str,
+            help="The endpoint to call for validator scoring",
+            default="",
+        )
+
+        parser.add_argument(
+            "--is_hotkey_allowed_endpoint",
+            type=str,
+            help="The endpoint called when checking if the hotkey is accepted by validators",
+            default="",
+        )
+
+        parser.add_argument(
+            "--are_wombo_neurons_endpoint",
+            type=str,
+            help="The endpoint to call to check if the uids are WOMBO owned, which we give a reward advantage for",
+            default="",
+        )
+
+        parser.add_argument(
+            "--period_validation_interval",
+            type=float,
+            help="The maximum amount of time(in seconds) between periodic validation",
+            default=120.0,
+        )
+
+        parser.add_argument(
+            "--neuron.sample_size",
+            type=int,
+            help="The number of miners to query in a single step.",
+            default=10,
+        )
+
+        parser.add_argument(
+            "--neuron.disable_set_weights",
+            action="store_true",
+            help="Disables setting weights.",
+            default=False,
+        )
+
+        parser.add_argument(
+            "--neuron.moving_average_alpha",
+            type=float,
+            help="Moving average alpha parameter, how much to add of the new observation.",
+            default=0.05,
+        )
 
     async def run(self):
         """
