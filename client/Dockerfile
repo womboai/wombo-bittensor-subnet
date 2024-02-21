@@ -2,7 +2,10 @@ FROM wombo-subnet:tensor
 
 RUN apt update && apt-get install -y build-essential
 
+COPY ./neuron-selector ./neuron-selector/
 COPY ./client ./client/
+
+RUN pip install --no-cache-dir -e ./neuron-selector
 
 WORKDIR /app/client/
 

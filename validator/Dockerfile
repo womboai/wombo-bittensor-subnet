@@ -1,6 +1,9 @@
 FROM wombo-subnet:neuron
 
+COPY ./neuron-selector ./neuron-selector/
 COPY ./validator ./validator/
+
+RUN pip install --no-cache-dir -e ./neuron-selector
 
 WORKDIR /app/validator/
 
