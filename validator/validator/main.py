@@ -30,7 +30,7 @@ from aiohttp import ClientSession
 import torch
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse
-from tensor.uids import get_random_uids
+from neuron_selector.uids import get_random_uids
 
 # import base validator class which takes care of most of the boilerplate
 from validator.validator import BaseValidatorNeuron
