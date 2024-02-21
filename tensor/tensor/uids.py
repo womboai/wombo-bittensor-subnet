@@ -45,7 +45,7 @@ def get_random_uids(
         def validator_condition(uid: int, info: NeuronInfoSynapse) -> bool:
             return info.is_validator and self.metagraph.validator_permit[uid]
     else:
-        def validator_condition(uid: int, info: NeuronInfoSynapse) -> bool:
+        def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
             return info.is_validator is False
 
     available_uids = [
