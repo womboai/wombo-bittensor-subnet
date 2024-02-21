@@ -28,6 +28,9 @@ from io import BytesIO
 import bittensor as bt
 from aiohttp import ClientSession
 import torch
+from fastapi import HTTPException
+from starlette import status
+
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse
 from neuron_selector.uids import get_random_uids
@@ -176,7 +179,15 @@ class Validator(BaseValidatorNeuron):
         self.update_scores(torch.FloatTensor([-5.0] * len(bad_miner_uids)), bad_miner_uids)
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
-        miner_uid = get_random_uids(self, k=1, validators=False)[0]
+        miner_uids = get_random_uids(self, k=1, validators=False)
+
+        if not len(miner_uids):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No suitable miners found",
+            )
+
+        miner_uid = miner_uids[0]
 
         # Grab the axon you're serving
         axon = self.metagraph.axons[miner_uid]

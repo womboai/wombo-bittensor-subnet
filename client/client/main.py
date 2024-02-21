@@ -86,7 +86,15 @@ class Client:
         self,
         input_parameters: ImageGenerationInputs,
     ) -> List[bytes]:
-        validator_uid = get_random_uids(self, k=1, validators=True)[0]
+        validator_uids = get_random_uids(self, k=1, validators=True)
+
+        if not len(validator_uids):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No suitable validators found",
+            )
+
+        validator_uid = validator_uids[0]
 
         # Grab the axon you're serving
         axon = self.metagraph.axons[validator_uid]
@@ -108,7 +116,7 @@ class Client:
             bt.logging.error(f"Failed to query subnetwork with {input_parameters} and axon {axon}")
 
             raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to query subnetwork",
             )
 
