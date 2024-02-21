@@ -41,7 +41,7 @@ setup(
     license="MIT",
     python_requires=">=3.10",
     install_requires=[
-        "wombo-bittensor-subnet-tensor",
+        "wombo-bittensor-subnet-neuron-selector",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
