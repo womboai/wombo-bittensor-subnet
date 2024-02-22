@@ -146,7 +146,7 @@ class Validator(BaseValidatorNeuron):
         finished_responses = []
 
         for response in responses:
-            if not (response.output and response.axon and response.axon.hotkey):
+            if not response.output or not response.axon or not response.axon.hotkey:
                 continue
 
             uid = [uid for uid, axon in zip(miner_uids, axons) if axon.hotkey == response.axon.hotkey][0]
@@ -201,11 +201,22 @@ class Validator(BaseValidatorNeuron):
                 timeout=CLIENT_REQUEST_TIMEOUT,
             ))[0]
 
-        # TODO Set miner score based on response
-
         if response.output:
             synapse.images = response.output.images
             synapse.images = add_watermarks(synapse.deserialize())
+
+            try:
+                # Adjust the scores based on responses from miners.
+                rewards = await get_rewards(
+                    self,
+                    query=synapse.inputs,
+                    uids=[miner_uid.item()],
+                    responses=[response],
+                )
+            except Exception as e:
+                bt.logging.error("Failed to get rewards for responses", e)
+
+            self.update_scores(rewards, [miner_uid])
 
         return synapse
 
