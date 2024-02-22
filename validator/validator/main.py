@@ -34,6 +34,7 @@ from starlette import status
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse
 from neuron_selector.uids import get_random_uids
+from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
 
 # import base validator class which takes care of most of the boilerplate
 from validator.validator import BaseValidatorNeuron
@@ -88,8 +89,8 @@ class Validator(BaseValidatorNeuron):
             blacklist_fn=self.blacklist_image,
         )
 
-        self.axon.fast_config.timeout_keep_alive = 120
-        self.axon.fast_config.timeout_notify = 60
+        self.axon.fast_config.timeout_keep_alive = KEEP_ALIVE_TIMEOUT
+        self.axon.fast_config.timeout_notify = AXON_REQUEST_TIMEOUT
 
         bt.logging.info(f"Axon created: {self.axon}")
 
@@ -138,7 +139,7 @@ class Validator(BaseValidatorNeuron):
                 # All responses have the deserialize function called on them before returning.
                 # You are encouraged to define your own deserialization function.
                 deserialize=False,
-                timeout=60,
+                timeout=CLIENT_REQUEST_TIMEOUT,
             )
 
         working_miner_uids = []
@@ -197,7 +198,7 @@ class Validator(BaseValidatorNeuron):
                 axons=[axon],
                 synapse=ImageGenerationSynapse(inputs=synapse.inputs),
                 deserialize=False,
-                timeout=60,
+                timeout=CLIENT_REQUEST_TIMEOUT,
             ))[0]
 
         # TODO Set miner score based on response

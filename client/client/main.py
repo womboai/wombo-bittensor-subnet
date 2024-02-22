@@ -12,6 +12,7 @@ from starlette import status
 from tensor.config import config, check_config, add_args
 from tensor.protocol import ImageGenerationClientSynapse
 from neuron_selector.uids import get_random_uids, sync_neuron_info
+from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 
 
 class Client:
@@ -109,7 +110,7 @@ class Client:
                 # All responses have the deserialize function called on them before returning.
                 # You are encouraged to define your own deserialization function.
                 deserialize=False,
-                timeout=60,
+                timeout=CLIENT_REQUEST_TIMEOUT,
             ))[0]
 
         if not response.images:
