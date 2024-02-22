@@ -205,18 +205,24 @@ class Validator(BaseValidatorNeuron):
             synapse.images = response.output.images
             synapse.images = add_watermarks(synapse.deserialize())
 
+            if random.randint(0, 10) != 0:
+                return synapse
+
+            uids = [miner_uid.item()]
+
             try:
                 # Adjust the scores based on responses from miners.
                 rewards = await get_rewards(
                     self,
                     query=synapse.inputs,
-                    uids=[miner_uid.item()],
+                    uids=uids,
                     responses=[response],
                 )
             except Exception as e:
                 bt.logging.error("Failed to get rewards for responses", e)
+                return synapse
 
-            self.update_scores(rewards, [miner_uid])
+            self.update_scores(rewards, uids)
 
         return synapse
 
