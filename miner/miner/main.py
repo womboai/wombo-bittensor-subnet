@@ -26,6 +26,7 @@ from aiohttp import ClientSession, MultipartReader
 from miner.miner import BaseMinerNeuron
 from tensor.protocol import ImageGenerationSynapse, NeuronInfoSynapse
 from image_generation_protocol.io_protocol import ImageGenerationOutput
+from tensor.timeouts import AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
 
 
 def miner_forward_info(synapse: NeuronInfoSynapse):
@@ -57,8 +58,8 @@ class Miner(BaseMinerNeuron):
             priority_fn=self.priority_image,
         )
 
-        self.axon.fast_config.timeout_keep_alive = 120
-        self.axon.fast_config.timeout_notify = 60
+        self.axon.fast_config.timeout_keep_alive = KEEP_ALIVE_TIMEOUT
+        self.axon.fast_config.timeout_notify = AXON_REQUEST_TIMEOUT
 
         bt.logging.info(f"Axon created: {self.axon}")
 
