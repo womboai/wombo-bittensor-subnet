@@ -44,6 +44,8 @@ setup(
     python_requires=">=3.10",
     install_requires=[
         "wombo-bittensor-subnet-gpu-pipeline",
+        "fastapi==0.109.2",
+        "uvicorn==0.27.0.post1",
         "requests-toolbelt==1.0.0",
     ],
     classifiers=[
