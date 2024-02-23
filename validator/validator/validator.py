@@ -187,6 +187,9 @@ class BaseValidatorNeuron(BaseNeuron):
 
                 await asyncio.sleep(random.random() * self.config.period_validation_interval)
 
+                if self.should_sync_metagraph():
+                    self.resync_metagraph()
+
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
             self.axon.stop()
