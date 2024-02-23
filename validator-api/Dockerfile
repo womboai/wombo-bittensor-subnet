@@ -4,7 +4,6 @@ COPY ./validator-api ./validator-api/
 
 WORKDIR /app/validator-api/
 
-RUN pip config set global.extra-index-url "https://download.pytorch.org/whl/cpu/"
 RUN pip install --no-cache-dir -e .
 
 EXPOSE 8001
