@@ -62,7 +62,7 @@ class Client:
                 self.metagraph.sync(subtensor=self.subtensor)
                 sync_neuron_info(self)
 
-                await asyncio.sleep(12)
+                await asyncio.sleep(90)
 
         self.periodic_metagraph_resync = asyncio.get_event_loop().create_task(resync_metagraph())
 
