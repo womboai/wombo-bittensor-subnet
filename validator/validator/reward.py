@@ -19,7 +19,7 @@ import base64
 from typing import List, Tuple
 
 import torch
-from aiohttp import ClientSession, FormData
+from aiohttp import ClientSession, FormData, BasicAuth
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 
@@ -37,6 +37,8 @@ def select_endpoint(config: str, network: str, dev: str, prod: str) -> str:
 
 async def reward(
     validation_endpoint: str,
+    hotkey: str,
+    signature: str,
     query: ImageGenerationInputs,
     synapse: ImageGenerationSynapse,
 ) -> float:
@@ -68,6 +70,7 @@ async def reward(
 
         async with session.post(
             validation_endpoint,
+            auth=BasicAuth(hotkey, signature),
             data=data,
         ) as response:
             response.raise_for_status()
@@ -108,6 +111,9 @@ async def get_rewards(
         "https://neuron-identifier.api.wombo.ai/api/are_wombo_neurons",
     )
 
+    hotkey = self.dendrite.keypair.ss58_address
+    signature = self.dendrite.keypair.sign(hotkey)
+
     async with ClientSession() as session:
         uids_query = ",".join([str(uid) for uid in uids])
 
@@ -123,6 +129,8 @@ async def get_rewards(
     rewards = await asyncio.gather(*[
         reward(
             validation_endpoint,
+            hotkey,
+            signature,
             query,
             response,
         )
