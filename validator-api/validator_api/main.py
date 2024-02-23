@@ -7,7 +7,7 @@ import bittensor
 import uvicorn
 
 from fastapi import FastAPI, Form, File, UploadFile, HTTPException, Depends
-from fastapi.security import HTTPBasicCredentials
+from fastapi.security import HTTPBasicCredentials, HTTPBasic
 from pydantic import Json
 from starlette import status
 from substrateinterface import Keypair
@@ -21,7 +21,10 @@ NETWORK = os.environ["NETWORK"]
 NETUID = int(os.environ["NETUID"])
 
 
-def get_hotkey(credentials: HTTPBasicCredentials) -> str:
+security = HTTPBasic()
+
+
+def get_hotkey(credentials: Annotated[HTTPBasicCredentials, Depends(security)]) -> str:
     keypair = Keypair(ss58_address=credentials.username)
 
     if keypair.verify(credentials.username, credentials.password):
@@ -57,7 +60,7 @@ def main():
     async def validate(
         input_parameters: Annotated[Json[ImageGenerationInputs], Form(media_type="application/json")],
         frames: Annotated[UploadFile, File(media_type="application/octet-stream")],
-        hotkey: str = Depends(get_hotkey),
+        hotkey: Annotated[str, Depends(get_hotkey)],
     ) -> float:
         uid = metagraph.hotkeys.index(hotkey)
 
