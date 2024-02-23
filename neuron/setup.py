@@ -43,7 +43,6 @@ setup(
     python_requires=">=3.10",
     install_requires=[
         "wombo-bittensor-subnet-tensor",
-        "aiohttp==3.9.0",
         "python-multipart==0.0.7",
     ],
     classifiers=[
