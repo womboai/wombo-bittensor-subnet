@@ -27,6 +27,10 @@ def sync_neuron_info(self):
         deserialize=False,
     )
 
+    if not neuron_info or not len(neuron_info):
+        self.neuron_info = {}
+        return
+
     info_by_hotkey = {
         info.axon.hotkey: info
         for info in neuron_info
