@@ -117,8 +117,7 @@ class BaseNeuron(ABC):
         # Ensure miner or validator hotkey is still registered on the network.
         self.check_registered()
 
-        if self.should_sync_metagraph():
-            await self.resync_metagraph()
+        await self.resync_metagraph()
 
         if self.should_set_weights():
             self.set_weights()

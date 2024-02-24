@@ -257,6 +257,12 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.error("set_weights failed")
 
     async def resync_metagraph(self):
+        if not self.should_sync_metagraph():
+            if self.step == 0:
+                await sync_neuron_info(self)
+
+            return
+
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
         bt.logging.info("resync_metagraph()")
 
