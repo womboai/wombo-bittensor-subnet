@@ -118,8 +118,18 @@ class Validator(BaseValidatorNeuron):
         random_int = random.randint(0, max_seed)
         seed = (self.step * random_int) % max_seed
 
+        base_prompt = str(self.step * random_int)
+        selection = random.randint(0, 3)
+
+        if selection == 1:
+            prompt = base_prompt.encode("utf-8").hex()
+        elif selection == 2:
+            prompt = base64.b64encode(base_prompt.encode("utf-8")).decode("ascii")
+        else:
+            prompt = base_prompt
+
         input_parameters = {
-            "prompt": f"Test Apples {self.step} * {random_int}",
+            "prompt": prompt,
             "seed": seed,
             "width": 512,
             "height": 512,
