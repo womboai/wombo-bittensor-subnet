@@ -20,6 +20,7 @@ from typing import List, Tuple
 
 import torch
 from aiohttp import ClientSession, FormData, BasicAuth
+from substrateinterface import Keypair
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 
@@ -111,8 +112,9 @@ async def get_rewards(
         "https://neuron-identifier.api.wombo.ai/api/are_wombo_neurons",
     )
 
-    hotkey = self.dendrite.keypair.ss58_address
-    signature = self.dendrite.keypair.sign(hotkey)
+    keypair: Keypair = self.dendrite.keypair
+    hotkey = keypair.ss58_address
+    signature = f"0x{keypair.sign(hotkey).hex()}"
 
     async with ClientSession() as session:
         uids_query = ",".join([str(uid) for uid in uids])
