@@ -159,8 +159,6 @@ class BaseValidatorNeuron(BaseNeuron):
             Exception: For unforeseen errors during the miner's operation, which are logged for diagnosis.
         """
 
-        await sync_neuron_info(self)
-
         # Check that validator is registered on the network.
         await self.sync()
 

@@ -52,8 +52,6 @@ class Client:
         self.periodic_metagraph_resync: Task
 
     async def __aenter__(self):
-        await sync_neuron_info(self)
-
         async def resync_metagraph():
             while True:
                 """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
