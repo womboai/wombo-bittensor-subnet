@@ -123,7 +123,7 @@ class Client:
         return response.images
 
 
-def main():
+async def main():
     app = FastAPI()
 
     async with Client() as client:
@@ -139,4 +139,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
