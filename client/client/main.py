@@ -48,11 +48,12 @@ class Client:
         bt.logging.info(f"Dendrite: {self.dendrite}")
 
         self.metagraph.sync(subtensor=self.subtensor)
-        sync_neuron_info(self)
 
         self.periodic_metagraph_resync: Task
 
-    def __enter__(self):
+    async def __aenter__(self):
+        await sync_neuron_info(self)
+
         async def resync_metagraph():
             while True:
                 """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
@@ -60,7 +61,7 @@ class Client:
 
                 # Sync the metagraph.
                 self.metagraph.sync(subtensor=self.subtensor)
-                sync_neuron_info(self)
+                await sync_neuron_info(self)
 
                 await asyncio.sleep(90)
 
@@ -68,7 +69,7 @@ class Client:
 
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         self.periodic_metagraph_resync.cancel()
 
     @classmethod
@@ -127,7 +128,7 @@ class Client:
 def main():
     app = FastAPI()
 
-    with Client() as client:
+    async with Client() as client:
         @app.post("/api/generate")
         async def generate(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> List[bytes]:
             return await client.generate(input_parameters)

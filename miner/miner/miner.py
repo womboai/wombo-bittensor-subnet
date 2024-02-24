@@ -170,7 +170,7 @@ class BaseMinerNeuron(BaseNeuron):
                 f"Failed to set weights on chain with exception: { e }"
             )
 
-    def resync_metagraph(self):
+    async def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
         bt.logging.info("resync_metagraph()")
 

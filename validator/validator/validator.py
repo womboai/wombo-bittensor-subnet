@@ -50,8 +50,6 @@ class BaseValidatorNeuron(BaseNeuron):
         self.dendrite = bt.dendrite(wallet=self.wallet)
         bt.logging.info(f"Dendrite: {self.dendrite}")
 
-        sync_neuron_info(self)
-
         # Set up initial scoring weights for validation
         bt.logging.info("Building validation weights.")
         self.scores = torch.zeros_like(self.metagraph.S, dtype=torch.float32)
@@ -161,8 +159,10 @@ class BaseValidatorNeuron(BaseNeuron):
             Exception: For unforeseen errors during the miner's operation, which are logged for diagnosis.
         """
 
+        await sync_neuron_info(self)
+
         # Check that validator is registered on the network.
-        self.sync()
+        await self.sync()
 
         self.axon.start()
 
@@ -181,14 +181,14 @@ class BaseValidatorNeuron(BaseNeuron):
                 await self.check_miners()
 
                 # Sync metagraph and potentially set weights.
-                self.sync()
+                await self.sync()
 
                 self.step += 1
 
                 await asyncio.sleep(random.random() * self.config.period_validation_interval)
 
                 if self.should_sync_metagraph():
-                    self.resync_metagraph()
+                    await self.resync_metagraph()
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -261,7 +261,7 @@ class BaseValidatorNeuron(BaseNeuron):
         else:
             bt.logging.error("set_weights failed")
 
-    def resync_metagraph(self):
+    async def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
         bt.logging.info("resync_metagraph()")
 
@@ -297,7 +297,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
-        sync_neuron_info(self)
+        await sync_neuron_info(self)
 
     def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""

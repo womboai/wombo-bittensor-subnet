@@ -103,14 +103,14 @@ class BaseNeuron(ABC):
         ...
 
     @abstractmethod
-    def resync_metagraph(self):
+    async def resync_metagraph(self):
         ...
 
     @abstractmethod
     def set_weights(self):
         ...
 
-    def sync(self):
+    async def sync(self):
         """
         Wrapper for synchronizing the state of the network for the given miner or validator.
         """
@@ -118,7 +118,7 @@ class BaseNeuron(ABC):
         self.check_registered()
 
         if self.should_sync_metagraph():
-            self.resync_metagraph()
+            await self.resync_metagraph()
 
         if self.should_set_weights():
             self.set_weights()

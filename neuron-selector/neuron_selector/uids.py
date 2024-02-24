@@ -9,7 +9,7 @@ from tensor.protocol import NeuronInfoSynapse
 DEFAULT_NEURON_INFO = NeuronInfoSynapse()
 
 
-def sync_neuron_info(self):
+async def sync_neuron_info(self):
     uids = [
         uid
         for uid in range(self.metagraph.n.item())
@@ -21,15 +21,12 @@ def sync_neuron_info(self):
 
     uids_by_hotkey = {axon.hotkey: uid for uid, axon in zip(uids, axons)}
 
-    neuron_info: List[NeuronInfoSynapse] = self.dendrite.query(
-        axons=axons,
-        synapse=NeuronInfoSynapse(),
-        deserialize=False,
-    )
-
-    if not neuron_info or not len(neuron_info):
-        self.neuron_info = {}
-        return
+    async with self.dendrite as dendrite:
+        neuron_info: List[NeuronInfoSynapse] = await dendrite.forward(
+            axons=axons,
+            synapse=NeuronInfoSynapse(),
+            deserialize=False,
+        )
 
     info_by_hotkey = {
         info.axon.hotkey: info
