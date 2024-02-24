@@ -51,8 +51,10 @@ async def reward(
     - float: The reward value for the miner.
     """
 
-    target_time = 1.25
-    time_reward = target_time / synapse.dendrite.process_time
+    target_time = 2
+    worst_time = 8
+    time_difference = synapse.dendrite.process_time - target_time
+    time_penalty = max(0.0, min(0.5, (time_difference * 4.0) / (worst_time * target_time * 3.0)))
 
     async with ClientSession() as session:
         data = FormData()
@@ -78,7 +80,7 @@ async def reward(
 
             score = await response.json()
 
-    return (score + time_reward) * 5.0
+    return max(0.0, score - time_penalty)
 
 
 async def get_rewards(
@@ -125,7 +127,7 @@ async def get_rewards(
         ) as response:
             response.raise_for_status()
 
-            wombo_advantages = [2.5 if is_wombo_neuron else 0.0 for is_wombo_neuron in await response.json()]
+            wombo_advantages = [is_wombo_neuron * 0.1 for is_wombo_neuron in await response.json()]
 
     # Get all the reward results by iteratively calling your reward() function.
     rewards = await asyncio.gather(*[
@@ -139,6 +141,9 @@ async def get_rewards(
         for response in responses
     ])
 
-    scores = [uid_reward + wombo_advantage for uid_reward, wombo_advantage in zip(rewards, wombo_advantages)]
+    scores = [
+        min(1.0, uid_reward + wombo_advantage)
+        for uid_reward, wombo_advantage in zip(rewards, wombo_advantages)
+    ]
 
     return torch.FloatTensor(scores).to(self.device)
