@@ -17,6 +17,8 @@ def sync_neuron_info(self):
     ]
 
     axons = [self.metagraph.axons[uid] for uid in uids]
+    axons = filter(lambda axon: axon.hotkey != self.wallet.hotkey.ss58_address, axons)
+
     uids_by_hotkey = {axon.hotkey: uid for uid, axon in zip(uids, axons)}
 
     neuron_info: List[NeuronInfoSynapse] = self.dendrite.query(
