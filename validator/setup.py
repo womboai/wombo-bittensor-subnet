@@ -45,9 +45,6 @@ setup(
     install_requires=[
         "wombo-bittensor-subnet-neuron",
         "wombo-bittensor-subnet-neuron-selector",
-        "diffusers==0.25.1",
-        "transformers==4.37.2",
-        "accelerate==0.26.1",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
