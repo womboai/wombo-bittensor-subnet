@@ -95,7 +95,7 @@ class BaseMinerNeuron(BaseNeuron):
         """
 
         # Check that miner is registered on the network.
-        self.sync()
+        await self.sync()
 
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
@@ -120,7 +120,7 @@ class BaseMinerNeuron(BaseNeuron):
                     await asyncio.sleep(1)
 
                 # Sync metagraph and potentially set weights.
-                self.sync()
+                await self.sync()
                 self.step += 1
 
         # If someone intentionally stops the miner, it'll safely terminate operations.
