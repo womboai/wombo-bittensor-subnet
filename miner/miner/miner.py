@@ -133,7 +133,7 @@ class BaseMinerNeuron(BaseNeuron):
         except Exception as e:
             bt.logging.error(traceback.format_exc())
 
-    def set_weights(self):
+    async def set_weights(self):
         """
         Self-assigns a weight of 1 to the current miner (identified by its UID) and
         a weight of 0 to all other peers in the network. The weights determine the trust level the miner assigns to other nodes on the network.
@@ -148,15 +148,17 @@ class BaseMinerNeuron(BaseNeuron):
             )
             chain_weights[self.uid] = 1
 
+            loop = asyncio.get_running_loop()
+
             # --- Set weights.
-            self.subtensor.set_weights(
+            await loop.run_in_executor(None, lambda: self.subtensor.set_weights(
                 wallet=self.wallet,
                 netuid=self.metagraph.netuid,
                 uids=torch.arange(0, len(chain_weights)),
                 weights=chain_weights.to("cpu"),
                 wait_for_inclusion=False,
                 version_key=self.spec_version,
-            )
+            ))
 
             bt.logging.info(f"Set weights: {chain_weights}")
         except Exception as e:
@@ -171,5 +173,7 @@ class BaseMinerNeuron(BaseNeuron):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
         bt.logging.info("resync_metagraph()")
 
+        loop = asyncio.get_running_loop()
+
         # Sync the metagraph.
-        self.metagraph.sync(subtensor=self.subtensor)
+        await loop.run_in_executor(None, lambda: self.metagraph.sync(subtensor=self.subtensor))

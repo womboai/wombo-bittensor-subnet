@@ -107,7 +107,7 @@ class BaseNeuron(ABC):
         ...
 
     @abstractmethod
-    def set_weights(self):
+    async def set_weights(self):
         ...
 
     async def sync(self):
@@ -120,7 +120,7 @@ class BaseNeuron(ABC):
         await self.resync_metagraph()
 
         if self.should_set_weights():
-            self.set_weights()
+            await self.set_weights()
 
     def check_registered(self):
         # --- Check for registration.

@@ -109,10 +109,10 @@ class BaseValidatorNeuron(BaseNeuron):
         )
 
         parser.add_argument(
-            "--period_validation_interval",
+            "--periodic_validation_interval",
             type=float,
             help="The maximum amount of time(in seconds) between periodic validation",
-            default=120.0,
+            default=30.0,
         )
 
         parser.add_argument(
@@ -180,7 +180,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
                 self.step += 1
 
-                await asyncio.sleep(random.random() * self.config.period_validation_interval)
+                await asyncio.sleep(self.config.periodic_validation_interval)
 
                 if self.should_sync_metagraph():
                     await self.resync_metagraph()
@@ -198,7 +198,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 print_exception(type(err), err, err.__traceback__)
             )
 
-    def set_weights(self):
+    async def set_weights(self):
         """
         Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miners. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
         """
@@ -241,8 +241,10 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.debug("uint_weights", uint_weights)
         bt.logging.debug("uint_uids", uint_uids)
 
+        loop = asyncio.get_running_loop()
+
         # Set the weights on chain via our subtensor connection.
-        result = self.subtensor.set_weights(
+        result = await loop.run_in_executor(None, lambda: self.subtensor.set_weights(
             wallet=self.wallet,
             netuid=self.config.netuid,
             uids=uint_uids,
@@ -250,7 +252,8 @@ class BaseValidatorNeuron(BaseNeuron):
             wait_for_finalization=False,
             wait_for_inclusion=True,
             version_key=self.spec_version,
-        )
+        ))
+
         if result is True:
             bt.logging.info("set_weights on chain successfully!")
         else:
@@ -269,8 +272,10 @@ class BaseValidatorNeuron(BaseNeuron):
         # Copies state of metagraph before syncing.
         previous_metagraph = copy.deepcopy(self.metagraph)
 
+        loop = asyncio.get_running_loop()
+
         # Sync the metagraph.
-        self.metagraph.sync(subtensor=self.subtensor)
+        await loop.run_in_executor(None, lambda: self.metagraph.sync(subtensor=self.subtensor))
 
         # Check if the metagraph axon info has changed.
         if previous_metagraph.axons == self.metagraph.axons:
