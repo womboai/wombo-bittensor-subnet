@@ -2,6 +2,12 @@
 
 ## Running a miner
 
+To start, clone the repository and `cd` to it:
+```bash
+git clone https://github.com/womboai/wombo-bittensor-subnet
+cd wombo-bittensor-subnet
+```
+
 ### The image generator API
 Miners by default use an API for image generation, the image generator to set the image generator up, create a .env file from example.env
 Copy the example environment file and edit it
@@ -10,6 +16,7 @@ cd image-generator
 # Copy the example environment file
 cp example.env .env
 ```
+
 Then simply run the image generator.
 ```bash
 ./run.sh
