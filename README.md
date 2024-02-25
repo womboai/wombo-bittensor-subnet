@@ -3,25 +3,28 @@
 ## Running a miner
 
 ### The image generator API
-Miners by default use an API for image generation, the image generator is simple to run and does not require any special configuration
+Miners by default use an API for image generation, the image generator to set the image generator up, create a .env file from example.env
+Copy the example environment file and edit it
 ```bash
 cd image-generator
+# Copy the example environment file
+cp example.env .env
+```
+Then simply run the image generator.
+```bash
 ./run.sh
 ```
 
 ### Running the miner neuron
-To actually run a registered miner, go to the working directory `miner`
+To set the miner neuron up,
 ```bash
 cd miner
-```
-
-Copy the example environment file and edit it
-```bash
+# Copy the example environment file and edit it
 cp example.env .env
 $EDITOR .env
 ```
 
-Then simply run the miner
+Then simply run the registered miner
 ```bash
 ./run.sh
 ```
@@ -34,11 +37,12 @@ Running a validator is similar to running a miner, start by being in the `valida
 
 ```bash
 cd validator
+# Copy the example environment file and edit it
 cp example.env .env
 $EDITOR .env
 ```
 
-Then simply run with
+Then simply run the registered validator with
 ```bash
 ./run.sh
 ```
