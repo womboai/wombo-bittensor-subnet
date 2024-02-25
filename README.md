@@ -10,7 +10,6 @@ cd wombo-bittensor-subnet
 
 ### The image generator API
 Miners by default use an API for image generation, the image generator to set the image generator up, create a .env file from example.env
-Copy the example environment file and edit it
 ```bash
 cd image-generator
 # Copy the example environment file
