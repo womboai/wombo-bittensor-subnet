@@ -93,7 +93,7 @@ def get_tao_lora_path() -> str:
 
 
 def get_pipeline() -> Tuple[Semaphore, SDXLPipelines]:
-    device = "cuda"
+    device = os.getenv("DEVICE", "cuda")
 
     pipeline = (
         StableDiffusionXLPipeline

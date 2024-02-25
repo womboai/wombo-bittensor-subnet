@@ -6,6 +6,7 @@ set -e
 
 docker run \
   --network="host" \
+  --env-file .env \
   --gpus all \
   -v ~/.cache:/root/.cache \
   -v $(pwd)/cache:/app/image-generator/cache \

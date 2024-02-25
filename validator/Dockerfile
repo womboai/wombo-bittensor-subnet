@@ -9,13 +9,14 @@ WORKDIR /app/validator/
 
 RUN pip install --no-cache-dir -e .
 
-EXPOSE 8091
-
 ENTRYPOINT python \
     -m validator.main \
+    --axon.port $AXON_PORT \
     --logging.$LOG_LEVEL \
+    --neuron.device $DEVICE \
     --netuid $NETUID \
     --subtensor.network $NETWORK \
     --wallet.name $WALLET_NAME \
     --wallet.hotkey $WALLET_HOTKEY \
     --neuron.sample_size $SAMPLE_SIZE \
+    $EXTRA_ARGS \

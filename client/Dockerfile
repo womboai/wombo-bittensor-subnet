@@ -11,8 +11,6 @@ WORKDIR /app/client/
 
 RUN pip install --no-cache-dir -e .
 
-EXPOSE 8000
-
 ENTRYPOINT python \
     -m client.main \
     --logging.$LOG_LEVEL \
@@ -20,3 +18,4 @@ ENTRYPOINT python \
     --subtensor.network $NETWORK \
     --wallet.name $WALLET_NAME \
     --wallet.hotkey $WALLET_HOTKEY \
+    $EXTRA_ARGS \

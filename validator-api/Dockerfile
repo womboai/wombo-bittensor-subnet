@@ -6,6 +6,4 @@ WORKDIR /app/validator-api/
 
 RUN pip install --no-cache-dir -e .
 
-EXPOSE 8001
-
-ENTRYPOINT python -m validator_api.main
+ENTRYPOINT python -m validator_api.main $EXTRA_ARGS

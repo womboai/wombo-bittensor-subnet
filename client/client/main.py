@@ -1,4 +1,5 @@
 import asyncio
+import os
 import traceback
 from asyncio import Task
 from datetime import datetime
@@ -140,7 +141,7 @@ async def main():
         def healthcheck():
             return datetime.utcnow()
 
-        uvicorn.run(app, host="0.0.0.0")
+        uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", str(8000))))
 
 
 if __name__ == "__main__":
