@@ -6,6 +6,13 @@ docker stop wombo-validator || true
 
 ./build.sh wombo-subnet:validator
 
+function handle_sigint() {
+  docker stop wombo-validator || true
+  exit
+}
+
+trap handle_sigint SIGINT
+
 docker run \
   --network="host" \
   --env-file .env \
