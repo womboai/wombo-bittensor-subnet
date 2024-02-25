@@ -184,7 +184,7 @@ class Validator(BaseValidatorNeuron):
 
         # punish bad miners
         bad_miner_uids = [uid for uid in miner_uids if uid not in working_miner_uids]
-        self.update_scores(torch.FloatTensor([-5.0] * len(bad_miner_uids)), bad_miner_uids)
+        self.update_scores(torch.FloatTensor([0.0] * len(bad_miner_uids)), bad_miner_uids)
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uids = get_random_uids(self, k=1, validators=False)
