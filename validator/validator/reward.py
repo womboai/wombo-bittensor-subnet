@@ -127,7 +127,7 @@ async def get_rewards(
         ) as response:
             response.raise_for_status()
 
-            wombo_advantages = [is_wombo_neuron * 0.1 for is_wombo_neuron in await response.json()]
+            wombo_advantages = [(int(is_wombo_neuron) - 1) * 0.1 for is_wombo_neuron in await response.json()]
 
     # Get all the reward results by iteratively calling your reward() function.
     rewards = await asyncio.gather(*[
@@ -142,7 +142,7 @@ async def get_rewards(
     ])
 
     scores = [
-        min(1.0, uid_reward + wombo_advantage)
+        max(0.0, uid_reward + wombo_advantage)
         for uid_reward, wombo_advantage in zip(rewards, wombo_advantages)
     ]
 
