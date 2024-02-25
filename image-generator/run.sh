@@ -11,6 +11,6 @@ docker run \
   -v ~/.cache:/root/.cache \
   -v $(pwd)/cache:/app/image-generator/cache \
   -v $(pwd)/../checkpoints:/app/checkpoints \
-  -it \
+  --detach \
   --rm \
   wombo-subnet:image-generator \
