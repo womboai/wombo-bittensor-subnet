@@ -66,7 +66,7 @@ class Client:
                 except Exception as _:
                     bt.logging.error("Failed to sync validator metagraph, ", traceback.format_exc())
 
-                await asyncio.sleep(90)
+                await asyncio.sleep(30)
 
         self.periodic_metagraph_resync = asyncio.get_event_loop().create_task(resync_metagraph())
 

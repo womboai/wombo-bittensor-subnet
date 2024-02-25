@@ -52,7 +52,7 @@ def main():
             # Sync the metagraph.
             metagraph.sync(subtensor=subtensor)
 
-            await asyncio.sleep(90)
+            await asyncio.sleep(30)
 
     asyncio.get_event_loop().create_task(resync_metagraph())
 
