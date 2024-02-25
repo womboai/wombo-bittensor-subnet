@@ -230,8 +230,13 @@ class Validator(BaseValidatorNeuron):
                 return synapse
 
             self.update_scores(rewards, uids)
+        else:
+            bt.logging.error(f"Failed to query miner with {synapse.inputs} and axon {axon}, {response.dendrite}")
 
-        return synapse
+            raise HTTPException(
+                status_code=response.dendrite.status_code or status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=response.dendrite.status_message or "Failed to query miner",
+            )
 
     async def blacklist_image(
         self,
