@@ -279,6 +279,8 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Check if the metagraph axon info has changed.
         if previous_metagraph.axons == self.metagraph.axons:
+            await sync_neuron_info(self)
+
             return
 
         bt.logging.info(
