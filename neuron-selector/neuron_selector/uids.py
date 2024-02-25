@@ -16,8 +16,11 @@ async def sync_neuron_info(self):
         if self.metagraph.axons[uid].is_serving and self.metagraph.active[uid]
     ]
 
-    axons = [self.metagraph.axons[uid] for uid in uids]
-    axons = filter(lambda axon: axon.hotkey != self.wallet.hotkey.ss58_address, axons)
+    axons = [
+        self.metagraph.axons[uid]
+        for uid in uids
+        if self.metagraph.axons[uid].hotkey != self.wallet.hotkey.ss58_address
+    ]
 
     uids_by_hotkey = {axon.hotkey: uid for uid, axon in zip(uids, axons)}
 
