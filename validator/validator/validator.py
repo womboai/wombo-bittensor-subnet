@@ -175,8 +175,11 @@ class BaseValidatorNeuron(BaseNeuron):
             while True:
                 bt.logging.info(f"step({self.step}) block({self.block})")
 
-                # Run multiple forwards concurrently.
-                await self.check_miners()
+                try:
+                    # Run multiple forwards concurrently.
+                    await self.check_miners()
+                except Exception as _:
+                    bt.logging.error("Failed to forward to miners, ", traceback.format_exc())
 
                 # Sync metagraph and potentially set weights.
                 await self.sync()
@@ -186,7 +189,10 @@ class BaseValidatorNeuron(BaseNeuron):
                 await asyncio.sleep(self.config.periodic_validation_interval)
 
                 if self.should_sync_metagraph():
-                    await self.resync_metagraph()
+                    try:
+                        await self.resync_metagraph()
+                    except Exception as _:
+                        bt.logging.error("Failed to resync validator metagraph, ", traceback.format_exc())
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -244,10 +250,9 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.debug("uint_weights", uint_weights)
         bt.logging.debug("uint_uids", uint_uids)
 
-        loop = asyncio.get_running_loop()
-
         # Set the weights on chain via our subtensor connection.
-        result = await loop.run_in_executor(None, lambda: self.subtensor.set_weights(
+        result = await asyncio.to_thread(
+            self.subtensor.set_weights,
             wallet=self.wallet,
             netuid=self.config.netuid,
             uids=uint_uids,
@@ -255,7 +260,7 @@ class BaseValidatorNeuron(BaseNeuron):
             wait_for_finalization=False,
             wait_for_inclusion=True,
             version_key=self.spec_version,
-        ))
+        )
 
         if result is True:
             bt.logging.info("set_weights on chain successfully!")
@@ -275,10 +280,8 @@ class BaseValidatorNeuron(BaseNeuron):
         # Copies state of metagraph before syncing.
         previous_metagraph = copy.deepcopy(self.metagraph)
 
-        loop = asyncio.get_running_loop()
-
         # Sync the metagraph.
-        await loop.run_in_executor(None, lambda: self.metagraph.sync(subtensor=self.subtensor))
+        await asyncio.to_thread(self.metagraph.sync, subtensor=self.subtensor)
 
         # Check if the metagraph axon info has changed.
         if previous_metagraph.axons == self.metagraph.axons:

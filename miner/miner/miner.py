@@ -151,14 +151,15 @@ class BaseMinerNeuron(BaseNeuron):
             loop = asyncio.get_running_loop()
 
             # --- Set weights.
-            await loop.run_in_executor(None, lambda: self.subtensor.set_weights(
+            await asyncio.to_thread(
+                self.subtensor.set_weights,
                 wallet=self.wallet,
                 netuid=self.metagraph.netuid,
                 uids=torch.arange(0, len(chain_weights)),
                 weights=chain_weights.to("cpu"),
                 wait_for_inclusion=False,
                 version_key=self.spec_version,
-            ))
+            )
 
             bt.logging.info(f"Set weights: {chain_weights}")
         except Exception as e:
@@ -173,7 +174,5 @@ class BaseMinerNeuron(BaseNeuron):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
         bt.logging.info("resync_metagraph()")
 
-        loop = asyncio.get_running_loop()
-
         # Sync the metagraph.
-        await loop.run_in_executor(None, lambda: self.metagraph.sync(subtensor=self.subtensor))
+        await asyncio.to_thread(self.metagraph.sync, subtensor=self.subtensor)
