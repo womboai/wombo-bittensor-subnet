@@ -16,6 +16,7 @@
 # DEALINGS IN THE SOFTWARE.
 
 import copy
+import traceback
 
 import bittensor as bt
 
@@ -117,10 +118,13 @@ class BaseNeuron(ABC):
         # Ensure miner or validator hotkey is still registered on the network.
         self.check_registered()
 
-        await self.resync_metagraph()
+        try:
+            await self.resync_metagraph()
 
-        if self.should_set_weights():
-            await self.set_weights()
+            if self.should_set_weights():
+                await self.set_weights()
+        except Exception as _:
+            bt.logging.error("Failed to sync neuron, ", traceback.format_exc())
 
     def check_registered(self):
         # --- Check for registration.

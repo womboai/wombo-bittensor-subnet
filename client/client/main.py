@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from asyncio import Task
 from datetime import datetime
 from typing import List, Optional, Annotated
@@ -50,6 +51,7 @@ class Client:
         self.metagraph.sync(subtensor=self.subtensor)
 
         self.periodic_metagraph_resync: Task
+        self.neuron_info = {}
 
     async def __aenter__(self):
         async def resync_metagraph():
@@ -57,9 +59,12 @@ class Client:
                 """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
                 bt.logging.info("resync_metagraph()")
 
-                # Sync the metagraph.
-                self.metagraph.sync(subtensor=self.subtensor)
-                await sync_neuron_info(self)
+                try:
+                    # Sync the metagraph.
+                    self.metagraph.sync(subtensor=self.subtensor)
+                    await sync_neuron_info(self)
+                except Exception as _:
+                    bt.logging.error("Failed to sync validator metagraph, ", traceback.format_exc())
 
                 await asyncio.sleep(90)
 

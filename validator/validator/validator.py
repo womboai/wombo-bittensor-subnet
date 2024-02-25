@@ -19,6 +19,7 @@
 
 import copy
 import threading
+import traceback
 from abc import abstractmethod
 
 import torch
@@ -56,6 +57,8 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Serve axon to enable external connections.
         self.serve_axon()
+
+        self.neuron_info = {}
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
