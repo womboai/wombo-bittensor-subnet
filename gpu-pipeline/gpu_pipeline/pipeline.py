@@ -66,7 +66,7 @@ def parse_input_parameters(
     return selected_pipeline, input_kwargs
 
 
-def ensure_file_at_path(path: str, url: str) -> Path:
+def ensure_file_at_path(path: str, url: str) -> str:
     full_path = Path(__file__).parent.parent / "checkpoints" / path
 
     if not os.path.exists(full_path):
@@ -79,17 +79,17 @@ def ensure_file_at_path(path: str, url: str) -> Path:
             with open(path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-    return full_path
+    return str(full_path)
 
 
-def get_model_path() -> Path:
+def get_model_path() -> str:
     return ensure_file_at_path(
         path="newdreamxl_v10.safetensors",
         url="https://civitai.com/api/download/models/173961",
     )
 
 
-def get_tao_lora_path() -> Path:
+def get_tao_lora_path() -> str:
     return ensure_file_at_path(
         path="bittensor_tao_lora.safetensors",
         url="https://d3j730xi5ph1dq.cloudfront.net/checkpoints/bittensor_tao_lora.safetensors",
