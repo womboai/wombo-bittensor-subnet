@@ -30,10 +30,10 @@ from tensor.protocol import ImageGenerationSynapse
 def select_endpoint(config: str, network: str, dev: str, prod: str) -> str:
     if config:
         return config
-    elif network == "finney":
-        return prod
-    else:
+    elif network == "test":
         return dev
+    else:
+        return prod
 
 
 async def reward(
