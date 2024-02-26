@@ -43,7 +43,7 @@ setup(
     python_requires=">=3.10",
     install_requires=[
         "wombo-bittensor-subnet-gpu-pipeline",
-        "bittensor==6.8.1",
+        "bittensor==6.7.1",
         "python-multipart==0.0.7",
     ],
     classifiers=[
