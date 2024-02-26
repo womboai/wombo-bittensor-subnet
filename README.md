@@ -16,7 +16,7 @@ Set the python packages up
 
 ```bash
 cd image-generator
-./setup.py
+./setup.sh
 ```
 
 Then run with PM2
@@ -47,7 +47,7 @@ Set the python packages up
 
 ```bash
 cd miner
-./setup.py
+./setup.sh
 ```
 
 Then run with PM2, replacing the arguments 
@@ -85,7 +85,7 @@ Set the python packages up
 
 ```bash
 cd validator
-./setup.py
+./setup.sh
 ```
 
 Then run with PM2, replacing the arguments 
