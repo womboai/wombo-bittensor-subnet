@@ -21,7 +21,7 @@ cd image-generator
 
 Then run with PM2
 ```bash
-pm2 run.sh --name wombo-image-generator --interpreter bash
+pm2 start run.sh --name wombo-image-generator --interpreter bash
 ```
 
 #### Docker
@@ -52,7 +52,7 @@ cd miner
 
 Then run with PM2, replacing the arguments 
 ```bash
-pm2 run.sh --name wombo-miner --interpreter bash -- \
+pm2 start run.sh --name wombo-miner --interpreter bash -- \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey} \
