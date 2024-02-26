@@ -46,7 +46,7 @@ To set the miner neuron up,
 Set the python packages up
 
 ```bash
-cd image-generator
+cd miner
 ./setup.py
 ```
 
