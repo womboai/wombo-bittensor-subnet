@@ -4,14 +4,7 @@ set -e
 
 docker stop wombo-validator || true
 
-./build.sh wombo-subnet:validator
-
-function handle_sigint() {
-  docker stop wombo-validator || true
-  exit
-}
-
-trap handle_sigint SIGINT
+./build_docker.sh wombo-subnet:validator
 
 docker run \
   --network="host" \
@@ -20,6 +13,14 @@ docker run \
   --rm \
   --name wombo-validator \
   wombo-subnet:validator &
+
+function handle_sigint() {
+  echo "Stopping validator"
+  docker stop wombo-validator
+  exit
+}
+
+trap handle_sigint SIGINT
 
 while true; do
   sleep 1800
@@ -46,7 +47,7 @@ while true; do
     docker image prune -f
   fi
 
-  ./build.sh wombo-subnet:validator
+  ./build_docker.sh wombo-subnet:validator
 
   docker run \
     --network="host" \
