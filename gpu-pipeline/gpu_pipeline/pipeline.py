@@ -1,6 +1,8 @@
 from asyncio import Semaphore
 from collections import namedtuple
 import os
+from pathlib import Path
+
 from PIL import Image
 import re
 import requests
@@ -64,28 +66,30 @@ def parse_input_parameters(
     return selected_pipeline, input_kwargs
 
 
-def ensure_file_at_path(path: str, url: str) -> str:
-    if not os.path.exists(path):
-        parent_dir = os.path.dirname(path)
+def ensure_file_at_path(path: str, url: str) -> Path:
+    full_path = Path(__file__).parent / path
+
+    if not os.path.exists(full_path):
+        parent_dir = os.path.dirname(full_path)
         if parent_dir:
             os.makedirs(parent_dir, exist_ok=True)
-        print(f"Downloading {url} to {path}")
+        print(f"Downloading {url} to {full_path}")
         with requests.get(url, stream=True) as response:
             response.raise_for_status()
             with open(path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-    return path
+    return full_path
 
 
-def get_model_path() -> str:
+def get_model_path() -> Path:
     return ensure_file_at_path(
         path="../checkpoints/newdreamxl_v10.safetensors",
         url="https://civitai.com/api/download/models/173961",
     )
 
 
-def get_tao_lora_path() -> str:
+def get_tao_lora_path() -> Path:
     return ensure_file_at_path(
         path="../checkpoints/bittensor_tao_lora.safetensors",
         url="https://d3j730xi5ph1dq.cloudfront.net/checkpoints/bittensor_tao_lora.safetensors",
