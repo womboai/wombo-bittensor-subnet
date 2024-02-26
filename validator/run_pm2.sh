@@ -2,7 +2,7 @@
 
 set -e
 
-pm2 stop wombo-validator
+pm2 stop wombo-validator || true
 
 ./setup.sh
 
