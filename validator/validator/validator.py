@@ -18,7 +18,6 @@
 
 
 import copy
-import threading
 import traceback
 from abc import abstractmethod
 
@@ -26,13 +25,11 @@ import torch
 import asyncio
 import bittensor as bt
 
-import random
 from typing import List
 from traceback import print_exception
 
 from neuron.neuron import BaseNeuron
 from tensor.config import add_args
-from tensor.protocol import NeuronInfoSynapse
 from neuron_selector.uids import sync_neuron_info
 
 
@@ -54,6 +51,8 @@ class BaseValidatorNeuron(BaseNeuron):
         # Set up initial scoring weights for validation
         bt.logging.info("Building validation weights.")
         self.scores = torch.zeros_like(self.metagraph.S, dtype=torch.float32)
+
+        self.loop = asyncio.get_event_loop()
 
         # Serve axon to enable external connections.
         self.serve_axon()
@@ -112,13 +111,6 @@ class BaseValidatorNeuron(BaseNeuron):
         )
 
         parser.add_argument(
-            "--periodic_validation_interval",
-            type=float,
-            help="The maximum amount of time(in seconds) between periodic validation",
-            default=30.0,
-        )
-
-        parser.add_argument(
             "--neuron.sample_size",
             type=int,
             help="The number of miners to query in a single step.",
@@ -139,7 +131,7 @@ class BaseValidatorNeuron(BaseNeuron):
             default=0.05,
         )
 
-    async def run(self):
+    def run(self):
         """
         Initiates and manages the main loop for the miner on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
 
@@ -160,7 +152,7 @@ class BaseValidatorNeuron(BaseNeuron):
         """
 
         # Check that validator is registered on the network.
-        await self.sync()
+        self.sync()
 
         self.axon.start()
 
@@ -176,23 +168,14 @@ class BaseValidatorNeuron(BaseNeuron):
                 bt.logging.info(f"step({self.step}) block({self.block})")
 
                 try:
-                    # Run multiple forwards concurrently.
-                    await self.check_miners()
+                    self.loop.run_until_complete(self.check_miners())
                 except Exception as _:
                     bt.logging.error("Failed to forward to miners, ", traceback.format_exc())
 
                 # Sync metagraph and potentially set weights.
-                await self.sync()
+                self.sync()
 
                 self.step += 1
-
-                await asyncio.sleep(self.config.periodic_validation_interval)
-
-                if self.should_sync_metagraph():
-                    try:
-                        await self.resync_metagraph()
-                    except Exception as _:
-                        bt.logging.error("Failed to resync validator metagraph, ", traceback.format_exc())
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -207,7 +190,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 print_exception(type(err), err, err.__traceback__)
             )
 
-    async def set_weights(self):
+    def set_weights(self):
         """
         Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miners. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
         """
@@ -251,18 +234,14 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.debug("uint_uids", uint_uids)
 
         # Set the weights on chain via our subtensor connection.
-        result = await asyncio.wait_for(
-            asyncio.to_thread(
-                self.subtensor.set_weights,
-                wallet=self.wallet,
-                netuid=self.config.netuid,
-                uids=uint_uids,
-                weights=uint_weights,
-                wait_for_finalization=False,
-                wait_for_inclusion=True,
-                version_key=self.spec_version,
-            ),
-            self.config.periodic_validation_interval,
+        result = self.subtensor.set_weights(
+            wallet=self.wallet,
+            netuid=self.config.netuid,
+            uids=uint_uids,
+            weights=uint_weights,
+            wait_for_finalization=False,
+            wait_for_inclusion=True,
+            version_key=self.spec_version,
         )
 
         if result is True:
@@ -270,10 +249,10 @@ class BaseValidatorNeuron(BaseNeuron):
         else:
             bt.logging.error("set_weights failed")
 
-    async def resync_metagraph(self):
+    def resync_metagraph(self):
         if not self.should_sync_metagraph():
             if self.step == 0:
-                await sync_neuron_info(self)
+                self.loop.run_until_complete(sync_neuron_info(self))
 
             return
 
@@ -284,11 +263,11 @@ class BaseValidatorNeuron(BaseNeuron):
         previous_metagraph = copy.deepcopy(self.metagraph)
 
         # Sync the metagraph.
-        await asyncio.to_thread(self.metagraph.sync, subtensor=self.subtensor)
+        self.metagraph.sync(subtensor=self.subtensor)
 
         # Check if the metagraph axon info has changed.
         if previous_metagraph.axons == self.metagraph.axons:
-            await sync_neuron_info(self)
+            self.loop.run_until_complete(sync_neuron_info(self))
 
             return
 
@@ -314,7 +293,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
-        await sync_neuron_info(self)
+        self.loop.run_until_complete(sync_neuron_info(self))
 
     def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""

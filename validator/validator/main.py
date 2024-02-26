@@ -18,7 +18,6 @@
 
 
 import random
-import asyncio
 import base64
 from typing import List, Tuple
 from PIL import Image
@@ -273,10 +272,10 @@ class Validator(BaseValidatorNeuron):
         return False, "Hotkey recognized!"
 
 
-async def main():
-    await Validator().run()
+def main():
+    Validator().run()
 
 
 # The main function parses the configuration and runs the validator.
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

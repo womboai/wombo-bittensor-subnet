@@ -179,10 +179,10 @@ class Miner(BaseMinerNeuron):
         return prirority
 
 
-async def main():
-    await Miner().run()
+def main():
+    Miner().run()
 
 
 # This is the main function, which runs the miner.
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

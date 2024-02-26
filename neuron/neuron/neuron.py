@@ -100,18 +100,14 @@ class BaseNeuron(ABC):
         self.step = 0
 
     @abstractmethod
-    def run(self):
+    def resync_metagraph(self):
         ...
 
     @abstractmethod
-    async def resync_metagraph(self):
+    def set_weights(self):
         ...
 
-    @abstractmethod
-    async def set_weights(self):
-        ...
-
-    async def sync(self):
+    def sync(self):
         """
         Wrapper for synchronizing the state of the network for the given miner or validator.
         """
@@ -119,10 +115,10 @@ class BaseNeuron(ABC):
         self.check_registered()
 
         try:
-            await self.resync_metagraph()
+            self.resync_metagraph()
 
             if self.should_set_weights():
-                await self.set_weights()
+                self.set_weights()
         except Exception as _:
             bt.logging.error("Failed to sync neuron, ", traceback.format_exc())
 

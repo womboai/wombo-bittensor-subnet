@@ -15,8 +15,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import time
 import torch
-import asyncio
 import traceback
 
 import bittensor as bt
@@ -71,7 +71,7 @@ class BaseMinerNeuron(BaseNeuron):
             default=False,
         )
 
-    async def run(self):
+    def run(self):
         """
         Initiates and manages the main loop for the miner on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
 
@@ -95,7 +95,7 @@ class BaseMinerNeuron(BaseNeuron):
         """
 
         # Check that miner is registered on the network.
-        await self.sync()
+        self.sync()
 
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
@@ -117,10 +117,10 @@ class BaseMinerNeuron(BaseNeuron):
                     < self.config.neuron.epoch_length
                 ):
                     # Wait before checking again.
-                    await asyncio.sleep(1)
+                    time.sleep(1)
 
                 # Sync metagraph and potentially set weights.
-                await self.sync()
+                self.sync()
                 self.step += 1
 
         # If someone intentionally stops the miner, it'll safely terminate operations.
@@ -133,7 +133,7 @@ class BaseMinerNeuron(BaseNeuron):
         except Exception as e:
             bt.logging.error(traceback.format_exc())
 
-    async def set_weights(self):
+    def set_weights(self):
         """
         Self-assigns a weight of 1 to the current miner (identified by its UID) and
         a weight of 0 to all other peers in the network. The weights determine the trust level the miner assigns to other nodes on the network.
@@ -148,11 +148,8 @@ class BaseMinerNeuron(BaseNeuron):
             )
             chain_weights[self.uid] = 1
 
-            loop = asyncio.get_running_loop()
-
             # --- Set weights.
-            await asyncio.to_thread(
-                self.subtensor.set_weights,
+            self.subtensor.set_weights(
                 wallet=self.wallet,
                 netuid=self.metagraph.netuid,
                 uids=torch.arange(0, len(chain_weights)),
@@ -167,7 +164,7 @@ class BaseMinerNeuron(BaseNeuron):
                 f"Failed to set weights on chain with exception: { e }"
             )
 
-    async def resync_metagraph(self):
+    def resync_metagraph(self):
         if not self.should_sync_metagraph():
             return
 
@@ -175,4 +172,4 @@ class BaseMinerNeuron(BaseNeuron):
         bt.logging.info("resync_metagraph()")
 
         # Sync the metagraph.
-        await asyncio.to_thread(self.metagraph.sync, subtensor=self.subtensor)
+        self.metagraph.sync(subtensor=self.subtensor)
