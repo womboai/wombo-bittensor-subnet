@@ -8,14 +8,6 @@ pm2 stop wombo-validator || true
 
 pm2 start venv/bin/python --name wombo-validator -- -m validator.main $@
 
-function handle_sigint() {
-  echo "Stopping validator"
-  docker stop wombo-validator
-  exit
-}
-
-trap handle_sigint SIGINT
-
 while true; do
   sleep 1800
 
