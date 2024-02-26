@@ -93,8 +93,6 @@ class Validator(BaseValidatorNeuron):
 
         bt.logging.info(f"Axon created: {self.axon}")
 
-        self.sync()
-
         bt.logging.info("load_state()")
         self.load_state()
 

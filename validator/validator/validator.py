@@ -18,6 +18,7 @@
 
 
 import copy
+import os.path
 import traceback
 from abc import abstractmethod
 
@@ -337,8 +338,13 @@ class BaseValidatorNeuron(BaseNeuron):
         """Loads the state of the validator from a file."""
         bt.logging.info("Loading validator state.")
 
+        path = self.config.neuron.full_path + "/state.pt"
+
+        if not os.path.isfile(path):
+            return
+
         # Load the state of the validator from file.
-        state = torch.load(self.config.neuron.full_path + "/state.pt")
+        state = torch.load(path)
         self.step = state["step"]
         self.scores = state["scores"]
         self.hotkeys = state["hotkeys"]
