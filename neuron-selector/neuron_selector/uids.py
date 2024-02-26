@@ -13,7 +13,7 @@ async def sync_neuron_info(self):
     uids = [
         uid
         for uid in range(self.metagraph.n.item())
-        if self.metagraph.axons[uid].is_serving and self.metagraph.active[uid]
+        if self.metagraph.axons[uid].is_serving
     ]
 
     axons = [
@@ -57,10 +57,7 @@ def get_random_uids(
     available_uids = [
         uid
         for uid in range(self.metagraph.n.item())
-        if (
-                self.metagraph.active[uid] and
-                self.metagraph.axons[uid].is_serving
-        )
+        if self.metagraph.axons[uid].is_serving
     ]
 
     infos = {
