@@ -133,6 +133,12 @@ class BaseMinerNeuron(BaseNeuron):
         except Exception as e:
             bt.logging.error(traceback.format_exc())
 
+    def save_state(self):
+        return
+
+    def load_state(self):
+        return
+
     def set_weights(self):
         """
         Self-assigns a weight of 1 to the current miner (identified by its UID) and

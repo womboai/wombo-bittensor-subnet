@@ -122,6 +122,9 @@ class BaseNeuron(ABC):
         except Exception as _:
             bt.logging.error("Failed to sync neuron, ", traceback.format_exc())
 
+        # Always save state.
+        self.save_state()
+
     def check_registered(self):
         # --- Check for registration.
         if not self.subtensor.is_hotkey_registered(
@@ -155,3 +158,13 @@ class BaseNeuron(ABC):
         return (
             self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length
+
+    def save_state(self):
+        bt.logging.warning(
+            "save_state() not implemented for this neuron. You can implement this function to save model checkpoints or other useful data."
+        )
+
+    def load_state(self):
+        bt.logging.warning(
+            "load_state() not implemented for this neuron. You can implement this function to load model checkpoints or other useful data."
+        )

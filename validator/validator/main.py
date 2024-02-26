@@ -93,6 +93,9 @@ class Validator(BaseValidatorNeuron):
 
         bt.logging.info(f"Axon created: {self.axon}")
 
+        bt.logging.info("load_state()")
+        self.load_state()
+
     async def check_miners(self):
         """
         Validator forward pass, called by the validator every time step. Consists of:
