@@ -251,15 +251,18 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.debug("uint_uids", uint_uids)
 
         # Set the weights on chain via our subtensor connection.
-        result = await asyncio.to_thread(
-            self.subtensor.set_weights,
-            wallet=self.wallet,
-            netuid=self.config.netuid,
-            uids=uint_uids,
-            weights=uint_weights,
-            wait_for_finalization=False,
-            wait_for_inclusion=True,
-            version_key=self.spec_version,
+        result = await asyncio.wait_for(
+            asyncio.to_thread(
+                self.subtensor.set_weights,
+                wallet=self.wallet,
+                netuid=self.config.netuid,
+                uids=uint_uids,
+                weights=uint_weights,
+                wait_for_finalization=False,
+                wait_for_inclusion=True,
+                version_key=self.spec_version,
+            ),
+            self.config.periodic_validation_interval,
         )
 
         if result is True:
