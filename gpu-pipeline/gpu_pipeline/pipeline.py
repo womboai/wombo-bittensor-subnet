@@ -67,7 +67,7 @@ def parse_input_parameters(
 
 
 def ensure_file_at_path(path: str, url: str) -> Path:
-    full_path = Path(__file__).parent / path
+    full_path = Path(__file__).parent.parent / "checkpoints" / path
 
     if not os.path.exists(full_path):
         parent_dir = os.path.dirname(full_path)
@@ -84,14 +84,14 @@ def ensure_file_at_path(path: str, url: str) -> Path:
 
 def get_model_path() -> Path:
     return ensure_file_at_path(
-        path="../checkpoints/newdreamxl_v10.safetensors",
+        path="newdreamxl_v10.safetensors",
         url="https://civitai.com/api/download/models/173961",
     )
 
 
 def get_tao_lora_path() -> Path:
     return ensure_file_at_path(
-        path="../checkpoints/bittensor_tao_lora.safetensors",
+        path="bittensor_tao_lora.safetensors",
         url="https://d3j730xi5ph1dq.cloudfront.net/checkpoints/bittensor_tao_lora.safetensors",
     )
 
