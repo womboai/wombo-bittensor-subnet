@@ -70,15 +70,14 @@ def ensure_file_at_path(path: str, url: str) -> str:
     full_path = Path(__file__).parent.parent / "checkpoints" / path
 
     if not os.path.exists(full_path):
-        parent_dir = os.path.dirname(full_path)
-        if parent_dir:
-            os.makedirs(parent_dir, exist_ok=True)
+        full_path.parent.mkdir(parents=True, exist_ok=True)
         print(f"Downloading {url} to {full_path}")
         with requests.get(url, stream=True) as response:
             response.raise_for_status()
-            with open(path, "wb") as f:
+            with open(full_path, "wb") as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
+
     return str(full_path)
 
 
