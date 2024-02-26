@@ -67,7 +67,7 @@ def parse_input_parameters(
 
 
 def ensure_file_at_path(path: str, url: str) -> str:
-    full_path = Path(__file__).parent.parent / "checkpoints" / path
+    full_path = Path(__file__).parent.parent.parent / "checkpoints" / path
 
     if not os.path.exists(full_path):
         full_path.parent.mkdir(parents=True, exist_ok=True)
