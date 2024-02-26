@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 python3 -m venv venv
 
 venv/bin/pip install -e ../image-generation-protocol
