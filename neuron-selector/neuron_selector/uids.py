@@ -98,6 +98,10 @@ def get_oldest_uids(
         if self.metagraph.axons[uid].is_serving
     ]
 
+    random.shuffle(all_uids)
+    # if this is not randomized, every new validator will have the same mining order upon first launch,
+    # which would likely perpetuate the problem this function solves
+
     infos = {
         uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
         for uid in all_uids
