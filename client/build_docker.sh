@@ -2,5 +2,5 @@
 
 set -e
 
-docker build -f ../tensor/Dockerfile -t wombo-subnet:tensor ../
-docker build -f ${2}Dockerfile -t $1 ../
+docker build --network=host -f ../tensor/Dockerfile -t wombo-subnet:tensor ../
+docker build --network=host -f ${2}Dockerfile -t $1 ../

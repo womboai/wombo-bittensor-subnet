@@ -2,5 +2,5 @@
 
 set -e
 
-docker build -f ../gpu-pipeline/Dockerfile -t wombo-subnet:gpu-pipeline ../
-docker build -f Dockerfile -t $1 ../
+docker build --network=host -f ../gpu-pipeline/Dockerfile -t wombo-subnet:gpu-pipeline ../
+docker build --network=host -f Dockerfile -t $1 ../
