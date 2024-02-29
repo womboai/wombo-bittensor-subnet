@@ -1,13 +1,16 @@
+import heapdict
 import torch
 import random
 import bittensor
 from typing import List
+from datetime import datetime
+
 
 from tensor.protocol import NeuronInfoSynapse
 
 
 DEFAULT_NEURON_INFO = NeuronInfoSynapse()
-
+uid_distribution_heapdict = heapdict.heapdict()
 
 async def sync_neuron_info(self):
     uids = [
@@ -75,3 +78,51 @@ def get_random_uids(
 
     uids = torch.tensor(random.sample(available_uids, min(k, len(available_uids))))
     return uids
+
+
+def get_oldest_uids(
+    self,
+    k: int,
+    validators: bool,
+) -> torch.LongTensor:
+    if validators:
+        def validator_condition(uid: int, info: NeuronInfoSynapse) -> bool:
+            return info.is_validator and self.metagraph.validator_permit[uid]
+    else:
+        def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
+            return info.is_validator is False
+
+    all_uids = [
+        uid
+        for uid in range(self.metagraph.n.item())
+        if self.metagraph.axons[uid].is_serving
+    ]
+
+    infos = {
+        uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
+        for uid in all_uids
+    }
+
+    all_uids = [
+        uid
+        for uid in all_uids
+        if validator_condition(uid, infos[uid])
+    ]
+
+    for uid in all_uids:
+        if uid not in uid_distribution_heapdict:
+            uid_distribution_heapdict[uid] = 0
+
+    uids = torch.tensor(
+        get_n_lowest_values(uid_distribution_heapdict, k)
+    )
+    return uids
+
+
+def get_n_lowest_values(heapdict: heapdict.heapdict, n):
+    lowest_values = []
+    for _ in range(min(n, len(heapdict))):
+        key, value = heapdict.popitem()
+        lowest_values.append((key, value))
+        heapdict[key] = int(datetime.utcnow().timestamp())
+    return lowest_values
