@@ -99,7 +99,7 @@ def get_oldest_uids(
     ]
 
     random.shuffle(all_uids)
-    # if this is not randomized, every new validator will have the same mining order upon first launch,
+    # if this is not randomized, every new validator will have the same mining order in their heap upon first launch,
     # which would likely perpetuate the problem this function solves
 
     infos = {
