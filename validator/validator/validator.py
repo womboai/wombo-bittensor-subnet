@@ -22,6 +22,7 @@ import os.path
 import traceback
 from abc import abstractmethod
 
+import heapdict
 import torch
 import asyncio
 import bittensor as bt
@@ -59,6 +60,8 @@ class BaseValidatorNeuron(BaseNeuron):
         self.serve_axon()
 
         self.neuron_info = {}
+
+        self.miner_heap = heapdict.heapdict()
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
@@ -330,6 +333,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 "step": self.step,
                 "scores": self.scores,
                 "hotkeys": self.hotkeys,
+                "miner_heap": self.miner_heap,
             },
             self.config.neuron.full_path + "/state.pt",
         )
@@ -348,3 +352,4 @@ class BaseValidatorNeuron(BaseNeuron):
         self.step = state["step"]
         self.scores = state["scores"]
         self.hotkeys = state["hotkeys"]
+        self.miner_heap = state["miner_heap"]

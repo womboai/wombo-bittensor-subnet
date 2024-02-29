@@ -10,7 +10,6 @@ from tensor.protocol import NeuronInfoSynapse
 
 
 DEFAULT_NEURON_INFO = NeuronInfoSynapse()
-uid_distribution_heapdict = heapdict.heapdict()
 
 async def sync_neuron_info(self):
     uids = [
@@ -114,11 +113,11 @@ def get_oldest_uids(
     ]
 
     for uid in all_uids:
-        if uid not in uid_distribution_heapdict:
-            uid_distribution_heapdict[uid] = 0
+        if uid not in self.miner_heap:
+            self.miner_heap[uid] = 0
 
     uids = torch.tensor(
-        get_n_lowest_values(uid_distribution_heapdict, k)
+        get_n_lowest_values(self.miner_heap, k)
     )
     return uids
 
