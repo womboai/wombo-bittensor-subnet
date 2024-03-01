@@ -93,37 +93,35 @@ def get_oldest_uids(
         def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
             return info.is_validator is False
 
-    all_uids_and_hotkeys_dict = OrderedDict(
-        (self.metagraph.axons[uid].hotkey, uid)
+    all_uids_and_hotkeys_dict = {
+        self.metagraph.axons[uid].hotkey: uid
         for uid in range(self.metagraph.n.item())
         if self.metagraph.axons[uid].is_serving
-    )
+    }
+
     hotkeys = list(all_uids_and_hotkeys_dict.keys())
     random.shuffle(hotkeys)
-    for hotkey in hotkeys:
-        all_uids_and_hotkeys_dict.move_to_end(hotkey)
+    shuffled_miner_dict = {hotkey: all_uids_and_hotkeys_dict[hotkey] for hotkey in hotkeys}
     # if this is not randomized, every new validator will have the same mining order in their heap upon first launch,
     # which would likely perpetuate the problem this function solves
 
     infos = {
         uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
-        for uid in all_uids_and_hotkeys_dict.values()
+        for uid in shuffled_miner_dict.values()
     }
-
-    pruned_uids_and_hotkeys = OrderedDict(
-        (hotkey, uid) for hotkey, uid in all_uids_and_hotkeys_dict.items() if not validator_condition(uid, infos[uid])
-    )
+    for hotkey, uid in shuffled_miner_dict.items():
+        shuffled_miner_dict.pop(hotkey) if not validator_condition(uid, infos[uid]) else None
 
     for hotkey, value in self.miner_heap.items():
-        if hotkey not in [hk for hk in pruned_uids_and_hotkeys.keys()]:
+        if hotkey not in [hk for hk in shuffled_miner_dict.keys()]:
             self.miner_heap.pop(hotkey)
 
-    for hotkey in pruned_uids_and_hotkeys.keys():
+    for hotkey in shuffled_miner_dict.keys():
         if hotkey not in self.miner_heap:
             self.miner_heap[hotkey] = 0
 
     uids = torch.tensor(
-        pruned_uids_and_hotkeys[hotkey] for hotkey in get_n_lowest_values(self.miner_heap, k)
+        shuffled_miner_dict[hotkey] for hotkey in get_n_lowest_values(self.miner_heap, k)
     )
     return uids
 
