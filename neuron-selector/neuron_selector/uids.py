@@ -112,7 +112,7 @@ def get_oldest_uids(
     for hotkey, uid in shuffled_miner_dict.items():
         shuffled_miner_dict.pop(hotkey) if not validator_condition(uid, infos[uid]) else None
 
-    for hotkey, value in self.miner_heap.items():
+    for hotkey, value in list(self.miner_heap.items()):
         if hotkey not in [hk for hk in shuffled_miner_dict.keys()]:
             self.miner_heap.pop(hotkey)
 
@@ -126,10 +126,10 @@ def get_oldest_uids(
     return uids
 
 
-def get_n_lowest_values(heapdict: heapdict.heapdict, n):
+def get_n_lowest_values(heap_dict: heapdict.heapdict, n):
     lowest_values = []
-    for _ in range(min(n, len(heapdict))):
-        hotkey, ts = heapdict.popitem()
+    for _ in range(min(n, len(heap_dict))):
+        hotkey, ts = heap_dict.popitem()
         lowest_values.append(hotkey)
-        heapdict[hotkey] = int(datetime.utcnow().timestamp())
+        heap_dict[hotkey] = int(datetime.utcnow().timestamp())
     return lowest_values
