@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 import heapdict
 import torch
 import random
@@ -91,37 +93,37 @@ def get_oldest_uids(
         def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
             return info.is_validator is False
 
-    all_uids_and_hotkeys = [
-        (uid, self.metagraph.axons[uid].hotkey)
+    all_uids_and_hotkeys_dict = OrderedDict(
+        (self.metagraph.axons[uid].hotkey, uid)
         for uid in range(self.metagraph.n.item())
         if self.metagraph.axons[uid].is_serving
-    ]
-
-    random.shuffle(all_uids_and_hotkeys)
+    )
+    hotkeys = list(all_uids_and_hotkeys_dict.keys())
+    random.shuffle(hotkeys)
+    for hotkey in hotkeys:
+        
     # if this is not randomized, every new validator will have the same mining order in their heap upon first launch,
     # which would likely perpetuate the problem this function solves
 
     infos = {
         uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
-        for uid, hotkey in all_uids_and_hotkeys
+        for hotkey, uid in all_uids_and_hotkeys_dict.items()
     }
 
-    all_uids_and_hotkeys = [
-        uid
-        for uid, hotkey in all_uids_and_hotkeys
-        if validator_condition(uid, infos[uid])
-    ]
+    pruned_uids_and_hotkeys = OrderedDict(
+        (hotkey, uid) for hotkey, uid in all_uids_and_hotkeys_ordered.items() if not validator_condition(uid, infos[uid])
+    )
 
     for hotkey, value in self.miner_heap.items():
-        if hotkey not in [hk for uid, hk in all_uids_and_hotkeys]:
+        if hotkey not in [hk for hk in hotkey_to_uid_dict.keys()]:
             self.miner_heap.pop(hotkey)
 
-    for uid, hotkey in all_uids_and_hotkeys:
+    for hotkey in hotkey_to_uid_dict.keys():
         if hotkey not in self.miner_heap:
             self.miner_heap[hotkey] = 0
 
     uids = torch.tensor(
-        get_n_lowest_values(self.miner_heap, k)
+        hotkey_to_uid_dict[hotkey] for hotkey in get_n_lowest_values(self.miner_heap, k)
     )
     return uids
 
@@ -129,7 +131,7 @@ def get_oldest_uids(
 def get_n_lowest_values(heapdict: heapdict.heapdict, n):
     lowest_values = []
     for _ in range(min(n, len(heapdict))):
-        key, value = heapdict.popitem()
-        lowest_values.append((key, value))
-        heapdict[key] = int(datetime.utcnow().timestamp())
+        hotkey, ts = heapdict.popitem()
+        lowest_values.append(hotkey)
+        heapdict[hotkey] = int(datetime.utcnow().timestamp())
     return lowest_values
