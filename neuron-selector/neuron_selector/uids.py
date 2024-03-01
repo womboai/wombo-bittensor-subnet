@@ -7,7 +7,7 @@ from datetime import datetime
 
 
 from tensor.protocol import NeuronInfoSynapse
-
+from validator.validator.main import Validator
 
 DEFAULT_NEURON_INFO = NeuronInfoSynapse()
 
@@ -80,7 +80,7 @@ def get_random_uids(
 
 
 def get_oldest_uids(
-    self,
+    self: Validator,
     k: int,
     validators: bool,
 ) -> torch.LongTensor:
@@ -91,30 +91,34 @@ def get_oldest_uids(
         def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
             return info.is_validator is False
 
-    all_uids = [
-        uid
+    all_uids_and_hotkeys = [
+        (uid, self.metagraph.axons[uid].hotkey)
         for uid in range(self.metagraph.n.item())
         if self.metagraph.axons[uid].is_serving
     ]
 
-    random.shuffle(all_uids)
+    random.shuffle(all_uids_and_hotkeys)
     # if this is not randomized, every new validator will have the same mining order in their heap upon first launch,
     # which would likely perpetuate the problem this function solves
 
     infos = {
         uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
-        for uid in all_uids
+        for uid, hotkey in all_uids_and_hotkeys
     }
 
-    all_uids = [
+    all_uids_and_hotkeys = [
         uid
-        for uid in all_uids
+        for uid, hotkey in all_uids_and_hotkeys
         if validator_condition(uid, infos[uid])
     ]
 
-    for uid in all_uids:
-        if uid not in self.miner_heap:
-            self.miner_heap[uid] = 0
+    for hotkey, value in self.miner_heap.items():
+        if hotkey not in [hk for uid, hk in all_uids_and_hotkeys]:
+            self.miner_heap.pop(hotkey)
+
+    for uid, hotkey in all_uids_and_hotkeys:
+        if hotkey not in self.miner_heap:
+            self.miner_heap[hotkey] = 0
 
     uids = torch.tensor(
         get_n_lowest_values(self.miner_heap, k)
