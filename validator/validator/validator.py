@@ -297,10 +297,6 @@ class BaseValidatorNeuron(BaseNeuron):
         self.loop.run_until_complete(sync_neuron_info(self))
 
     def sync(self):
-        """
-        Wrapper for synchronizing the state of the network for the given miner or validator.
-        """
-        # Ensure miner or validator hotkey is still registered on the network.
         super().sync()
 
         try:
