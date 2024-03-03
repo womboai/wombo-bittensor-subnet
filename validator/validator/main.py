@@ -151,15 +151,19 @@ class Validator(BaseValidatorNeuron):
                 timeout=CLIENT_REQUEST_TIMEOUT,
             )
 
-        working_miner_uids = []
-        finished_responses = []
+        working_miner_uids: List[int] = []
+        finished_responses: List[ImageGenerationSynapse] = []
+
+        axon_uids = {
+            axon.hotkey: uid.item()
+            for uid, axon in zip(miner_uids, axons)
+        }
 
         for response in responses:
             if not response.output or not response.axon or not response.axon.hotkey:
                 continue
 
-            uid = [uid for uid, axon in zip(miner_uids, axons) if axon.hotkey == response.axon.hotkey][0]
-            working_miner_uids.append(uid)
+            working_miner_uids.append(axon_uids[response.axon.hotkey])
             finished_responses.append(response)
 
         # Log the results for monitoring purposes.
@@ -173,7 +177,7 @@ class Validator(BaseValidatorNeuron):
             rewards = await get_rewards(
                 self,
                 query=inputs,
-                uids=[uid.item() for uid in working_miner_uids],
+                uids=working_miner_uids,
                 responses=finished_responses,
             )
         except Exception as e:
@@ -183,10 +187,6 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info(f"Scored responses: {rewards}")
         # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
         self.update_scores(rewards, working_miner_uids)
-
-        # punish bad miners
-        bad_miner_uids = [uid for uid in miner_uids if uid not in working_miner_uids]
-        self.update_scores(torch.FloatTensor([0.0] * len(bad_miner_uids)), bad_miner_uids)
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uids = get_random_uids(self, k=1, validators=False)
