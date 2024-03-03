@@ -296,6 +296,36 @@ class BaseValidatorNeuron(BaseNeuron):
 
         self.loop.run_until_complete(sync_neuron_info(self))
 
+    def sync(self):
+        """
+        Wrapper for synchronizing the state of the network for the given miner or validator.
+        """
+        # Ensure miner or validator hotkey is still registered on the network.
+        super().sync()
+
+        try:
+            if self.should_set_weights():
+                self.set_weights()
+        except Exception as _:
+            bt.logging.error("Failed to set validator weights, ", traceback.format_exc())
+
+        # Always save state.
+        self.save_state()
+
+    def should_set_weights(self) -> bool:
+        # Don't set weights on initialization.
+        if self.step == 0:
+            return False
+
+        # Check if enough epoch blocks have elapsed since the last epoch.
+        if self.config.neuron.disable_set_weights:
+            return False
+
+        # Define appropriate logic for when set weights.
+        return (
+            self.block - self.metagraph.last_update[self.uid]
+        ) > self.config.neuron.epoch_length
+
     def update_scores(self, rewards: torch.FloatTensor, uids: List[int]):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""
 

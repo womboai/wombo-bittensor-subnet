@@ -103,10 +103,6 @@ class BaseNeuron(ABC):
     def resync_metagraph(self):
         ...
 
-    @abstractmethod
-    def set_weights(self):
-        ...
-
     def sync(self):
         """
         Wrapper for synchronizing the state of the network for the given miner or validator.
@@ -116,14 +112,8 @@ class BaseNeuron(ABC):
 
         try:
             self.resync_metagraph()
-
-            if self.should_set_weights():
-                self.set_weights()
         except Exception as _:
-            bt.logging.error("Failed to sync neuron, ", traceback.format_exc())
-
-        # Always save state.
-        self.save_state()
+            bt.logging.error("Failed to resync metagraph, ", traceback.format_exc())
 
     def check_registered(self):
         # --- Check for registration.
@@ -144,27 +134,3 @@ class BaseNeuron(ABC):
         return (
             self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length
-
-    def should_set_weights(self) -> bool:
-        # Don't set weights on initialization.
-        if self.step == 0:
-            return False
-
-        # Check if enough epoch blocks have elapsed since the last epoch.
-        if self.config.neuron.disable_set_weights:
-            return False
-
-        # Define appropriate logic for when set weights.
-        return (
-            self.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.epoch_length
-
-    def save_state(self):
-        bt.logging.warning(
-            "save_state() not implemented for this neuron. You can implement this function to save model checkpoints or other useful data."
-        )
-
-    def load_state(self):
-        bt.logging.warning(
-            "load_state() not implemented for this neuron. You can implement this function to load model checkpoints or other useful data."
-        )
