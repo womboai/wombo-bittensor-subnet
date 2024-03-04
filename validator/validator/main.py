@@ -32,7 +32,7 @@ from starlette import status
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse
-from neuron_selector.uids import get_oldest_uids, get_random_uids
+from neuron_selector.uids import get_random_uids
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
 
 # import base validator class which takes care of most of the boilerplate
@@ -106,7 +106,7 @@ class Validator(BaseValidatorNeuron):
         - Updating the scores
         """
 
-        miner_uids = get_oldest_uids(self, k=self.config.neuron.sample_size, validators=False)
+        miner_uids = get_random_uids(self, k=self.config.neuron.sample_size, validators=False)
 
         if not len(miner_uids):
             return

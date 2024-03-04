@@ -42,7 +42,6 @@ setup(
     python_requires=">=3.10",
     install_requires=[
         "wombo-bittensor-subnet-tensor",
-        "heapdict==1.0.1",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
