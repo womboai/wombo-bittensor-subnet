@@ -90,7 +90,7 @@ cd validator
 
 Then run with PM2, replacing the arguments 
 ```bash
-run_pm2.sh \
+run_pm2.sh --name wombo-validator -- \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey}
