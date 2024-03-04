@@ -117,6 +117,10 @@ def get_oldest_uids(
     for hotkey in invalid_miner_list:
         shuffled_miner_dict.pop(hotkey)
 
+    for hotkey in shuffled_miner_dict.keys():
+        if hotkey not in self.miner_heap:
+            self.miner_heap[hotkey] = 0
+
     disconnected_miner_list = [
         hotkey
         for hotkey in list(shuffled_miner_dict.keys())
