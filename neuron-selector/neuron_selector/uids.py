@@ -127,7 +127,7 @@ def get_oldest_uids(
         self.miner_heap[hotkey] = 0
 
     uids = torch.tensor(
-        shuffled_miner_dict[hotkey] for hotkey in get_n_lowest_values(self.miner_heap, k)
+        [shuffled_miner_dict[hotkey] for hotkey in get_n_lowest_values(self.miner_heap, k)]
     )
     return uids
 
