@@ -1,5 +1,3 @@
-from collections import OrderedDict
-
 import heapdict
 import torch
 import random
@@ -9,7 +7,6 @@ from datetime import datetime
 
 
 from tensor.protocol import NeuronInfoSynapse
-from validator.validator.main import Validator
 
 DEFAULT_NEURON_INFO = NeuronInfoSynapse()
 
@@ -82,7 +79,7 @@ def get_random_uids(
 
 
 def get_oldest_uids(
-    self: Validator,
+    self,
     k: int,
     validators: bool,
 ) -> torch.LongTensor:
@@ -123,12 +120,12 @@ def get_oldest_uids(
 
     disconnected_miner_list = [
         hotkey
-        for hotkey in list(shuffled_miner_dict.keys())
-        if hotkey not in [hk for hk in shuffled_miner_dict.keys()]
+        for hotkey in self.miner_heap.keys()
+        if hotkey not in shuffled_miner_dict.keys()
     ]
     for hotkey in disconnected_miner_list:
         self.miner_heap.pop(hotkey)
-        self.miner_heap[hotkey] = 0
+
     bittensor.logging.info("Available miners: " + str(shuffled_miner_dict))
     bittensor.logging.info("Miner heap: " + str(list(self.miner_heap.items())))
     uids = torch.tensor(
@@ -144,4 +141,5 @@ def get_n_lowest_values(heap_dict: heapdict.heapdict, n):
         hotkey, ts = heap_dict.popitem()
         lowest_values.append(hotkey)
         heap_dict[hotkey] = int(datetime.utcnow().timestamp())
+    bittensor.logging.info("Lowest values: " + str(lowest_values))
     return lowest_values
