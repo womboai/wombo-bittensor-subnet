@@ -109,16 +109,22 @@ def get_oldest_uids(
         uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
         for uid in shuffled_miner_dict.values()
     }
-    for hotkey, uid in shuffled_miner_dict.items():
-        shuffled_miner_dict.pop(hotkey) if not validator_condition(uid, infos[uid]) else None
+    invalid_miner_list = [
+        hotkey
+        for hotkey, uid in shuffled_miner_dict.items()
+        if not validator_condition(uid, infos[uid])
+    ]
+    for hotkey in invalid_miner_list:
+        shuffled_miner_dict.pop(hotkey)
 
-    for hotkey, value in list(self.miner_heap.items()):
-        if hotkey not in [hk for hk in shuffled_miner_dict.keys()]:
-            self.miner_heap.pop(hotkey)
-
-    for hotkey in shuffled_miner_dict.keys():
-        if hotkey not in self.miner_heap:
-            self.miner_heap[hotkey] = 0
+    disconnected_miner_list = [
+        hotkey
+        for hotkey in list(shuffled_miner_dict.keys())
+        if hotkey not in [hk for hk in shuffled_miner_dict.keys()]
+    ]
+    for hotkey in disconnected_miner_list:
+        self.miner_heap.pop(hotkey)
+        self.miner_heap[hotkey] = 0
 
     uids = torch.tensor(
         shuffled_miner_dict[hotkey] for hotkey in get_n_lowest_values(self.miner_heap, k)
