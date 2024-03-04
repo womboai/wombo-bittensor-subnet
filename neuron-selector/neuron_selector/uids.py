@@ -125,10 +125,11 @@ def get_oldest_uids(
     for hotkey in disconnected_miner_list:
         self.miner_heap.pop(hotkey)
         self.miner_heap[hotkey] = 0
-
+    bittensor.logging.info("Available miners: " + str(shuffled_miner_dict))
     uids = torch.tensor(
         [shuffled_miner_dict[hotkey] for hotkey in get_n_lowest_values(self.miner_heap, k)]
     )
+    bittensor.logging.info("Selected miners: " + str(uids))
     return uids
 
 

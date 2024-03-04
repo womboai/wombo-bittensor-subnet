@@ -32,7 +32,7 @@ from starlette import status
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse
-from neuron_selector.uids import get_oldest_uids
+from neuron_selector.uids import get_oldest_uids, get_random_uids
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
 
 # import base validator class which takes care of most of the boilerplate
@@ -189,7 +189,7 @@ class Validator(BaseValidatorNeuron):
         self.update_scores(torch.FloatTensor([0.0] * len(bad_miner_uids)), bad_miner_uids)
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
-        miner_uids = get_oldest_uids(self, k=1, validators=False)
+        miner_uids = get_random_uids(self, k=1, validators=False)
 
         if not len(miner_uids):
             raise HTTPException(
