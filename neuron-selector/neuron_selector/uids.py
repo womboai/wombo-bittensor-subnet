@@ -80,15 +80,7 @@ def get_random_uids(
 def get_oldest_uids(
     self,
     k: int,
-    validators: bool,
 ) -> torch.LongTensor:
-    if validators:
-        def validator_condition(uid: int, info: NeuronInfoSynapse) -> bool:
-            return info.is_validator and self.metagraph.validator_permit[uid]
-    else:
-        def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
-            return info.is_validator is False
-
     all_uids_and_hotkeys_dict = {
         self.metagraph.axons[uid].hotkey: uid
         for uid in range(self.metagraph.n.item())
@@ -108,7 +100,7 @@ def get_oldest_uids(
     invalid_miner_list = [
         hotkey
         for hotkey, uid in shuffled_miner_dict.items()
-        if not validator_condition(uid, infos[uid])
+        if infos[uid].is_validator
     ]
     for hotkey in invalid_miner_list:
         shuffled_miner_dict.pop(hotkey)

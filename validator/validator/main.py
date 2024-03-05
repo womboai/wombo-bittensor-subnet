@@ -106,7 +106,7 @@ class Validator(BaseValidatorNeuron):
         - Updating the scores
         """
 
-        miner_uids = get_oldest_uids(self, k=self.config.neuron.sample_size, validators=False)
+        miner_uids = get_oldest_uids(self, k=self.config.neuron.sample_size)
 
         if not len(miner_uids):
             return
