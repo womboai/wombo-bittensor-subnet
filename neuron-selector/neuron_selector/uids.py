@@ -3,7 +3,6 @@ import torch
 import random
 import bittensor
 from typing import List
-from datetime import datetime
 
 
 from tensor.protocol import NeuronInfoSynapse
@@ -81,15 +80,7 @@ def get_random_uids(
 def get_oldest_uids(
     self,
     k: int,
-    validators: bool,
 ) -> torch.LongTensor:
-    if validators:
-        def validator_condition(uid: int, info: NeuronInfoSynapse) -> bool:
-            return info.is_validator and self.metagraph.validator_permit[uid]
-    else:
-        def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
-            return info.is_validator is False
-
     all_uids_and_hotkeys_dict = {
         self.metagraph.axons[uid].hotkey: uid
         for uid in range(self.metagraph.n.item())
@@ -109,14 +100,14 @@ def get_oldest_uids(
     invalid_miner_list = [
         hotkey
         for hotkey, uid in shuffled_miner_dict.items()
-        if not validator_condition(uid, infos[uid])
+        if infos[uid].is_validator
     ]
     for hotkey in invalid_miner_list:
         shuffled_miner_dict.pop(hotkey)
 
     for hotkey in shuffled_miner_dict.keys():
         if hotkey not in self.miner_heap:
-            self.miner_heap[hotkey] = 0
+            self.miner_heap[hotkey] = self.block
 
     disconnected_miner_list = [
         hotkey
@@ -129,17 +120,17 @@ def get_oldest_uids(
     bittensor.logging.info("Available miners: " + str(shuffled_miner_dict))
     bittensor.logging.info("Miner heap: " + str(list(self.miner_heap.items())))
     uids = torch.tensor(
-        [shuffled_miner_dict[hotkey] for hotkey in get_n_lowest_values(self.miner_heap, k)]
+        [shuffled_miner_dict[hotkey] for hotkey in get_n_lowest_values(self, k)]
     )
     bittensor.logging.info("Selected miners: " + str(uids))
     return uids
 
 
-def get_n_lowest_values(heap_dict: heapdict.heapdict, n):
+def get_n_lowest_values(self, n):
     lowest_values = []
-    for _ in range(min(n, len(heap_dict))):
-        hotkey, ts = heap_dict.popitem()
+    for _ in range(min(n, len(self.miner_heap))):
+        hotkey, ts = self.miner_heap.popitem()
         lowest_values.append(hotkey)
-        heap_dict[hotkey] = int(datetime.utcnow().timestamp())
+        self.miner_heap[hotkey] = self.block
     bittensor.logging.info("Lowest values: " + str(lowest_values))
     return lowest_values
