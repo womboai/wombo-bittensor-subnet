@@ -51,7 +51,7 @@ async def reward(
     - float: The reward value for the miner.
     """
 
-    target_time = 4
+    target_time = 5
     worst_time = 12
     time_difference = synapse.dendrite.process_time - target_time
     time_penalty = max(0.0, min(0.5, (time_difference * 4.0) / (worst_time * target_time * 3.0)))
