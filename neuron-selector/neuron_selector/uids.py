@@ -3,7 +3,6 @@ import torch
 import random
 import bittensor
 from typing import List
-from datetime import datetime
 
 
 from tensor.protocol import NeuronInfoSynapse
@@ -116,7 +115,7 @@ def get_oldest_uids(
 
     for hotkey in shuffled_miner_dict.keys():
         if hotkey not in self.miner_heap:
-            self.miner_heap[hotkey] = int(datetime.utcnow().timestamp())
+            self.miner_heap[hotkey] = self.block
 
     disconnected_miner_list = [
         hotkey
@@ -140,6 +139,6 @@ def get_n_lowest_values(heap_dict: heapdict.heapdict, n):
     for _ in range(min(n, len(heap_dict))):
         hotkey, ts = heap_dict.popitem()
         lowest_values.append(hotkey)
-        heap_dict[hotkey] = int(datetime.utcnow().timestamp())
+        heap_dict[hotkey] = self.block
     bittensor.logging.info("Lowest values: " + str(lowest_values))
     return lowest_values
