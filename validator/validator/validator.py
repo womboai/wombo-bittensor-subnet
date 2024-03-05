@@ -378,4 +378,4 @@ class BaseValidatorNeuron(BaseNeuron):
         self.step = state["step"]
         self.scores = state["scores"]
         self.hotkeys = state["hotkeys"]
-        self.miner_heap = state["miner_heap"]
+        self.miner_heap = state.get("miner_heap", heapdict.heapdict())
