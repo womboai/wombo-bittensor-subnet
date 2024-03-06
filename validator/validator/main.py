@@ -29,6 +29,7 @@ from aiohttp import ClientSession
 import torch
 from fastapi import HTTPException
 from starlette import status
+from torch import tensor
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse
@@ -187,6 +188,10 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info(f"Scored responses: {rewards}")
         # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
         self.update_scores(rewards, working_miner_uids)
+
+        bad_miner_uids = [uid.item() for uid in miner_uids if uid.item() not in working_miner_uids]
+
+        self.update_scores(self.scores[tensor(bad_miner_uids)] * 0.5, bad_miner_uids)
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uids = get_random_uids(self, k=1, validators=False)
