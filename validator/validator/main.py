@@ -175,7 +175,7 @@ class Validator(BaseValidatorNeuron):
         seed = (self.step * random_int) % max_seed
 
         base_prompt = str(self.step * random_int)
-        selection = random.randint(0, 3)
+        selection = random.randint(0, 2)
 
         if selection == 1:
             prompt = base_prompt.encode("utf-8").hex()
@@ -280,7 +280,7 @@ class Validator(BaseValidatorNeuron):
 
             response = best_response
         else:
-            response = finished_responses[random.randint(0, len(finished_responses))]
+            response = finished_responses[random.randint(0, len(finished_responses) - 1)]
 
         synapse.images = response.output.images
         synapse.images = add_watermarks(synapse.deserialize())
