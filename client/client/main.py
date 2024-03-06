@@ -13,7 +13,7 @@ from starlette import status
 
 from tensor.config import config, check_config, add_args
 from tensor.protocol import ImageGenerationClientSynapse
-from neuron_selector.uids import get_random_uids, sync_neuron_info
+from neuron_selector.uids import get_best_uids, sync_neuron_info
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 
 
@@ -92,7 +92,7 @@ class Client:
         self,
         input_parameters: ImageGenerationInputs,
     ) -> List[bytes]:
-        validator_uids = get_random_uids(self, k=1, validators=True)
+        validator_uids = get_best_uids(self, validators=True)
 
         if not len(validator_uids):
             raise HTTPException(
@@ -100,12 +100,10 @@ class Client:
                 detail="No suitable validators found",
             )
 
-        validator_uid = validator_uids[0]
-
         # Grab the axon you're serving
-        axon = self.metagraph.axons[validator_uid]
+        axon = self.metagraph.axons[validator_uids]
 
-        bt.logging.info(f"Sending request {input_parameters} to validator {validator_uid}, axon {axon}")
+        bt.logging.info(f"Sending request {input_parameters} to validator {validator_uids}, axon {axon}")
 
         async with self.dendrite as dendrite:
             response: Optional[ImageGenerationClientSynapse] = (await dendrite.forward(
