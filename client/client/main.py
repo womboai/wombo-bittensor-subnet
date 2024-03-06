@@ -120,8 +120,13 @@ class Client:
         if not response.images:
             bt.logging.error(f"Failed to query subnetwork with {input_parameters} and axon {axon}, {response.dendrite}")
 
+            status_code = response.dendrite.status_code
+
+            if status_code == 200:
+                status_code = None
+
             raise HTTPException(
-                status_code=response.dendrite.status_code or status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status_code=status_code or status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=response.dendrite.status_message or "Failed to query subnetwork",
             )
 
