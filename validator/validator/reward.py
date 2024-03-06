@@ -16,7 +16,7 @@
 
 import asyncio
 import base64
-from typing import List, Tuple
+from typing import List
 
 import torch
 from aiohttp import ClientSession, FormData, BasicAuth
@@ -107,27 +107,9 @@ async def get_rewards(
         "https://validate.api.wombo.ai/api/validate",
     )
 
-    are_wombo_neurons_endpoint = select_endpoint(
-        self.config.are_wombo_neurons_endpoint,
-        self.config.subtensor.network,
-        "https://dev-neuron-identifier.api.wombo.ai/api/are_wombo_neurons",
-        "https://neuron-identifier.api.wombo.ai/api/are_wombo_neurons",
-    )
-
     keypair: Keypair = self.dendrite.keypair
     hotkey = keypair.ss58_address
     signature = f"0x{keypair.sign(hotkey).hex()}"
-
-    async with ClientSession() as session:
-        uids_query = ",".join([str(uid) for uid in uids])
-
-        async with session.get(
-            f"{are_wombo_neurons_endpoint}?uids={uids_query}",
-            headers={"Content-Type": "application/json"},
-        ) as response:
-            response.raise_for_status()
-
-            wombo_advantages = [(int(is_wombo_neuron) - 1) * 0.1 for is_wombo_neuron in await response.json()]
 
     # Get all the reward results by iteratively calling your reward() function.
     rewards = await asyncio.gather(*[
@@ -141,9 +123,4 @@ async def get_rewards(
         for response in responses
     ])
 
-    scores = [
-        max(0.0, uid_reward + wombo_advantage)
-        for uid_reward, wombo_advantage in zip(rewards, wombo_advantages)
-    ]
-
-    return torch.FloatTensor(scores).to(self.device)
+    return torch.FloatTensor(rewards).to(self.device)
