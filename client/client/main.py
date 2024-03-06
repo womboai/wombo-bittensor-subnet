@@ -1,5 +1,6 @@
 import asyncio
 import os
+import random
 import traceback
 from asyncio import Task
 from datetime import datetime
@@ -101,7 +102,7 @@ class Client:
             )
 
         # Grab the axon you're serving
-        axon = self.metagraph.axons[validator_uids]
+        axon = self.metagraph.axons[validator_uids[random.randint(0, len(validator_uids))]]
 
         bt.logging.info(f"Sending request {input_parameters} to validator {validator_uids}, axon {axon}")
 
