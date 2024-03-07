@@ -28,7 +28,7 @@ from io import BytesIO
 # Bittensor
 import bittensor as bt
 from aiohttp import ClientSession
-from bittensor import AxonInfo
+from bittensor import AxonInfo, TerminalInfo
 from fastapi import HTTPException
 from starlette import status
 from torch import tensor
@@ -73,6 +73,20 @@ def validator_forward_info(synapse: NeuronInfoSynapse):
     synapse.is_validator = True
 
     return synapse
+
+
+class NoMinersAvailableException(Exception):
+    def __init__(self, dendrite: TerminalInfo | None):
+        super().__init__(f"No miners available for {dendrite} query")
+        self.dendrite = dendrite
+
+
+class GetMinerResponseException(Exception):
+    def __init__(self, dendrites: list[TerminalInfo], axons: list[AxonInfo]):
+        super().__init__(f"Failed to query miners, dendrites: {dendrites}")
+
+        self.dendrites = dendrites
+        self.axons = axons
 
 
 class Validator(BaseValidatorNeuron):
@@ -213,10 +227,7 @@ class Validator(BaseValidatorNeuron):
         miner_uids = get_best_uids(self, validators=False)
 
         if not len(miner_uids):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="No suitable miners found",
-            )
+            raise NoMinersAvailableException(synapse.dendrite)
 
         axons = [self.metagraph.axons[uid] for uid in miner_uids]
 
@@ -255,10 +266,7 @@ class Validator(BaseValidatorNeuron):
             bt.logging.error(f"Failed to query some miners with {synapse.inputs} for axons {bad_axons}, {bad_dendrites}")
 
             if not len(finished_responses):
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail=f"Failed to query miners, dendrites: {bad_dendrites}",
-                )
+                raise GetMinerResponseException(bad_dendrites, bad_axons)
 
         if random.random() < RANDOM_VALIDATION_CHANCE:
             working_axons = [self.metagraph.axons[uid] for uid in working_miner_uids]
