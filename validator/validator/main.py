@@ -151,7 +151,7 @@ class Validator(BaseValidatorNeuron):
 
         bad_miner_uids = [uid.item() for uid in miner_uids if uid.item() not in working_miner_uids]
 
-        self.update_scores(self.scores[tensor(bad_miner_uids)] * 0.5, bad_miner_uids)
+        self.update_scores(self.scores[tensor(bad_miner_uids, dtype=torch.int64)] * 0.5, bad_miner_uids)
 
     async def check_miners(self):
         """
@@ -248,7 +248,7 @@ class Validator(BaseValidatorNeuron):
 
         if len(bad_miner_uids):
             # Some failed to response, punish them
-            self.update_scores(self.scores[tensor(bad_miner_uids)] * 0.25, bad_miner_uids)
+            self.update_scores(self.scores[tensor(bad_miner_uids, dtype=torch.int64)] * 0.25, bad_miner_uids)
 
             bad_axons: List[AxonInfo] = [self.metagraph.axons[uid] for uid in bad_miner_uids]
             bad_axon_hotkeys = [axon.hotkey for axon in bad_axons]
