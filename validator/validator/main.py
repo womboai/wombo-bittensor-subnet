@@ -1,7 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-
+import os
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -19,28 +19,33 @@
 
 import random
 import base64
-from typing import List, Tuple
+from typing import List, Tuple, Optional
+
+import torch
 from PIL import Image
 from io import BytesIO
 
 # Bittensor
 import bittensor as bt
 from aiohttp import ClientSession
-import torch
+from bittensor import AxonInfo
 from fastapi import HTTPException
 from starlette import status
 from torch import tensor
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse
-from neuron_selector.uids import get_oldest_uids, get_random_uids
+from neuron_selector.uids import get_best_uids
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
 
 # import base validator class which takes care of most of the boilerplate
-from validator.validator import BaseValidatorNeuron
+from validator.validator import BaseValidatorNeuron, get_oldest_uids
 from validator.reward import get_rewards, select_endpoint
 
 WATERMARK = Image.open("w_watermark.png")
+
+
+RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
 
 
 def watermark_image(image: Image.Image) -> Image.Image:
@@ -97,6 +102,57 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info("load_state()")
         self.load_state()
 
+    async def score_responses(
+        self,
+        inputs: ImageGenerationInputs,
+        miner_uids: torch.LongTensor,
+        axons: List[AxonInfo],
+        responses: List[ImageGenerationSynapse],
+    ) -> Optional[int]:
+        working_miner_uids: List[int] = []
+        finished_responses: List[ImageGenerationSynapse] = []
+
+        axon_uids = {
+            axon.hotkey: uid.item()
+            for uid, axon in zip(miner_uids, axons)
+        }
+
+        for response in responses:
+            if not response.output or not response.axon or not response.axon.hotkey:
+                continue
+
+            working_miner_uids.append(axon_uids[response.axon.hotkey])
+            finished_responses.append(response)
+
+        # Log the results for monitoring purposes.
+        bt.logging.info(f"Received {len(finished_responses)} responses")
+
+        if not len(finished_responses):
+            return None
+
+        try:
+            # Adjust the scores based on responses from miners.
+            rewards = await get_rewards(
+                self,
+                query=inputs,
+                uids=working_miner_uids,
+                responses=finished_responses,
+            )
+        except Exception as e:
+            bt.logging.error("Failed to get rewards for responses", e)
+            return
+
+        if rewards.nelement():
+            return working_miner_uids[rewards.argmax().item()]
+
+        bt.logging.info(f"Scored responses: {rewards}")
+        # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
+        self.update_scores(rewards, working_miner_uids)
+
+        bad_miner_uids = [uid.item() for uid in miner_uids if uid.item() not in working_miner_uids]
+
+        self.update_scores(self.scores[tensor(bad_miner_uids, dtype=torch.int64)] * 0.5, bad_miner_uids)
+
     async def check_miners(self):
         """
         Validator forward pass, called by the validator every time step. Consists of:
@@ -119,7 +175,7 @@ class Validator(BaseValidatorNeuron):
         seed = (self.step * random_int) % max_seed
 
         base_prompt = str(self.step * random_int)
-        selection = random.randint(0, 3)
+        selection = random.randint(0, 2)
 
         if selection == 1:
             prompt = base_prompt.encode("utf-8").hex()
@@ -152,6 +208,27 @@ class Validator(BaseValidatorNeuron):
                 timeout=CLIENT_REQUEST_TIMEOUT,
             )
 
+        await self.score_responses(inputs, miner_uids, axons, responses)
+
+    async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
+        miner_uids = get_best_uids(self, validators=False)
+
+        if not len(miner_uids):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No suitable miners found",
+            )
+
+        axons = [self.metagraph.axons[uid] for uid in miner_uids]
+
+        async with self.dendrite as dendrite:
+            responses: List[ImageGenerationSynapse] = (await dendrite.forward(
+                axons=axons,
+                synapse=ImageGenerationSynapse(inputs=synapse.inputs),
+                deserialize=False,
+                timeout=CLIENT_REQUEST_TIMEOUT,
+            ))
+
         working_miner_uids: List[int] = []
         finished_responses: List[ImageGenerationSynapse] = []
 
@@ -167,83 +244,48 @@ class Validator(BaseValidatorNeuron):
             working_miner_uids.append(axon_uids[response.axon.hotkey])
             finished_responses.append(response)
 
-        # Log the results for monitoring purposes.
-        bt.logging.info(f"Received {len(finished_responses)} responses")
-
-        if not len(finished_responses):
-            return
-
-        try:
-            # Adjust the scores based on responses from miners.
-            rewards = await get_rewards(
-                self,
-                query=inputs,
-                uids=working_miner_uids,
-                responses=finished_responses,
-            )
-        except Exception as e:
-            bt.logging.error("Failed to get rewards for responses", e)
-            return
-
-        bt.logging.info(f"Scored responses: {rewards}")
-        # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
-        self.update_scores(rewards, working_miner_uids)
-
         bad_miner_uids = [uid.item() for uid in miner_uids if uid.item() not in working_miner_uids]
 
-        self.update_scores(self.scores[tensor(bad_miner_uids)] * 0.5, bad_miner_uids)
+        if len(bad_miner_uids):
+            # Some failed to response, punish them
+            self.update_scores(self.scores[tensor(bad_miner_uids, dtype=torch.int64)] * 0.25, bad_miner_uids)
 
-    async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
-        miner_uids = get_random_uids(self, k=1, validators=False)
+            bad_axons: List[AxonInfo] = [self.metagraph.axons[uid] for uid in bad_miner_uids]
+            bad_axon_hotkeys = [axon.hotkey for axon in bad_axons]
+            bad_dendrites = [response.dendrite for response in responses if response.axon.hotkey in bad_axon_hotkeys]
 
-        if not len(miner_uids):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="No suitable miners found",
-            )
+            bt.logging.error(f"Failed to query some miners with {synapse.inputs} for axons {bad_axons}, {bad_dendrites}")
 
-        miner_uid = miner_uids[0]
-
-        # Grab the axon you're serving
-        axon = self.metagraph.axons[miner_uid]
-
-        async with self.dendrite as dendrite:
-            response: ImageGenerationSynapse = (await dendrite.forward(
-                axons=[axon],
-                synapse=ImageGenerationSynapse(inputs=synapse.inputs),
-                deserialize=False,
-                timeout=CLIENT_REQUEST_TIMEOUT,
-            ))[0]
-
-        if response.output:
-            synapse.images = response.output.images
-            synapse.images = add_watermarks(synapse.deserialize())
-
-            if random.randint(0, 10) != 0:
-                return synapse
-
-            uids = [miner_uid.item()]
-
-            try:
-                # Adjust the scores based on responses from miners.
-                rewards = await get_rewards(
-                    self,
-                    query=synapse.inputs,
-                    uids=uids,
-                    responses=[response],
+            if not len(finished_responses):
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Failed to query miners, dendrites: {bad_dendrites}",
                 )
-            except Exception as e:
-                bt.logging.error("Failed to get rewards for responses", e)
-                return synapse
 
-            self.update_scores(rewards, uids)
-        else:
-            bt.logging.error(f"Failed to query miner with {synapse.inputs} and axon {axon}, {response.dendrite}")
+        if random.random() < RANDOM_VALIDATION_CHANCE:
+            working_axons = [self.metagraph.axons[uid] for uid in working_miner_uids]
 
-            raise HTTPException(
-                status_code=response.dendrite.status_code or status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=response.dendrite.status_message or "Failed to query miner",
+            best_uid = await self.score_responses(
+                synapse.inputs,
+                tensor(working_miner_uids),
+                working_axons,
+                finished_responses
             )
+
+            best_response = [
+                response
+                for response in finished_responses
+                if axon_uids[response.axon.hotkey] == best_uid
+            ][0]
+
+            response = best_response
+        else:
+            response = finished_responses[random.randint(0, len(finished_responses) - 1)]
+
+        synapse.images = response.output.images
+        synapse.images = add_watermarks(synapse.deserialize())
+
+        return synapse
 
     async def blacklist_image(
         self,

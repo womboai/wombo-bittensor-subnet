@@ -1,13 +1,13 @@
-import heapdict
-import torch
 import random
 import bittensor
-from typing import List
+from typing import List, Optional
 
+import torch
 
 from tensor.protocol import NeuronInfoSynapse
 
 DEFAULT_NEURON_INFO = NeuronInfoSynapse()
+
 
 async def sync_neuron_info(self):
     uids = [
@@ -42,15 +42,19 @@ async def sync_neuron_info(self):
     }
 
 
-def get_random_uids(
+def get_best_uids(
     self,
-    k: int,
     validators: bool,
+    k: int = 3,
 ) -> torch.LongTensor:
     if validators:
+        trust = self.metagraph.validator_trust
+
         def validator_condition(uid: int, info: NeuronInfoSynapse) -> bool:
             return info.is_validator and self.metagraph.validator_permit[uid]
     else:
+        trust = self.metagraph.trust
+
         def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
             return info.is_validator is False
 
@@ -73,64 +77,11 @@ def get_random_uids(
         if validator_condition(uid, infos[uid])
     ]
 
-    uids = torch.tensor(random.sample(available_uids, min(k, len(available_uids))))
+    sorted_uids = sorted(available_uids, reverse=True, key=lambda uid: trust[uid])
+
+    best_count = k * k
+
+    best_uids = sorted_uids[0:min(best_count, len(sorted_uids))]
+
+    uids = torch.tensor(random.sample(best_uids, min(k, len(best_uids))))
     return uids
-
-
-def get_oldest_uids(
-    self,
-    k: int,
-) -> torch.LongTensor:
-    all_uids_and_hotkeys_dict = {
-        self.metagraph.axons[uid].hotkey: uid
-        for uid in range(self.metagraph.n.item())
-        if self.metagraph.axons[uid].is_serving
-    }
-
-    hotkeys = list(all_uids_and_hotkeys_dict.keys())
-    random.shuffle(hotkeys)
-    shuffled_miner_dict = {hotkey: all_uids_and_hotkeys_dict[hotkey] for hotkey in hotkeys}
-    # if this is not randomized, every new validator will have the same mining order in their heap upon first launch,
-    # which would likely perpetuate the problem this function solves
-
-    infos = {
-        uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
-        for uid in shuffled_miner_dict.values()
-    }
-    invalid_miner_list = [
-        hotkey
-        for hotkey, uid in shuffled_miner_dict.items()
-        if infos[uid].is_validator
-    ]
-    for hotkey in invalid_miner_list:
-        shuffled_miner_dict.pop(hotkey)
-
-    for hotkey in shuffled_miner_dict.keys():
-        if hotkey not in self.miner_heap:
-            self.miner_heap[hotkey] = self.block
-
-    disconnected_miner_list = [
-        hotkey
-        for hotkey in self.miner_heap.keys()
-        if hotkey not in shuffled_miner_dict.keys()
-    ]
-    for hotkey in disconnected_miner_list:
-        self.miner_heap.pop(hotkey)
-
-    bittensor.logging.info("Available miners: " + str(shuffled_miner_dict))
-    bittensor.logging.info("Miner heap: " + str(list(self.miner_heap.items())))
-    uids = torch.tensor(
-        [shuffled_miner_dict[hotkey] for hotkey in get_n_lowest_values(self, k)]
-    )
-    bittensor.logging.info("Selected miners: " + str(uids))
-    return uids
-
-
-def get_n_lowest_values(self, n):
-    lowest_values = []
-    for _ in range(min(n, len(self.miner_heap))):
-        hotkey, ts = self.miner_heap.popitem()
-        lowest_values.append(hotkey)
-        self.miner_heap[hotkey] = self.block
-    bittensor.logging.info("Lowest values: " + str(lowest_values))
-    return lowest_values
