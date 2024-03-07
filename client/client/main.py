@@ -9,11 +9,11 @@ from typing import List, Annotated
 import bittensor as bt
 import uvicorn
 from bittensor import SubnetsAPI, TerminalInfo
-from fastapi import FastAPI, Body, HTTPException
-from starlette.responses import JSONResponse
+from fastapi import FastAPI, Body, HTTPException, status
+from fastapi.requests import Request
+from fastapi.responses import JSONResponse
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
-from starlette import status
 
 from tensor.config import config, check_config, add_args
 from tensor.protocol import ImageGenerationClientSynapse
@@ -138,12 +138,15 @@ async def main():
     app = FastAPI()
 
     @app.exception_handler(ValidatorQueryException)
-    async def get_response(exception: ValidatorQueryException) -> JSONResponse:
-        return JSONResponse(content={
-            "detail": str(exception),
-            "axons": [axon.dict() for axon in exception.queried_axons],
-            "dendrites": [dendrite.dict() for dendrite in exception.dendrite_responses],
-        }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    async def validator_query_handler(_: Request, exception: ValidatorQueryException) -> JSONResponse:
+        return JSONResponse(
+            content={
+                "detail": str(exception),
+                "axons": [axon.dict() for axon in exception.queried_axons],
+                "dendrites": [dendrite.dict() for dendrite in exception.dendrite_responses],
+            },
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
     async with WomboSubnetAPI() as client:
         @app.post("/api/generate")
