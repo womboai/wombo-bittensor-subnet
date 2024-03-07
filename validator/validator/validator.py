@@ -57,12 +57,12 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.info("Building validation weights.")
         self.scores = torch.zeros_like(self.metagraph.S, dtype=torch.float32)
 
-        self.loop = asyncio.get_event_loop()
-
         # Serve axon to enable external connections.
         self.serve_axon()
 
-        self.neuron_info = {}
+        self.loop = asyncio.get_event_loop()
+
+        self.loop.run_until_complete(sync_neuron_info(self))
 
         self.miner_heap = heapdict.heapdict()
 
@@ -160,6 +160,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Check that validator is registered on the network.
         self.sync()
+        self.resync_metagraph()
 
         self.axon.start()
 
