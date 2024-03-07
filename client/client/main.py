@@ -4,11 +4,14 @@ import random
 import traceback
 from asyncio import Task
 from datetime import datetime
-from typing import List, Optional, Annotated
+from typing import List, Annotated
 
 import bittensor as bt
 import uvicorn
+from bittensor import SubnetsAPI, TerminalInfo
 from fastapi import FastAPI, Body, HTTPException
+from starlette.responses import JSONResponse
+
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from starlette import status
 
@@ -18,7 +21,14 @@ from neuron_selector.uids import get_best_uids, sync_neuron_info
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 
 
-class Client:
+class ValidatorQueryException(Exception):
+    def __init__(self, queried_axons: list[TerminalInfo], dendrite_responses: list[TerminalInfo]):
+        super().__init__(f"Failed to query subnetwork, dendrites {dendrite_responses}")
+        self.queried_axons = queried_axons
+        self.dendrite_responses = dendrite_responses
+
+
+class WomboSubnetAPI(SubnetsAPI):
     def __init__(self):
         client_config = self.client_config()
 
@@ -31,13 +41,7 @@ class Client:
         # Log the configuration for reference.
         bt.logging.info(client_config)
 
-        # Build Bittensor objects
-        # These are core Bittensor classes to interact with the network.
-        bt.logging.info("Setting up bittensor objects.")
-
-        # The wallet holds the cryptographic key pairs for the miner.
-        self.wallet = bt.wallet(config=client_config)
-        bt.logging.info(f"Wallet: {self.wallet}")
+        super().__init__(bt.wallet(config=client_config))
 
         self.subtensor = bt.subtensor(config=client_config)
         bt.logging.info(f"Subtensor: {self.subtensor}")
@@ -46,14 +50,31 @@ class Client:
         self.metagraph = self.subtensor.metagraph(client_config.netuid)
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
-        # Dendrite lets us send messages to other nodes (axons) in the network.
-        self.dendrite = bt.dendrite(wallet=self.wallet)
-        bt.logging.info(f"Dendrite: {self.dendrite}")
-
         self.metagraph.sync(subtensor=self.subtensor)
 
         self.periodic_metagraph_resync: Task
         self.neuron_info = {}
+
+    def prepare_synapse(self, inputs: ImageGenerationInputs) -> ImageGenerationClientSynapse:
+        return ImageGenerationClientSynapse(inputs=inputs)
+
+    def process_responses(self, responses: List[ImageGenerationClientSynapse]) -> List[bytes]:
+        finished_responses = []
+
+        for response in responses:
+            if response.images:
+                finished_responses.append(response)
+
+        bad_responses = [response for response in responses if response not in finished_responses]
+        bad_axons = [response.axon for response in bad_responses]
+        bad_dendrites = [response.dendrite for response in bad_responses]
+
+        bt.logging.error(f"Failed to query validators with axons {bad_axons}, {bad_dendrites}")
+
+        if not len(finished_responses):
+            raise ValidatorQueryException(bad_axons, bad_dendrites)
+
+        return finished_responses[random.randint(0, len(finished_responses) - 1)].images
 
     async def __aenter__(self):
         async def resync_metagraph():
@@ -66,7 +87,7 @@ class Client:
                     self.metagraph.sync(subtensor=self.subtensor)
                     await sync_neuron_info(self)
                 except Exception as _:
-                    bt.logging.error("Failed to sync validator metagraph, ", traceback.format_exc())
+                    bt.logging.error("Failed to sync client metagraph, ", traceback.format_exc())
 
                 await asyncio.sleep(30)
 
@@ -93,7 +114,7 @@ class Client:
         self,
         input_parameters: ImageGenerationInputs,
     ) -> List[bytes]:
-        validator_uids = get_best_uids(self, validators=True)
+        validator_uids = get_best_uids(self, validators=True, k=5)
 
         if not len(validator_uids):
             raise HTTPException(
@@ -103,43 +124,28 @@ class Client:
 
         axons = [self.metagraph.axons[uid] for uid in validator_uids]
 
-        bt.logging.info(f"Sending request {input_parameters} to validator {validator_uids}, axons {axons}")
-
-        responses: list[ImageGenerationClientSynapse] = (await self.dendrite(
-            # Send the query to selected miner axon in the network.
-            axons=axons,
-            synapse=ImageGenerationClientSynapse(inputs=input_parameters),
-            # All responses have the deserialize function called on them before returning.
-            # You are encouraged to define your own deserialization function.
-            deserialize=False,
+        response = await self.query_api(
+            axons,
+            deserialize=True,
             timeout=CLIENT_REQUEST_TIMEOUT,
-        ))
+            inputs=input_parameters,
+        )
 
-        finished_responses = []
-
-        for response in responses:
-            if response.images:
-                finished_responses.append(response)
-
-        bad_responses = [response for response in responses if response not in finished_responses]
-        bad_axons = [response.axon for response in bad_responses]
-        bad_dendrites = [response.dendrite for response in bad_responses]
-
-        bt.logging.error(f"Failed to query validators with {input_parameters} and axons {bad_axons}, {bad_dendrites}")
-
-        if not len(finished_responses):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to query subnetwork, dendrites {bad_dendrites}",
-            )
-
-        return finished_responses[random.randint(0, len(finished_responses) - 1)].images
+        return response
 
 
 async def main():
     app = FastAPI()
 
-    async with Client() as client:
+    @app.exception_handler(ValidatorQueryException)
+    async def get_response(exception: ValidatorQueryException) -> JSONResponse:
+        return JSONResponse(content={
+            "detail": str(exception),
+            "axons": [axon.dict() for axon in exception.queried_axons],
+            "dendrites": [dendrite.dict() for dendrite in exception.dendrite_responses],
+        }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    async with WomboSubnetAPI() as client:
         @app.post("/api/generate")
         async def generate(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> List[bytes]:
             return await client.generate(input_parameters)
