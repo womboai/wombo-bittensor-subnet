@@ -101,35 +101,39 @@ class Client:
                 detail="No suitable validators found",
             )
 
-        # Grab the axon you're serving
-        axon = self.metagraph.axons[validator_uids[random.randint(0, len(validator_uids) - 1)]]
+        axons = [self.metagraph.axons[uid] for uid in validator_uids]
 
-        bt.logging.info(f"Sending request {input_parameters} to validator {validator_uids}, axon {axon}")
+        bt.logging.info(f"Sending request {input_parameters} to validator {validator_uids}, axons {axons}")
 
-        response: Optional[ImageGenerationClientSynapse] = (await self.dendrite(
+        responses: list[ImageGenerationClientSynapse] = (await self.dendrite(
             # Send the query to selected miner axon in the network.
-            axons=[axon],
+            axons=axons,
             synapse=ImageGenerationClientSynapse(inputs=input_parameters),
             # All responses have the deserialize function called on them before returning.
             # You are encouraged to define your own deserialization function.
             deserialize=False,
             timeout=CLIENT_REQUEST_TIMEOUT,
-        ))[0]
+        ))
 
-        if not response.images:
-            bt.logging.error(f"Failed to query subnetwork with {input_parameters} and axon {axon}, {response.dendrite}")
+        finished_responses = []
 
-            status_code = response.dendrite.status_code
+        for response in responses:
+            if response.images:
+                finished_responses.append(response)
 
-            if status_code == 200:
-                status_code = None
+        bad_responses = [response for response in responses if response not in finished_responses]
+        bad_axons = [response.axon for response in bad_responses]
+        bad_dendrites = [response.dendrite for response in bad_responses]
 
+        bt.logging.error(f"Failed to query validators with {input_parameters} and axons {bad_axons}, {bad_dendrites}")
+
+        if not len(finished_responses):
             raise HTTPException(
-                status_code=status_code or status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=response.dendrite.status_message or "Failed to query subnetwork",
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to query subnetwork, dendrites {bad_dendrites}",
             )
 
-        return response.images
+        return finished_responses[random.randint(0, len(finished_responses) - 1)].images
 
 
 async def main():
