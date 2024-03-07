@@ -196,17 +196,16 @@ class Validator(BaseValidatorNeuron):
 
         bt.logging.info(f"Sending request {input_parameters} to {miner_uids} which have axons {axons}")
 
-        async with self.dendrite as dendrite:
-            # The dendrite client queries the network.
-            responses: List[ImageGenerationSynapse] = await dendrite.forward(
-                # Send the query to selected miner axons in the network.
-                axons=axons,
-                synapse=ImageGenerationSynapse(inputs=inputs),
-                # All responses have the deserialize function called on them before returning.
-                # You are encouraged to define your own deserialization function.
-                deserialize=False,
-                timeout=CLIENT_REQUEST_TIMEOUT,
-            )
+        # The dendrite client queries the network.
+        responses: List[ImageGenerationSynapse] = await self.dendrite(
+            # Send the query to selected miner axons in the network.
+            axons=axons,
+            synapse=ImageGenerationSynapse(inputs=inputs),
+            # All responses have the deserialize function called on them before returning.
+            # You are encouraged to define your own deserialization function.
+            deserialize=False,
+            timeout=CLIENT_REQUEST_TIMEOUT,
+        )
 
         await self.score_responses(inputs, miner_uids, axons, responses)
 
@@ -221,13 +220,12 @@ class Validator(BaseValidatorNeuron):
 
         axons = [self.metagraph.axons[uid] for uid in miner_uids]
 
-        async with self.dendrite as dendrite:
-            responses: List[ImageGenerationSynapse] = (await dendrite.forward(
-                axons=axons,
-                synapse=ImageGenerationSynapse(inputs=synapse.inputs),
-                deserialize=False,
-                timeout=CLIENT_REQUEST_TIMEOUT,
-            ))
+        responses: List[ImageGenerationSynapse] = await self.dendrite(
+            axons=axons,
+            synapse=ImageGenerationSynapse(inputs=synapse.inputs),
+            deserialize=False,
+            timeout=CLIENT_REQUEST_TIMEOUT,
+        )
 
         working_miner_uids: List[int] = []
         finished_responses: List[ImageGenerationSynapse] = []

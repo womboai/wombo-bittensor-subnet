@@ -106,16 +106,15 @@ class Client:
 
         bt.logging.info(f"Sending request {input_parameters} to validator {validator_uids}, axon {axon}")
 
-        async with self.dendrite as dendrite:
-            response: Optional[ImageGenerationClientSynapse] = (await dendrite.forward(
-                # Send the query to selected miner axon in the network.
-                axons=[axon],
-                synapse=ImageGenerationClientSynapse(inputs=input_parameters),
-                # All responses have the deserialize function called on them before returning.
-                # You are encouraged to define your own deserialization function.
-                deserialize=False,
-                timeout=CLIENT_REQUEST_TIMEOUT,
-            ))[0]
+        response: Optional[ImageGenerationClientSynapse] = (await self.dendrite(
+            # Send the query to selected miner axon in the network.
+            axons=[axon],
+            synapse=ImageGenerationClientSynapse(inputs=input_parameters),
+            # All responses have the deserialize function called on them before returning.
+            # You are encouraged to define your own deserialization function.
+            deserialize=False,
+            timeout=CLIENT_REQUEST_TIMEOUT,
+        ))[0]
 
         if not response.images:
             bt.logging.error(f"Failed to query subnetwork with {input_parameters} and axon {axon}, {response.dendrite}")

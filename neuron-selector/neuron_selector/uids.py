@@ -24,12 +24,11 @@ async def sync_neuron_info(self):
 
     uids_by_hotkey = {axon.hotkey: uid for uid, axon in zip(uids, axons)}
 
-    async with self.dendrite as dendrite:
-        neuron_info: List[NeuronInfoSynapse] = await dendrite.forward(
-            axons=axons,
-            synapse=NeuronInfoSynapse(),
-            deserialize=False,
-        )
+    neuron_info: List[NeuronInfoSynapse] = await self.dendrite(
+        axons=axons,
+        synapse=NeuronInfoSynapse(),
+        deserialize=False,
+    )
 
     info_by_hotkey = {
         info.axon.hotkey: info
