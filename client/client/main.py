@@ -126,7 +126,7 @@ class WomboSubnetAPI(SubnetsAPI):
 
         response = await self.query_api(
             axons,
-            deserialize=True,
+            deserialize=False,
             timeout=CLIENT_REQUEST_TIMEOUT,
             inputs=input_parameters,
         )
