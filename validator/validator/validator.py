@@ -407,7 +407,7 @@ def get_oldest_uids(
     invalid_miner_list = [
         hotkey
         for hotkey, uid in shuffled_miner_dict.items()
-        if infos[uid].is_validator
+        if infos[uid].is_validator is not False
     ]
     for hotkey in invalid_miner_list:
         shuffled_miner_dict.pop(hotkey)
