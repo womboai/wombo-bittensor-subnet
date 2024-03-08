@@ -45,7 +45,7 @@ setup(
     install_requires=[
         "wombo-bittensor-subnet-image-generation-protocol",
         "torch==2.2.0+cpu",
-        "bittensor==6.8.2",
+        "bittensor==6.9.1",
         "pillow==10.2.0",
     ],
     classifiers=[
