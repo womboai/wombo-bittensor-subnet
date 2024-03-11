@@ -107,7 +107,7 @@ async def get_rewards(
         "https://validate.api.wombo.ai/api/validate",
     )
 
-    keypair: Keypair = self.dendrite.keypair
+    keypair: Keypair = self.periodic_check_dendrite.keypair
     hotkey = keypair.ss58_address
     signature = f"0x{keypair.sign(hotkey).hex()}"
 

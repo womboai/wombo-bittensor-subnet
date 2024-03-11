@@ -50,8 +50,9 @@ class BaseValidatorNeuron(BaseNeuron):
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
         # Dendrite lets us send messages to other nodes (axons) in the network.
-        self.dendrite = bt.dendrite(wallet=self.wallet)
-        bt.logging.info(f"Dendrite: {self.dendrite}")
+        self.periodic_check_dendrite = bt.dendrite(wallet=self.wallet)
+        self.forward_dendrite = bt.dendrite(wallet=self.wallet)
+        bt.logging.info(f"Dendrite: {self.periodic_check_dendrite}")
 
         # Set up initial scoring weights for validation
         bt.logging.info("Building validation weights.")
@@ -62,7 +63,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         self.loop = asyncio.get_event_loop()
 
-        self.loop.run_until_complete(sync_neuron_info(self))
+        self.loop.run_until_complete(sync_neuron_info(self, self.periodic_check_dendrite))
 
         self.miner_heap = heapdict.heapdict()
 
@@ -260,7 +261,7 @@ class BaseValidatorNeuron(BaseNeuron):
     def resync_metagraph(self):
         if not self.should_sync_metagraph():
             if self.step == 0:
-                self.loop.run_until_complete(sync_neuron_info(self))
+                self.loop.run_until_complete(sync_neuron_info(self, self.periodic_check_dendrite))
 
             return
 
@@ -275,7 +276,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Check if the metagraph axon info has changed.
         if previous_metagraph.axons == self.metagraph.axons:
-            self.loop.run_until_complete(sync_neuron_info(self))
+            self.loop.run_until_complete(sync_neuron_info(self, self.periodic_check_dendrite))
 
             return
 
@@ -301,7 +302,7 @@ class BaseValidatorNeuron(BaseNeuron):
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
-        self.loop.run_until_complete(sync_neuron_info(self))
+        self.loop.run_until_complete(sync_neuron_info(self, self.periodic_check_dendrite))
 
     def sync(self):
         super().sync()
@@ -426,6 +427,7 @@ def get_oldest_uids(
         for hotkey in self.miner_heap.keys()
         if hotkey not in shuffled_miner_dict.keys()
     ]
+
     for hotkey in disconnected_miner_list:
         self.miner_heap.pop(hotkey)
 
