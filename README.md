@@ -90,11 +90,13 @@ cd validator
 
 Then run with PM2, replacing the arguments 
 ```bash
-run_pm2.sh --name wombo-validator -- \
+run_pm2.sh wombo-validator \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey}
 ```
+
+(wombo-validator is the PM2 process name)
 
 #### Docker
 Create a .env file from example.env
