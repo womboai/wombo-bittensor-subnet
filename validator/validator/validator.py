@@ -112,13 +112,6 @@ class BaseValidatorNeuron(BaseNeuron):
         )
 
         parser.add_argument(
-            "--are_wombo_neurons_endpoint",
-            type=str,
-            help="The endpoint to call to check if the uids are WOMBO owned, which we give a reward advantage for",
-            default="",
-        )
-
-        parser.add_argument(
             "--neuron.sample_size",
             type=int,
             help="The number of miners to query in a single step.",
