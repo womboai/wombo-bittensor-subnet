@@ -59,13 +59,15 @@ class WomboSubnetAPI(SubnetsAPI):
         return ImageGenerationClientSynapse(inputs=inputs)
 
     def process_responses(self, responses: List[ImageGenerationClientSynapse]) -> List[bytes]:
+        bad_responses = []
         finished_responses = []
 
         for response in responses:
             if response.images:
                 finished_responses.append(response)
+            else:
+                bad_responses.append(response)
 
-        bad_responses = [response for response in responses if response not in finished_responses]
         bad_axons = [response.axon for response in bad_responses]
         bad_dendrites = [response.dendrite for response in bad_responses]
 
@@ -85,7 +87,7 @@ class WomboSubnetAPI(SubnetsAPI):
                 try:
                     # Sync the metagraph.
                     self.metagraph.sync(subtensor=self.subtensor)
-                    await sync_neuron_info(self)
+                    await sync_neuron_info(self, self.dendrite)
                 except Exception as _:
                     bt.logging.error("Failed to sync client metagraph, ", traceback.format_exc())
 
@@ -145,7 +147,7 @@ async def main():
                 "axons": [axon.dict() for axon in exception.queried_axons],
                 "dendrites": [dendrite.dict() for dendrite in exception.dendrite_responses],
             },
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
     async with WomboSubnetAPI() as client:

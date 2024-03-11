@@ -3,28 +3,34 @@ import bittensor
 from typing import List, Optional
 
 import torch
+from bittensor import AxonInfo
 
 from tensor.protocol import NeuronInfoSynapse
 
 DEFAULT_NEURON_INFO = NeuronInfoSynapse()
 
 
-async def sync_neuron_info(self):
-    uids = [
+async def sync_neuron_info(self, dendrite: bittensor.dendrite):
+    uids: list[int] = [
         uid
         for uid in range(self.metagraph.n.item())
         if self.metagraph.axons[uid].is_serving
     ]
 
-    axons = [
-        self.metagraph.axons[uid]
+    uid_by_hotkey: dict[str, int] = {
+        self.metagraph.axons[uid].hotkey: uid
         for uid in uids
         if self.metagraph.axons[uid].hotkey != self.wallet.hotkey.ss58_address
-    ]
+    }
 
-    uids_by_hotkey = {axon.hotkey: uid for uid, axon in zip(uids, axons)}
+    axon_by_hotkey: dict[str, AxonInfo] = {
+        self.metagraph.axons[uid].hotkey: self.metagraph.axons[uid]
+        for uid in uids
+    }
 
-    neuron_info: List[NeuronInfoSynapse] = await self.dendrite(
+    axons = [axon_by_hotkey[hotkey] for hotkey in uid_by_hotkey.keys()]
+
+    neuron_info: List[NeuronInfoSynapse] = await dendrite(
         axons=axons,
         synapse=NeuronInfoSynapse(),
         deserialize=False,
@@ -36,7 +42,7 @@ async def sync_neuron_info(self):
     }
 
     self.neuron_info = {
-        uids_by_hotkey[hotkey]: info
+        uid_by_hotkey[hotkey]: info
         for hotkey, info in info_by_hotkey.items()
     }
 
