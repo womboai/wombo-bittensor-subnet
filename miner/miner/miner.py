@@ -44,7 +44,7 @@ class BaseMinerNeuron(BaseNeuron):
             )
 
         # The axon handles request processing, allowing validators to send this miner requests.
-        self.axon = bt.axon(wallet=self.wallet, port=self.config.axon.port)
+        self.axon = bt.axon(wallet=self.wallet, config=self.config)
 
     @classmethod
     def add_args(cls, parser):
