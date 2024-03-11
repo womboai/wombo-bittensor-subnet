@@ -2,24 +2,14 @@
 
 set -e
 
-ARGUMENTS=("$@")
-
-for i in "${!ARGUMENTS[@]}"; do
-   if [[ "${ARGUMENTS[$i]}" = "--" ]]; then
-       SEPARATOR_INDEX="${i}";
-   fi
-done
-
-ARGUMENT_LENGTH=$(($# - $SEPARATOR_INDEX - 1))
-
-PM2_ARGS=${@:1:$SEPARATOR_INDEX}
-VALIDATOR_ARGS=${@:$(($SEPARATOR_INDEX + 2)):$ARGUMENT_LENGTH}
+NAME=$1
+VALIDATOR_ARGS=${@:2:$(($# - 1))}
 
 pm2 stop wombo-validator || true
 
 ./setup.sh
 
-pm2 start venv/bin/python $PM2_ARGS -- -m validator.main $VALIDATOR_ARGS
+pm2 start venv/bin/python --name $NAME -- -m validator.main $VALIDATOR_ARGS
 
 while true; do
   sleep 1800
@@ -40,9 +30,9 @@ while true; do
   # The HEAD has changed, meaning there's a new version
   echo "Validator has received an update, restarting"
 
-  pm2 stop wombo-validator
+  pm2 stop $NAME
 
   ./setup.sh
 
-  pm2 restart wombo-validator
+  pm2 restart $NAME
 done
