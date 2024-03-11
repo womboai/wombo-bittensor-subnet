@@ -268,6 +268,9 @@ class Validator(BaseValidatorNeuron):
             if not len(finished_responses):
                 raise GetMinerResponseException(bad_dendrites, bad_axons)
 
+        def random_response():
+            return finished_responses[random.randint(0, len(finished_responses) - 1)]
+
         if random.random() < RANDOM_VALIDATION_CHANCE:
             working_axons = [self.metagraph.axons[uid] for uid in working_miner_uids]
 
@@ -278,15 +281,18 @@ class Validator(BaseValidatorNeuron):
                 finished_responses
             )
 
-            best_response = [
-                response
-                for response in finished_responses
-                if axon_uids[response.axon.hotkey] == best_uid
-            ][0]
+            if best_uid:
+                best_response = [
+                    response
+                    for response in finished_responses
+                    if axon_uids[response.axon.hotkey] == best_uid
+                ][0]
 
-            response = best_response
+                response = best_response
+            else:
+                response = random_response()
         else:
-            response = finished_responses[random.randint(0, len(finished_responses) - 1)]
+            response = random_response()
 
         synapse.images = response.output.images
         synapse.images = add_watermarks(synapse.deserialize())
