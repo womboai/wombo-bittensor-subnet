@@ -17,12 +17,9 @@ from image_generation_protocol.io_protocol import ImageGenerationInputs
 from gpu_pipeline.pipeline import SDXLPipelines, parse_input_parameters
 
 
-SIMILARITY_THRESHOLD = 0.8
-
-
 # Credits to Huggingface for the SDXL pipeline code
-def __all_close(tensor_a: torch.Tensor, tensor_b: torch.Tensor) -> bool:
-    return torch.isclose(tensor_a, tensor_b, atol=1e-3).float().mean() > SIMILARITY_THRESHOLD
+def __similarity(tensor_a: torch.Tensor, tensor_b: torch.Tensor) -> float:
+    return torch.cosine_similarity(tensor_a.flatten(), tensor_b.flatten(), eps=1e-3, dim=0).item()
 
 
 @torch.no_grad()
@@ -61,7 +58,7 @@ def __validate_internal(
     callback_on_step_end: Optional[Callable[[int, int, Dict], None]] = None,
     callback_on_step_end_tensor_inputs: List[str] = ["latents"],
     **kwargs,
-) -> bool:
+) -> float:
     r"""
     Function invoked when calling the pipeline for generation.
 
@@ -375,7 +372,7 @@ def __validate_internal(
     # compute the previous noisy sample x_t -> x_t-1
     latents = pipeline.scheduler.step(noise_pred, t, latents, **extra_step_kwargs, return_dict=False)[0]
 
-    return __all_close(latents, expected_next_latents)
+    return __similarity(latents, expected_next_latents)
 
 
 @torch.no_grad()
@@ -415,7 +412,7 @@ def __validate_internal_cn(
     clip_skip: Optional[int] = None,
     callback_on_step_end_tensor_inputs: List[str] = ["latents"],
     **kwargs,
-):
+) -> float:
     r"""
     The call function to the pipeline for generation.
 
@@ -826,7 +823,7 @@ def __validate_internal_cn(
     # compute the previous noisy sample x_t -> x_t-1
     latents = pipeline.scheduler.step(noise_pred, t, latents, **extra_step_kwargs, return_dict=False)[0]
 
-    return __all_close(latents, expected_next_latents)
+    return __similarity(latents, expected_next_latents)
 
 
 async def validate_frames(
@@ -834,7 +831,7 @@ async def validate_frames(
     pipelines: SDXLPipelines,
     frames: bytes,
     miner_inputs: ImageGenerationInputs,
-):
+) -> float:
     frames_tensor = load_tensor(frames)
 
     num_random_indices = 3
@@ -848,7 +845,7 @@ async def validate_frames(
     validation_func = __validate_internal_cn if miner_inputs.controlnet_conditioning_scale > 0.0 else __validate_internal
 
     async with gpu_semaphore:
-        return all(
+        similarities = torch.tensor([
             validation_func(
                 selected_pipeline,
                 i + 1,
@@ -856,4 +853,8 @@ async def validate_frames(
                 **input_kwargs
             )
             for i in random_indices
-        )
+        ])
+
+    similarity = similarities.mean().item() * 0.5 + 0.5
+
+    return pow(similarity, 4)
