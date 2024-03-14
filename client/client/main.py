@@ -116,7 +116,7 @@ class WomboSubnetAPI(SubnetsAPI):
         self,
         input_parameters: ImageGenerationInputs,
     ) -> List[bytes]:
-        validator_uids = get_best_uids(self, validators=True, k=5)
+        validator_uids = get_best_uids(self, validators=True)
 
         if not len(validator_uids):
             raise HTTPException(
