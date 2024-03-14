@@ -18,8 +18,8 @@ from gpu_pipeline.pipeline import SDXLPipelines, parse_input_parameters
 
 
 # Credits to Huggingface for the SDXL pipeline code
-def __similarity(tensor_a: torch.Tensor, tensor_b: torch.Tensor) -> torch.Tensor:
-    return torch.cosine_similarity(tensor_a, tensor_b, eps=1e-3)
+def __similarity(tensor_a: torch.Tensor, tensor_b: torch.Tensor) -> float:
+    return torch.cosine_similarity(tensor_a.flatten(), tensor_b.flatten(), eps=1e-3, dim=0).item()
 
 
 @torch.no_grad()
@@ -58,7 +58,7 @@ def __validate_internal(
     callback_on_step_end: Optional[Callable[[int, int, Dict], None]] = None,
     callback_on_step_end_tensor_inputs: List[str] = ["latents"],
     **kwargs,
-) -> torch.Tensor:
+) -> float:
     r"""
     Function invoked when calling the pipeline for generation.
 
@@ -412,7 +412,7 @@ def __validate_internal_cn(
     clip_skip: Optional[int] = None,
     callback_on_step_end_tensor_inputs: List[str] = ["latents"],
     **kwargs,
-) -> torch.Tensor:
+) -> float:
     r"""
     The call function to the pipeline for generation.
 
@@ -831,7 +831,7 @@ async def validate_frames(
     pipelines: SDXLPipelines,
     frames: bytes,
     miner_inputs: ImageGenerationInputs,
-):
+) -> float:
     frames_tensor = load_tensor(frames)
 
     num_random_indices = 3
@@ -845,7 +845,7 @@ async def validate_frames(
     validation_func = __validate_internal_cn if miner_inputs.controlnet_conditioning_scale > 0.0 else __validate_internal
 
     async with gpu_semaphore:
-        similarities = torch.stack([
+        similarities = torch.tensor([
             validation_func(
                 selected_pipeline,
                 i + 1,
@@ -855,6 +855,6 @@ async def validate_frames(
             for i in random_indices
         ])
 
-    similarity = similarities.flatten().mean().item() * 0.5 + 0.5
+    similarity = similarities.mean().item() * 0.5 + 0.5
 
     return pow(similarity, 4)
