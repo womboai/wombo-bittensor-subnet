@@ -1,5 +1,6 @@
 import asyncio
 import os
+import traceback
 from datetime import datetime
 from typing import Annotated
 
@@ -49,10 +50,13 @@ def main():
             """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
             bittensor.logging.info("resync_metagraph()")
 
-            # Sync the metagraph.
-            metagraph.sync(subtensor=subtensor)
+            try:
+                # Sync the metagraph.
+                metagraph.sync(subtensor=subtensor)
+            except Exception as _:
+                bittensor.logging.error("Failed to sync metagraph, ", traceback.format_exc())
 
-            await asyncio.sleep(30)
+            await asyncio.sleep(90)
 
     asyncio.get_event_loop().create_task(resync_metagraph())
 
