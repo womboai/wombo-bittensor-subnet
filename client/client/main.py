@@ -1,10 +1,9 @@
 import asyncio
 import os
-import random
 import traceback
 from asyncio import Task
 from datetime import datetime
-from typing import List, Annotated
+from typing import List, Annotated, Union, Optional, AsyncGenerator
 
 import bittensor as bt
 import uvicorn
@@ -58,25 +57,58 @@ class WomboSubnetAPI(SubnetsAPI):
     def prepare_synapse(self, inputs: ImageGenerationInputs) -> ImageGenerationClientSynapse:
         return ImageGenerationClientSynapse(inputs=inputs)
 
-    def process_responses(self, responses: List[ImageGenerationClientSynapse]) -> List[bytes]:
+    def process_responses(self, responses: AsyncGenerator[ImageGenerationClientSynapse, None]) -> List[bytes]:
         bad_responses = []
-        finished_responses = []
 
-        for response in responses:
+        async for response in responses:
             if response.images:
-                finished_responses.append(response)
+                return response.images
             else:
                 bad_responses.append(response)
 
         bad_axons = [response.axon for response in bad_responses]
         bad_dendrites = [response.dendrite for response in bad_responses]
 
-        bt.logging.error(f"Failed to query validators with axons {bad_axons}, {bad_dendrites}")
+        raise ValidatorQueryException(bad_axons, bad_dendrites)
 
-        if not len(finished_responses):
-            raise ValidatorQueryException(bad_axons, bad_dendrites)
+    async def get_responses(
+        self,
+        axons: Union[bt.axon, List[bt.axon]],
+        synapse: ImageGenerationClientSynapse,
+        timeout: int,
+    ) -> AsyncGenerator[ImageGenerationClientSynapse, None]:
+        if isinstance(axons, list):
+            responses = asyncio.as_completed([
+                self.dendrite(
+                    axons=axon,
+                    synapse=synapse,
+                    deserialize=False,
+                    timeout=timeout,
+                )
+                for axon in axons
+            ])
 
-        return finished_responses[random.randint(0, len(finished_responses) - 1)].images
+            for future in responses:
+                yield await future
+        else:
+            yield await self.dendrite(
+                axons=axons,
+                synapse=synapse,
+                deserialize=False,
+                timeout=timeout,
+            )
+
+    # noinspection PyMethodOverriding
+    async def query_api(
+        self,
+        inputs: ImageGenerationInputs,
+        axons: Union[bt.axon, List[bt.axon]],
+        timeout: Optional[int] = CLIENT_REQUEST_TIMEOUT,
+    ) -> list[bytes]:
+        synapse = self.prepare_synapse(inputs)
+        bt.logging.debug(f"Querying validator axons with synapse {synapse.name}...")
+
+        return self.process_responses(self.get_responses(axons, synapse, timeout))
 
     async def __aenter__(self):
         async def resync_metagraph():
@@ -126,14 +158,10 @@ class WomboSubnetAPI(SubnetsAPI):
 
         axons = [self.metagraph.axons[uid] for uid in validator_uids]
 
-        response = await self.query_api(
+        return await self.query_api(
+            input_parameters,
             axons,
-            deserialize=False,
-            timeout=CLIENT_REQUEST_TIMEOUT,
-            inputs=input_parameters,
         )
-
-        return response
 
 
 async def main():

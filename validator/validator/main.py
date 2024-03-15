@@ -1,6 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
+import asyncio
 import os
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -19,7 +20,8 @@ import os
 
 import random
 import base64
-from typing import List, Tuple, Optional
+from asyncio import Future, Lock
+from typing import List, Tuple, Optional, AsyncGenerator
 
 import torch
 from PIL import Image
@@ -82,7 +84,7 @@ class NoMinersAvailableException(Exception):
 
 
 class GetMinerResponseException(Exception):
-    def __init__(self, dendrites: list[TerminalInfo], axons: list[AxonInfo]):
+    def __init__(self, dendrites: list[TerminalInfo], axons: list[TerminalInfo]):
         super().__init__(f"Failed to query miners, dendrites: {dendrites}")
 
         self.dendrites = dendrites
@@ -116,13 +118,16 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info("load_state()")
         self.load_state()
 
+        self.pending_validation_lock = Lock()
+        self.pending_validation_requests: list[Future[None]] = []
+
     async def score_responses(
         self,
         inputs: ImageGenerationInputs,
         miner_uids: torch.LongTensor,
         axons: List[AxonInfo],
         responses: List[ImageGenerationSynapse],
-    ) -> Optional[int]:
+    ):
         working_miner_uids: List[int] = []
         finished_responses: List[ImageGenerationSynapse] = []
 
@@ -157,7 +162,7 @@ class Validator(BaseValidatorNeuron):
             return
 
         if rewards.nelement():
-            return working_miner_uids[rewards.argmax().item()]
+            return
 
         bt.logging.info(f"Scored responses: {rewards}")
         # Update the scores based on the rewards. You may want to define your own update_scores function for custom behavior.
@@ -176,6 +181,12 @@ class Validator(BaseValidatorNeuron):
         - Rewarding the miners based on their responses
         - Updating the scores
         """
+
+        async with self.pending_validation_lock:
+            pending_validation_requests = self.pending_validation_requests.copy()
+
+        if len(pending_validation_requests):
+            pending_validation_requests[0].get_loop().run_until_complete(asyncio.gather(*pending_validation_requests))
 
         miner_uids = get_oldest_uids(self, k=self.config.neuron.sample_size)
 
@@ -223,6 +234,69 @@ class Validator(BaseValidatorNeuron):
 
         await self.score_responses(inputs, miner_uids, axons, responses)
 
+    async def get_forward_responses(
+        self,
+        axons: list[AxonInfo],
+        synapse: ImageGenerationSynapse,
+    ) -> AsyncGenerator[ImageGenerationSynapse, None]:
+        responses = asyncio.as_completed([
+            self.forward_dendrite(
+                axons=axon,
+                synapse=synapse,
+                deserialize=False,
+                timeout=CLIENT_REQUEST_TIMEOUT,
+            )
+            for axon in axons
+        ])
+
+        for response in responses:
+            yield await response
+
+    async def validate_user_request_responses(
+        self,
+        inputs: ImageGenerationInputs,
+        finished_response: ImageGenerationSynapse,
+        miner_uids: torch.LongTensor,
+        axons: list[AxonInfo],
+        bad_responses: list[ImageGenerationSynapse],
+        response_generator: AsyncGenerator[ImageGenerationSynapse, None],
+    ):
+        axon_uids = {
+            axon.hotkey: uid.item()
+            for uid, axon in zip(miner_uids, axons)
+        }
+
+        working_miner_uids: List[int] = [axon_uids[finished_response.axon.hotkey]]
+        finished_responses: List[ImageGenerationSynapse] = [finished_response]
+
+        async for response in response_generator:
+            if not response.output:
+                bad_responses.append(response)
+                continue
+
+            working_miner_uids.append(axon_uids[response.axon.hotkey])
+            finished_responses.append(response)
+
+        if len(bad_responses):
+            bad_axons = [response.axon for response in bad_responses]
+            bad_dendrites = [response.dendrite for response in bad_responses]
+            bad_miner_uids = [axon_uids[axon.hotkey] for axon in bad_axons]
+
+            # Some failed to response, punish them
+            self.update_scores(self.scores[tensor(bad_miner_uids, dtype=torch.int64)] * 0.25, bad_miner_uids)
+
+            bt.logging.error(f"Failed to query some miners with {inputs} for axons {bad_axons}, {bad_dendrites}")
+
+        if random.random() < RANDOM_VALIDATION_CHANCE:
+            working_axons = [self.metagraph.axons[uid] for uid in working_miner_uids]
+
+            await self.score_responses(
+                inputs,
+                tensor(working_miner_uids),
+                working_axons,
+                finished_responses,
+            )
+
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uids = get_best_uids(self, validators=False)
 
@@ -231,73 +305,44 @@ class Validator(BaseValidatorNeuron):
 
         axons = [self.metagraph.axons[uid] for uid in miner_uids]
 
-        responses: List[ImageGenerationSynapse] = await self.forward_dendrite(
-            axons=axons,
-            synapse=ImageGenerationSynapse(inputs=synapse.inputs),
-            deserialize=False,
-            timeout=CLIENT_REQUEST_TIMEOUT,
-        )
+        response_generator = self.get_forward_responses(axons, ImageGenerationSynapse(inputs=synapse.inputs))
 
-        working_miner_uids: List[int] = []
-        finished_responses: List[ImageGenerationSynapse] = []
+        bad_responses: list[ImageGenerationSynapse] = []
+
+        async for response in response_generator:
+            if response.output:
+                synapse.images = response.output.images
+                synapse.images = add_watermarks(synapse.deserialize())
+
+                validation_coroutine = self.validate_user_request_responses(
+                    synapse.inputs,
+                    response,
+                    miner_uids,
+                    axons,
+                    bad_responses,
+                    response_generator,
+                )
+
+                async with self.pending_validation_lock:
+                    self.pending_validation_requests.append(asyncio.ensure_future(validation_coroutine))
+
+                return synapse
+
+            bad_responses.append(response)
 
         axon_uids = {
             axon.hotkey: uid.item()
             for uid, axon in zip(miner_uids, axons)
         }
 
-        for response in responses:
-            if not response.output or not response.axon or not response.axon.hotkey:
-                continue
+        bad_axons = [response.axon for response in bad_responses]
+        bad_dendrites = [response.dendrite for response in bad_responses]
+        bad_miner_uids = [axon_uids[axon.hotkey] for axon in bad_axons]
 
-            working_miner_uids.append(axon_uids[response.axon.hotkey])
-            finished_responses.append(response)
+        # Some failed to response, punish them
+        self.update_scores(self.scores[tensor(bad_miner_uids, dtype=torch.int64)] * 0.25, bad_miner_uids)
 
-        bad_miner_uids = [uid.item() for uid in miner_uids if uid.item() not in working_miner_uids]
-
-        if len(bad_miner_uids):
-            # Some failed to response, punish them
-            self.update_scores(self.scores[tensor(bad_miner_uids, dtype=torch.int64)] * 0.25, bad_miner_uids)
-
-            bad_axons: List[AxonInfo] = [self.metagraph.axons[uid] for uid in bad_miner_uids]
-            bad_axon_hotkeys = [axon.hotkey for axon in bad_axons]
-            bad_dendrites = [response.dendrite for response in responses if response.axon.hotkey in bad_axon_hotkeys]
-
-            bt.logging.error(f"Failed to query some miners with {synapse.inputs} for axons {bad_axons}, {bad_dendrites}")
-
-            if not len(finished_responses):
-                raise GetMinerResponseException(bad_dendrites, bad_axons)
-
-        def random_response():
-            return finished_responses[random.randint(0, len(finished_responses) - 1)]
-
-        if random.random() < RANDOM_VALIDATION_CHANCE:
-            working_axons = [self.metagraph.axons[uid] for uid in working_miner_uids]
-
-            best_uid = await self.score_responses(
-                synapse.inputs,
-                tensor(working_miner_uids),
-                working_axons,
-                finished_responses
-            )
-
-            if best_uid:
-                best_response = [
-                    response
-                    for response in finished_responses
-                    if axon_uids[response.axon.hotkey] == best_uid
-                ][0]
-
-                response = best_response
-            else:
-                response = random_response()
-        else:
-            response = random_response()
-
-        synapse.images = response.output.images
-        synapse.images = add_watermarks(synapse.deserialize())
-
-        return synapse
+        raise GetMinerResponseException(bad_dendrites, bad_axons)
 
     async def blacklist_image(
         self,
