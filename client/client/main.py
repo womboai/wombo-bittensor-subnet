@@ -57,7 +57,7 @@ class WomboSubnetAPI(SubnetsAPI):
     def prepare_synapse(self, inputs: ImageGenerationInputs) -> ImageGenerationClientSynapse:
         return ImageGenerationClientSynapse(inputs=inputs)
 
-    def process_responses(self, responses: AsyncGenerator[ImageGenerationClientSynapse, None]) -> List[bytes]:
+    async def process_responses(self, responses: AsyncGenerator[ImageGenerationClientSynapse, None]) -> List[bytes]:
         bad_responses = []
 
         async for response in responses:
@@ -108,7 +108,7 @@ class WomboSubnetAPI(SubnetsAPI):
         synapse = self.prepare_synapse(inputs)
         bt.logging.debug(f"Querying validator axons with synapse {synapse.name}...")
 
-        return self.process_responses(self.get_responses(axons, synapse, timeout))
+        return await self.process_responses(self.get_responses(axons, synapse, timeout))
 
     async def __aenter__(self):
         async def resync_metagraph():
