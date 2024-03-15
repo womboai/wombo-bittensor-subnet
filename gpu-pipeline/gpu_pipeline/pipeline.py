@@ -14,6 +14,7 @@ from diffusers import (
     StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline, ControlNetModel,
 )
 import torch
+from numpy import dtype
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 
@@ -100,7 +101,7 @@ def get_pipeline() -> Tuple[Semaphore, SDXLPipelines]:
 
     pipeline = (
         StableDiffusionXLPipeline
-        .from_single_file(get_model_path())
+        .from_single_file(get_model_path(), torch_dtype=torch.float16)
         .to(device)
     )
 
@@ -109,7 +110,11 @@ def get_pipeline() -> Tuple[Semaphore, SDXLPipelines]:
 
     cn_pipeline = StableDiffusionXLControlNetPipeline(
         **pipeline.components,
-        controlnet=ControlNetModel.from_pretrained("diffusers/controlnet-canny-sdxl-1.0"),
+        controlnet=ControlNetModel.from_pretrained(
+            "diffusers/controlnet-canny-sdxl-1.0",
+            torch_dtype=torch.float16,
+            variant="fp16",
+        ),
     ).to(device)
 
     return Semaphore(), SDXLPipelines(t2i_pipe=pipeline, cn_pipe=cn_pipeline)

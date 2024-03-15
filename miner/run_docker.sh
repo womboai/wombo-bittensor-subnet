@@ -11,4 +11,4 @@ docker run \
   -v ~/.aws:/root/.aws/ \
   -it \
   --rm \
-  wombo-subnet:miner \
+  wombo-subnet:miner $@ \

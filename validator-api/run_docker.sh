@@ -11,6 +11,7 @@ docker run \
   -v ~/.cache:/root/.cache \
   -v $(pwd)/cache:/app/validator-api/cache \
   -v $(pwd)/../checkpoints:/app/checkpoints \
+  -v ~/.cache:/root/.cache \
   -it \
   --rm \
-  wombo-subnet:validator-api \
+  wombo-subnet:validator-api $@ \

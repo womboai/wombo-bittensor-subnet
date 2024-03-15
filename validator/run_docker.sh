@@ -12,7 +12,7 @@ docker run \
   -v ~/.bittensor:/root/.bittensor/ \
   --rm \
   --name wombo-validator \
-  wombo-subnet:validator &
+  wombo-subnet:validator $@ &
 
 function handle_sigint() {
   echo "Stopping validator"
@@ -55,5 +55,5 @@ while true; do
     -v ~/.bittensor:/root/.bittensor/ \
     --rm \
     --name wombo-validator \
-    wombo-subnet:validator &
+    wombo-subnet:validator $@ &
 done
