@@ -1,7 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-from enum import Enum
+
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,12 +16,13 @@ from enum import Enum
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-from typing import List, Optional, Literal
+from typing import List, Optional
 from io import BytesIO
 import base64
 
 import bittensor as bt
 from PIL import Image
+from pydantic import BaseModel
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationOutput
 
@@ -39,12 +40,19 @@ class ImageGenerationSynapse(bt.Synapse):
     output: Optional[ImageGenerationOutput]
 
 
+class MinerGenerationOutput(BaseModel):
+    images: List[bytes]
+    process_time: float
+    miner_uid: int
+    miner_hotkey: str
+
+
 class ImageGenerationClientSynapse(bt.Synapse):
     inputs: ImageGenerationInputs
-    images: Optional[List[bytes]]
+    output: Optional[MinerGenerationOutput]
 
     def deserialize(self) -> List[Image.Image]:
         f"""
-        Assumes the {self.images} field is filled by axon
+        Assumes the {self.output} field is filled by axon
         """
-        return [load_base64_image(data) for data in self.images]
+        return [load_base64_image(data) for data in self.output.images]

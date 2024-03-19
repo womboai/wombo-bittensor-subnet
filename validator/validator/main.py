@@ -36,7 +36,8 @@ from starlette import status
 from torch import tensor
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
-from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse
+from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse, \
+    MinerGenerationOutput
 from neuron_selector.uids import get_best_uids
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
 
@@ -306,10 +307,21 @@ class Validator(BaseValidatorNeuron):
 
         bad_responses: list[ImageGenerationSynapse] = []
 
+        axon_uids = {
+            axon.hotkey: uid.item()
+            for uid, axon in zip(miner_uids, axons)
+        }
+
         async for response in response_generator:
             if response.output:
-                synapse.images = response.output.images
-                synapse.images = add_watermarks(synapse.deserialize())
+                synapse.output = MinerGenerationOutput(
+                    images=response.output.images,
+                    process_time=response.dendrite.process_time,
+                    miner_uid=axon_uids[response.axon.hotkey],
+                    miner_hotkey=response.axon.hotkey,
+                )
+
+                synapse.output.images = add_watermarks(synapse.deserialize())
 
                 validation_coroutine = self.validate_user_request_responses(
                     synapse.inputs,
@@ -326,11 +338,6 @@ class Validator(BaseValidatorNeuron):
                 return synapse
 
             bad_responses.append(response)
-
-        axon_uids = {
-            axon.hotkey: uid.item()
-            for uid, axon in zip(miner_uids, axons)
-        }
 
         bad_axons = [response.axon for response in bad_responses]
         bad_dendrites = [response.dendrite for response in bad_responses]

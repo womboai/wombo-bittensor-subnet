@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 
 from tensor.config import config, check_config, add_args
-from tensor.protocol import ImageGenerationClientSynapse
+from tensor.protocol import ImageGenerationClientSynapse, MinerGenerationOutput
 from neuron_selector.uids import get_best_uids, sync_neuron_info
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 
@@ -57,12 +57,15 @@ class WomboSubnetAPI(SubnetsAPI):
     def prepare_synapse(self, inputs: ImageGenerationInputs) -> ImageGenerationClientSynapse:
         return ImageGenerationClientSynapse(inputs=inputs)
 
-    async def process_responses(self, responses: AsyncGenerator[ImageGenerationClientSynapse, None]) -> List[bytes]:
+    async def process_responses(
+        self,
+        responses: AsyncGenerator[ImageGenerationClientSynapse, None],
+    ) -> MinerGenerationOutput:
         bad_responses = []
 
         async for response in responses:
-            if response.images:
-                return response.images
+            if response.output:
+                return response.output
             else:
                 bad_responses.append(response)
 
@@ -104,7 +107,7 @@ class WomboSubnetAPI(SubnetsAPI):
         inputs: ImageGenerationInputs,
         axons: Union[bt.axon, List[bt.axon]],
         timeout: Optional[int] = CLIENT_REQUEST_TIMEOUT,
-    ) -> list[bytes]:
+    ) -> MinerGenerationOutput:
         synapse = self.prepare_synapse(inputs)
         bt.logging.debug(f"Querying validator axons with synapse {synapse.name}...")
 
@@ -147,7 +150,7 @@ class WomboSubnetAPI(SubnetsAPI):
     async def generate(
         self,
         input_parameters: ImageGenerationInputs,
-    ) -> List[bytes]:
+    ) -> MinerGenerationOutput:
         validator_uids = get_best_uids(self, validators=True)
 
         if not len(validator_uids):
@@ -181,7 +184,7 @@ async def main():
     async with WomboSubnetAPI() as client:
         @app.post("/api/generate")
         async def generate(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> List[bytes]:
-            return await client.generate(input_parameters)
+            return (await client.generate(input_parameters)).images
 
         @app.get("/")
         def healthcheck():
