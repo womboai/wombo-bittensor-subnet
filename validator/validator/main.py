@@ -296,7 +296,11 @@ class Validator(BaseValidatorNeuron):
             )
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
-        miner_uids = get_best_uids(self, validators=False)
+        miner_uids = (
+            get_best_uids(self, validators=False)
+            if synapse.miner_uid is None
+            else [synapse.miner_uid]
+        )
 
         if not len(miner_uids):
             raise NoMinersAvailableException(synapse.dendrite)

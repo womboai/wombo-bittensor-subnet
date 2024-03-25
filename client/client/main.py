@@ -40,6 +40,11 @@ class ImageGenerationResult(BaseModel):
     miner_info: NeuronGenerationInfo
 
 
+class ImageGenerationClientInputs(ImageGenerationInputs):
+    miner_uid: int | None
+    validator_uid: int | None
+
+
 class WomboSubnetAPI(SubnetsAPI):
     def __init__(self):
         client_config = self.client_config()
@@ -67,8 +72,8 @@ class WomboSubnetAPI(SubnetsAPI):
         self.periodic_metagraph_resync: Task
         self.neuron_info = {}
 
-    def prepare_synapse(self, inputs: ImageGenerationInputs) -> ImageGenerationClientSynapse:
-        return ImageGenerationClientSynapse(inputs=inputs)
+    def prepare_synapse(self, inputs: ImageGenerationClientInputs) -> ImageGenerationClientSynapse:
+        return ImageGenerationClientSynapse(inputs=inputs, miner_uid=inputs.miner_uid)
 
     async def process_responses(
         self,
@@ -117,7 +122,7 @@ class WomboSubnetAPI(SubnetsAPI):
     # noinspection PyMethodOverriding
     async def query_api(
         self,
-        inputs: ImageGenerationInputs,
+        inputs: ImageGenerationClientInputs,
         axons: Union[bt.axon, List[bt.axon]],
         timeout: Optional[int] = CLIENT_REQUEST_TIMEOUT,
     ) -> ImageGenerationClientSynapse:
@@ -162,9 +167,13 @@ class WomboSubnetAPI(SubnetsAPI):
 
     async def generate(
         self,
-        input_parameters: ImageGenerationInputs,
+        input_parameters: ImageGenerationClientInputs,
     ) -> ImageGenerationResult:
-        validator_uids = get_best_uids(self, validators=True)
+        validator_uids = (
+            get_best_uids(self, validators=True)
+            if input_parameters.validator_uid is None
+            else [input_parameters.validator_uid]
+        )
 
         if not len(validator_uids):
             raise HTTPException(
@@ -215,7 +224,7 @@ async def main():
 
     async with WomboSubnetAPI() as client:
         @app.post("/api/generate")
-        async def generate(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> ImageGenerationResult:
+        async def generate(input_parameters: Annotated[ImageGenerationClientInputs, Body()]) -> ImageGenerationResult:
             return await client.generate(input_parameters)
 
         @app.get("/")

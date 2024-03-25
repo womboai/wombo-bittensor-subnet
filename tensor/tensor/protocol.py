@@ -49,7 +49,8 @@ class MinerGenerationOutput(BaseModel):
 
 class ImageGenerationClientSynapse(bt.Synapse):
     inputs: ImageGenerationInputs
-    output: Optional[MinerGenerationOutput]
+    miner_uid: int | None
+    output: MinerGenerationOutput | None
 
     def deserialize(self) -> List[Image.Image]:
         f"""
