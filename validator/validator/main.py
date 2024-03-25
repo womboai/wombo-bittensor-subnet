@@ -299,7 +299,7 @@ class Validator(BaseValidatorNeuron):
         miner_uids = (
             get_best_uids(self, validators=False)
             if synapse.miner_uid is None
-            else [synapse.miner_uid]
+            else tensor([synapse.miner_uid])
         )
 
         if not len(miner_uids):

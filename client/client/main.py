@@ -12,6 +12,7 @@ from fastapi import FastAPI, Body, HTTPException, status
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from torch import tensor
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 
@@ -172,7 +173,7 @@ class WomboSubnetAPI(SubnetsAPI):
         validator_uids = (
             get_best_uids(self, validators=True)
             if input_parameters.validator_uid is None
-            else [input_parameters.validator_uid]
+            else tensor([input_parameters.validator_uid])
         )
 
         if not len(validator_uids):
