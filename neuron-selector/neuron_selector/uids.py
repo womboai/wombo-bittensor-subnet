@@ -82,11 +82,12 @@ def get_best_uids(
         if validator_condition(uid, infos[uid])
     ]
 
-    sorted_uids = sorted(available_uids, reverse=True, key=lambda uid: trust[uid])
+    uids = torch.tensor(
+        random.choices(
+            available_uids,
+            weights=[trust[uid] for uid in available_uids],
+            k=k,
+        )
+    )
 
-    best_count = k * k
-
-    best_uids = sorted_uids[0:min(best_count, len(sorted_uids))]
-
-    uids = torch.tensor(random.sample(best_uids, min(k, len(best_uids))))
     return uids
