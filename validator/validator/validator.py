@@ -155,7 +155,7 @@ class BaseValidatorNeuron(BaseNeuron):
         """
 
         # Check that validator is registered on the network.
-        self.sync()
+        self.loop.run_until_complete(self.sync())
         self.resync_metagraph()
 
         if not self.config.neuron.sample_size:
@@ -170,7 +170,7 @@ class BaseValidatorNeuron(BaseNeuron):
                 try:
                     while True:
                         time.sleep(1e-3)
-                        self.sync()
+                        self.loop.run_until_complete(self.sync())
                 except KeyboardInterrupt:
                     self.axon.fast_server.is_running = False
                     bt.logging.success("Validator killed by keyboard interrupt.")
@@ -195,7 +195,7 @@ class BaseValidatorNeuron(BaseNeuron):
                     bt.logging.error("Failed to forward to miners, ", traceback.format_exc())
 
                 # Sync metagraph and potentially set weights.
-                self.sync()
+                self.loop.run_until_complete(self.sync())
 
                 self.step += 1
 
@@ -317,7 +317,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         self.loop.run_until_complete(sync_neuron_info(self, self.periodic_check_dendrite))
 
-    def sync(self):
+    async def sync(self):
         super().sync()
 
         try:
