@@ -20,6 +20,7 @@
 import copy
 import os.path
 import random
+import time
 import traceback
 from abc import abstractmethod
 
@@ -157,14 +158,29 @@ class BaseValidatorNeuron(BaseNeuron):
         self.sync()
         self.resync_metagraph()
 
-        self.axon.start()
-
-        bt.logging.info(
-            f"Running validator {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
-        )
-
         if not self.config.neuron.sample_size:
-            return
+            self.axon.started = True
+            self.axon.fast_server.is_running = True
+
+            with self.axon.fast_server.run_in_thread():
+                bt.logging.info(
+                    f"Running validator {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+                )
+
+                try:
+                    while True:
+                        time.sleep(1e-3)
+                        self.sync()
+                except KeyboardInterrupt:
+                    self.axon.fast_server.is_running = False
+                    bt.logging.success("Validator killed by keyboard interrupt.")
+                    exit()
+        else:
+            self.axon.start()
+
+            bt.logging.info(
+                f"Running validator {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+            )
 
         bt.logging.info(f"Validator starting at block: {self.block}")
 
