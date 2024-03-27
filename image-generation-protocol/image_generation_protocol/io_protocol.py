@@ -1,9 +1,6 @@
-import json
-import random
-from typing import List, Optional, Annotated, TypeAlias
+from typing import Annotated, TypeAlias
 
 from pydantic import BaseModel, Field
-
 
 DEFAULT_WIDTH = 768
 DEFAULT_HEIGHT = 1344
@@ -20,21 +17,29 @@ Frames: TypeAlias = bytes
 
 
 class ImageGenerationInputs(BaseModel):
+    """Inputs that should be communicated E2E directly from the client to the image generator"""
+
     prompt: str = ""  # Has a default as it needs to be default constructable
-    prompt_2: Optional[str] = None
+    prompt_2: str | None = None
     height: GenerationResolution = DEFAULT_HEIGHT
     width: GenerationResolution = DEFAULT_WIDTH
     num_inference_steps: Annotated[int, Field(gt=0, le=MAX_STEPS)] = DEFAULT_STEPS
     guidance_scale: float = DEFAULT_GUIDANCE
-    negative_prompt: Optional[str] = None
-    negative_prompt_2: Optional[str] = None
-    seed: Optional[int] = Field(default_factory=lambda: random.randint(0, 2**32))
+    negative_prompt: str | None = None
+    negative_prompt_2: str | None = None
+    num_images_per_prompt: Annotated[int, Field(gt=0, le=4)] = 1
+    seed: int | None = None
     controlnet_conditioning_scale: float = 0.0
+
+
+class ImageGenerationRequest(BaseModel):
+    inputs: ImageGenerationInputs
+    step_indices: list[int]
 
 
 class ImageGenerationOutput(BaseModel):
     frames: Frames
-    images: List[bytes]
+    images: list[bytes]
 
 
 class ValidationInputs(BaseModel):

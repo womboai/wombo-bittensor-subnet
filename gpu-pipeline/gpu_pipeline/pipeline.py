@@ -2,11 +2,11 @@ from asyncio import Semaphore
 from collections import namedtuple
 import os
 from pathlib import Path
+from typing import Any
 
 from PIL import Image
 import re
 import requests
-from typing import Tuple, Dict, Union
 
 import cv2
 import numpy as np
@@ -14,7 +14,6 @@ from diffusers import (
     StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline, ControlNetModel,
 )
 import torch
-from numpy import dtype
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 
@@ -51,10 +50,14 @@ def replace_keywords_with_tau_symbol(input_string):
 def parse_input_parameters(
     pipelines: SDXLPipelines,
     inputs: ImageGenerationInputs,
-) -> Tuple[Union[StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline], Dict[str, any]]:
+) -> tuple[StableDiffusionXLPipeline | StableDiffusionXLControlNetPipeline, dict[str, Any]]:
     input_kwargs = inputs.dict()
+    seed = input_kwargs.pop("seed")
+
+    if seed:
+        input_kwargs["generator"] = torch.Generator().manual_seed(seed)
+
     input_kwargs["prompt"] = replace_keywords_with_tau_symbol(inputs.prompt)
-    input_kwargs["generator"] = torch.Generator().manual_seed(input_kwargs.pop("seed"))
     input_kwargs["output_type"] = "pil"
 
     if inputs.controlnet_conditioning_scale > 0:
@@ -96,7 +99,7 @@ def get_tao_lora_path() -> str:
     )
 
 
-def get_pipeline() -> Tuple[Semaphore, SDXLPipelines]:
+def get_pipeline() -> tuple[Semaphore, SDXLPipelines]:
     device = os.getenv("DEVICE", "cuda")
 
     pipeline = (

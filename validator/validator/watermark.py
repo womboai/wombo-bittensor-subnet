@@ -16,11 +16,32 @@
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
 
-import asyncio
+import base64
+from io import BytesIO
 
-from miner.miner import Miner
+from PIL import Image
 
 
-# This is the main function, which runs the miner.
-if __name__ == "__main__":
-    asyncio.run(Miner().run())
+WATERMARK = Image.open("w_watermark.png")
+
+
+def watermark_image(image: Image.Image) -> Image.Image:
+    image_copy = image.copy()
+    wm = WATERMARK.resize((image_copy.size[0], int(image_copy.size[0] * WATERMARK.size[1] / WATERMARK.size[0])))
+    wm, alpha = wm.convert("RGB"), wm.split()[3]
+    image_copy.paste(wm, (0, image_copy.size[1] - wm.size[1]), alpha)
+    return image_copy
+
+
+def add_watermarks(images: list[Image.Image]) -> list[bytes]:
+    """
+    Add watermarks to the images.
+    """
+
+    def save_image(image: Image.Image) -> bytes:
+        image = watermark_image(image)
+        with BytesIO() as image_bytes:
+            image.save(image_bytes, format="JPEG")
+            return base64.b64encode(image_bytes.getvalue())
+
+    return [save_image(image) for image in images]

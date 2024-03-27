@@ -2,18 +2,18 @@ import os
 from asyncio import Semaphore
 from datetime import datetime
 from io import BytesIO
-from typing import Annotated, Tuple, List
+from typing import Annotated
 
 import torch
 import uvicorn
 from PIL import Image
 from fastapi import FastAPI, Body
 from requests_toolbelt import MultipartEncoder
+from starlette.responses import Response
 
 from gpu_pipeline.pipeline import get_pipeline, SDXLPipelines, parse_input_parameters
 from gpu_pipeline.tensor import save_tensor
-from image_generation_protocol.io_protocol import ImageGenerationInputs
-from starlette.responses import Response
+from image_generation_protocol.io_protocol import ImageGenerationRequest
 
 
 def image_stream(image: Image.Image) -> BytesIO:
@@ -27,15 +27,17 @@ def image_stream(image: Image.Image) -> BytesIO:
 async def generate(
     gpu_semaphore: Semaphore,
     pipelines: SDXLPipelines,
-    inputs: ImageGenerationInputs,
-) -> Tuple[bytes, List[BytesIO]]:
+    request: ImageGenerationRequest,
+) -> tuple[bytes, list[BytesIO]]:
     frames = []
 
-    def save_frames(_pipe, _step_index, _timestep, callback_kwargs):
-        frames.append(callback_kwargs["latents"])
+    def save_frames(_pipe, step_index, _timestep, callback_kwargs):
+        if step_index in request.step_indices:
+            frames.append(callback_kwargs["latents"])
+
         return callback_kwargs
 
-    selected_pipeline, input_kwargs = parse_input_parameters(pipelines, inputs)
+    selected_pipeline, input_kwargs = parse_input_parameters(pipelines, request.inputs)
 
     async with gpu_semaphore:
         output = selected_pipeline(
@@ -54,8 +56,8 @@ def main():
     gpu_semaphore, pipelines = get_pipeline()
 
     @app.post("/api/generate")
-    async def generate_image(input_parameters: Annotated[ImageGenerationInputs, Body()]) -> Response:
-        frames_bytes, images = await generate(gpu_semaphore, pipelines, input_parameters)
+    async def generate_image(request: Annotated[ImageGenerationRequest, Body()]) -> Response:
+        frames_bytes, images = await generate(gpu_semaphore, pipelines, request)
 
         multipart = MultipartEncoder(
             fields={

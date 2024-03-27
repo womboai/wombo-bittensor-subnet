@@ -1,9 +1,9 @@
 import random
 import bittensor
-from typing import List, Optional
 
 import torch
 from bittensor import AxonInfo
+from torch import Tensor
 
 from tensor.protocol import NeuronInfoSynapse
 
@@ -30,7 +30,7 @@ async def sync_neuron_info(self, dendrite: bittensor.dendrite):
 
     axons = [axon_by_hotkey[hotkey] for hotkey in uid_by_hotkey.keys()]
 
-    neuron_info: List[NeuronInfoSynapse] = await dendrite(
+    neuron_info: list[NeuronInfoSynapse] = await dendrite(
         axons=axons,
         synapse=NeuronInfoSynapse(),
         deserialize=False,
@@ -48,29 +48,30 @@ async def sync_neuron_info(self, dendrite: bittensor.dendrite):
 
 
 def get_best_uids(
-    self,
+    metagraph: bittensor.metagraph,
+    neuron_info: dict[int, NeuronInfoSynapse],
     validators: bool,
     k: int = 3,
-) -> torch.LongTensor:
+) -> Tensor:
     if validators:
-        trust = self.metagraph.validator_trust
+        trust = metagraph.validator_trust
 
-        def validator_condition(uid: int, info: NeuronInfoSynapse) -> bool:
-            return info.is_validator and self.metagraph.validator_permit[uid]
+        def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
+            return info.is_validator is True and metagraph.validator_permit[_uid].item()
     else:
-        trust = self.metagraph.trust
+        trust = metagraph.trust
 
         def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
             return info.is_validator is False
 
     available_uids = [
         uid
-        for uid in range(self.metagraph.n.item())
-        if self.metagraph.axons[uid].is_serving
+        for uid in range(metagraph.n.item())
+        if metagraph.axons[uid].is_serving
     ]
 
     infos = {
-        uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
+        uid: neuron_info.get(uid, DEFAULT_NEURON_INFO)
         for uid in available_uids
     }
 
