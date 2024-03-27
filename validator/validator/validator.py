@@ -114,8 +114,9 @@ class BaseValidatorNeuron(BaseNeuron):
         parser.add_argument(
             "--neuron.sample_size",
             type=int,
-            help="The number of miners to query in a single step.",
-            default=10,
+            help="The number of miners to query in a single periodic validation step. "
+                 "0 for disabling periodic validation",
+            default=0,
         )
 
         parser.add_argument(
@@ -161,6 +162,9 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.info(
             f"Running validator {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
+
+        if not self.config.neuron.sample_size:
+            return
 
         bt.logging.info(f"Validator starting at block: {self.block}")
 

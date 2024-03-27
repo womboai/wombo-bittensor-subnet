@@ -182,6 +182,7 @@ class Validator(BaseValidatorNeuron):
 
         async with self.pending_validation_lock:
             pending_validation_requests = self.pending_validation_requests.copy()
+            self.pending_validation_requests.clear()
 
         if len(pending_validation_requests):
             pending_validation_requests[0].get_loop().run_until_complete(asyncio.gather(*pending_validation_requests))
