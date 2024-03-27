@@ -1,8 +1,7 @@
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
 # Copyright © 2024 WOMBO
-import asyncio
-import os
+
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
 # the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -17,7 +16,8 @@ import os
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-
+import asyncio
+import os
 import random
 import base64
 from asyncio import Future, Lock
@@ -122,6 +122,16 @@ class Validator(BaseValidatorNeuron):
         self.pending_validation_lock = Lock()
         self.pending_validation_requests: list[Future[None]] = []
 
+    async def sync(self):
+        super().sync()
+
+        async with self.pending_validation_lock:
+            pending_validation_requests = self.pending_validation_requests.copy()
+            self.pending_validation_requests.clear()
+
+        if len(pending_validation_requests):
+            pending_validation_requests[0].get_loop().run_until_complete(asyncio.gather(*pending_validation_requests))
+
     async def score_responses(
         self,
         inputs: ImageGenerationInputs,
@@ -179,13 +189,6 @@ class Validator(BaseValidatorNeuron):
         - Rewarding the miners based on their responses
         - Updating the scores
         """
-
-        async with self.pending_validation_lock:
-            pending_validation_requests = self.pending_validation_requests.copy()
-            self.pending_validation_requests.clear()
-
-        if len(pending_validation_requests):
-            pending_validation_requests[0].get_loop().run_until_complete(asyncio.gather(*pending_validation_requests))
 
         miner_uids = get_oldest_uids(self, k=self.config.neuron.sample_size)
 
