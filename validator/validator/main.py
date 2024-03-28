@@ -123,7 +123,7 @@ class Validator(BaseValidatorNeuron):
         self.pending_validation_requests: list[Future[None]] = []
 
     async def sync(self):
-        super().sync()
+        await super().sync()
 
         async with self.pending_validation_lock:
             pending_validation_requests = self.pending_validation_requests.copy()
