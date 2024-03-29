@@ -22,7 +22,7 @@ import os
 import random
 import traceback
 from asyncio import Future, Lock
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Tuple
 
 import bittensor as bt
 import heapdict
@@ -711,7 +711,7 @@ class Validator(BaseNeuron):
 
         raise GetMinerResponseException(bad_dendrites, bad_axons)
 
-    async def blacklist_image(self, synapse: ImageGenerationClientSynapse) -> tuple[bool, str]:
+    async def blacklist_image(self, synapse: ImageGenerationClientSynapse) -> Tuple[bool, str]:
         is_hotkey_allowed_endpoint = select_endpoint(
             self.config.is_hotkey_allowed_endpoint,
             self.config.subtensor.network,

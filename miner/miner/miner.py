@@ -19,7 +19,7 @@
 import asyncio
 import base64
 import traceback
-from typing import cast
+from typing import cast, Tuple
 
 import bittensor as bt
 from aiohttp import ClientSession, MultipartReader, BodyPartReader
@@ -201,7 +201,7 @@ class Miner(BaseNeuron):
 
     async def blacklist_image(
         self, synapse: ImageGenerationSynapse
-    ) -> tuple[bool, str]:
+    ) -> Tuple[bool, str]:
         if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
             # Ignore requests from unrecognized entities.
             bt.logging.trace(

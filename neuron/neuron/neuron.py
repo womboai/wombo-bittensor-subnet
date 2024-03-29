@@ -15,7 +15,6 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import copy
 import traceback
 from abc import ABC, abstractmethod
 
@@ -23,7 +22,7 @@ import bittensor as bt
 
 from neuron.misc import ttl_get_block
 # Sync calls set weights and also resyncs the metagraph.
-from tensor.config import check_config, config
+from tensor.config import config
 
 
 class BaseNeuron(ABC):
