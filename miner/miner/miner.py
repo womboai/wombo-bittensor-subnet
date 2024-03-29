@@ -38,8 +38,8 @@ def miner_forward_info(synapse: NeuronInfoSynapse):
 
 
 class Miner(BaseNeuron):
-    def __init__(self, config=None):
-        super().__init__(config=config)
+    def __init__(self):
+        super().__init__()
 
         # Warn if allowing incoming requests from anyone.
         if not self.config.blacklist.force_validator_permit:

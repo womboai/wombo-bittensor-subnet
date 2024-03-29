@@ -79,8 +79,8 @@ class Validator(BaseNeuron):
     pending_validation_lock: Lock
     pending_validation_requests: list[Future[None]]
 
-    def __init__(self, config=None):
-        super().__init__(config=config)
+    def __init__(self):
+        super().__init__()
 
         # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)

@@ -53,8 +53,8 @@ class BaseNeuron(ABC):
     def block(self):
         return ttl_get_block(self.subtensor)
 
-    def __init__(self, config=None):
-        self.config = copy.deepcopy(config or config(self.add_args))
+    def __init__(self):
+        self.config = config(self.add_args)
         self.check_config(self.config)
 
         # Set up logging with the provided configuration and directory.
