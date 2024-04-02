@@ -100,12 +100,12 @@ async def get_base_weight(
             ),
         )
 
+        if not fastest_response.output:
+            break
+
         error_count = [bool(response.output) for response in responses].count(False)
 
         error_rate = error_count / len(responses)
-
-        if not slowest_response.dendrite:
-            break
 
         response_time = slowest_response.dendrite.process_time
 
