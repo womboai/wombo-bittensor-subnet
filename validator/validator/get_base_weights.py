@@ -18,6 +18,7 @@
 
 import random
 import sys
+from typing import Any
 
 import bittensor as bt
 from substrateinterface import Keypair
@@ -59,7 +60,11 @@ async def get_base_weight(
 
         seed = random.randint(0, 2 ** 32)
 
-        inputs = ImageGenerationInputs(**base_inputs.dict(), seed=seed)
+        input_dict: dict[str, Any] = base_inputs.dict()
+
+        input_dict.pop("seed")
+
+        inputs = ImageGenerationInputs(**input_dict, seed=seed)
 
         num_random_indices = 3
         step_indices = sorted(random.sample(
