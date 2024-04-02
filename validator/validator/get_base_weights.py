@@ -55,6 +55,8 @@ async def get_base_weight(
     rps: float | None = None
 
     while True:
+        bt.logging.info(f"\tTesting {count} requests")
+
         seed = random.randint(0, 2 ** 32)
 
         inputs = ImageGenerationInputs(**base_inputs.dict(), seed=seed)
@@ -105,6 +107,8 @@ async def get_base_weight(
 
         response_time = slowest_response.dendrite.process_time
 
+        bt.logging.info(f"\t{count} requests generated in {response_time} with an error rate of {error_rate * 100}%")
+
         if response_time > TIME_CONSTRAINT:
             break
 
@@ -137,4 +141,4 @@ async def get_base_weight(
         fastest_response,
     )
 
-    return score * rps
+    return score * rps * (1 - error_rate)
