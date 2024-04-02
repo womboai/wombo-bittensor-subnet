@@ -86,7 +86,7 @@ async def get_base_weight(
             responses,
             key=lambda response: (
                 response.dendrite.process_time
-                if response.dendrite
+                if response.dendrite and response.dendrite.process_time
                 else -1
             ),
         )
@@ -95,7 +95,7 @@ async def get_base_weight(
             responses,
             key=lambda response: (
                 response.dendrite.process_time
-                if response.dendrite
+                if response.dendrite and response.dendrite.process_time
                 else sys.float_info.max
             ),
         )
