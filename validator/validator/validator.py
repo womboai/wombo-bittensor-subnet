@@ -548,7 +548,8 @@ class Validator(BaseNeuron):
         torch.save(
             {
                 "step": self.step,
-                "scores": self.scores,
+                "base_scores": self.base_scores,
+                "score_bonuses": self.scores_bonuses,
                 "hotkeys": self.hotkeys,
                 "miner_heap": self.miner_heap,
             },
@@ -567,9 +568,10 @@ class Validator(BaseNeuron):
         # Load the state of the validator from file.
         state = torch.load(path)
         self.step = state["step"]
-        self.scores = state["scores"]
+        self.base_scores = state.get("base_scores", self.base_scores)
+        self.scores_bonuses = state.get("scores_bonuses", self.scores_bonuses)
         self.hotkeys = state["hotkeys"]
-        self.miner_heap = state.get("miner_heap", heapdict.heapdict())
+        self.miner_heap = state.get("miner_heap", self.miner_heap)
 
     async def get_forward_responses(
         self,
