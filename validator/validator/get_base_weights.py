@@ -104,9 +104,6 @@ async def get_base_weight(
 
         error_rate = error_count / len(responses)
 
-        if error_rate >= MAX_ERROR_RATE:
-            break
-
         if not slowest_response.dendrite:
             break
 
@@ -114,10 +111,10 @@ async def get_base_weight(
 
         bt.logging.info(f"\t{count} requests generated in {response_time} with an error rate of {error_rate * 100}%")
 
-        if response_time > TIME_CONSTRAINT:
-            break
-
         rps = count / response_time
+
+        if error_rate >= MAX_ERROR_RATE or response_time > TIME_CONSTRAINT:
+            break
 
         count *= 2
 
