@@ -273,23 +273,30 @@ class Validator(BaseNeuron):
         """
 
         if self.step % 2 == 0:
-            async with self.periodic_validation_queue_lock:
-                miner_uid, inputs = self.periodic_validation_queue.popitem()
-
             hotkey = None
+
+            async with self.periodic_validation_queue_lock:
+                if not len(self.periodic_validation_queue):
+                    return
+
+                miner_uid, inputs = self.periodic_validation_queue.popitem()
         else:
             miner_uid, hotkey = self.get_next_uid()
 
-            # TODO Get prompt from prompt bank
-            input_parameters = {
-                "prompt": "Tao, scenic, mountain, night, moon, (deep blue)",
-                "negative_prompt": "blurry, nude, (out of focus), JPEG artifacts",
-                "width": 1024,
-                "height": 1024,
-                "steps": 30,
-            }
+            async with self.periodic_validation_queue_lock:
+                if miner_uid in self.periodic_validation_queue:
+                    inputs = self.periodic_validation_queue.pop(miner_uid)
+                else:
+                    # TODO Get prompt from prompt bank
+                    input_parameters = {
+                        "prompt": "Tao, scenic, mountain, night, moon, (deep blue)",
+                        "negative_prompt": "blurry, nude, (out of focus), JPEG artifacts",
+                        "width": 1024,
+                        "height": 1024,
+                        "steps": 30,
+                    }
 
-            inputs = ImageGenerationInputs(**input_parameters)
+                    inputs = ImageGenerationInputs(**input_parameters)
 
         base_weight = await get_base_weight(
             miner_uid,
