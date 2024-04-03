@@ -27,8 +27,9 @@ from typing import AsyncGenerator, Tuple
 import bittensor as bt
 import heapdict
 import torch
-from aiohttp import ClientSession
+from aiohttp import ClientSession, BasicAuth
 from bittensor import AxonInfo, TerminalInfo
+from substrateinterface import Keypair
 from torch import tensor, Tensor
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
@@ -208,6 +209,31 @@ class Validator(BaseNeuron):
             default=0.5,
         )
 
+    async def send_metrics(
+        self,
+        miner_uid: int,
+        similarity_score: float,
+        processing_time: float,
+        requests_processed: int,
+        error_rate: float,
+    ):
+        keypair: Keypair = self.periodic_check_dendrite.keypair
+        hotkey = keypair.ss58_address
+        signature = f"0x{keypair.sign(hotkey).hex()}"
+
+        async with ClientSession() as session:
+            await session.post(
+                    self.data_endpoint,
+                    auth=BasicAuth(hotkey, signature),
+                    json={
+                        "miner_uid": miner_uid,
+                        "similarity_score": similarity_score,
+                        "processing_time": processing_time,
+                        "requests_processed": requests_processed,
+                        "error_rate": error_rate,
+                    },
+            )
+
     async def sync(self):
         await super().sync()
 
@@ -325,11 +351,9 @@ class Validator(BaseNeuron):
                     inputs = ImageGenerationInputs(**input_parameters)
 
         base_weight = await get_base_weight(
+            self,
             miner_uid,
             inputs,
-            self.metagraph,
-            self.periodic_check_dendrite,
-            self.config,
         )
 
         self.update_base_scores(base_weight, miner_uid)

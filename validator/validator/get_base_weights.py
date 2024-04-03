@@ -42,13 +42,11 @@ The max percentage of failures acceptable before stopping
 
 
 async def get_base_weight(
+    validator,
     uid: int,
     base_inputs: ImageGenerationInputs,
-    metagraph: bt.metagraph,
-    dendrite: bt.dendrite,
-    config: bt.config,
 ) -> float:
-    axon = metagraph.axons[uid]
+    axon = validator.metagraph.axons[uid]
 
     bt.logging.info(f"Measuring RPS of UID {uid} with Axon {axon}")
 
@@ -72,7 +70,7 @@ async def get_base_weight(
             k=num_random_indices,
         ))
 
-        responses: list[ImageGenerationSynapse] = await dendrite(
+        responses: list[ImageGenerationSynapse] = await validator.periodic_check_dendrite(
             axons=[axon] * count,
             synapse=ImageGenerationSynapse(
                 inputs=inputs,
@@ -100,9 +98,6 @@ async def get_base_weight(
             ),
         )
 
-        if not fastest_response.output:
-            break
-
         error_count = [bool(response.output) for response in responses].count(False)
 
         error_rate = error_count / len(responses)
@@ -118,17 +113,19 @@ async def get_base_weight(
 
         count *= 2
 
-    if not rps:
+    if not fastest_response.output:
+        validator.send_metrics(uid, 0.0, response_time, count, error_rate)
+
         return 0.0
 
     validation_endpoint = select_endpoint(
-        config.validation_endpoint,
-        config.subtensor.network,
+        validator.config.validation_endpoint,
+        validator.config.subtensor.network,
         "https://dev-validate.api.wombo.ai/api/validate",
         "https://validate.api.wombo.ai/api/validate",
     )
 
-    keypair: Keypair = dendrite.keypair
+    keypair: Keypair = validator.periodic_check_dendrite.keypair
     hotkey = keypair.ss58_address
     signature = f"0x{keypair.sign(hotkey).hex()}"
 
@@ -142,5 +139,7 @@ async def get_base_weight(
         ),
         fastest_response,
     )
+
+    validator.send_metrics(uid, score, response_time, count, error_rate)
 
     return score * rps * (1 - error_rate)
