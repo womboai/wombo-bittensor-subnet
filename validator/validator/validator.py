@@ -129,6 +129,13 @@ class Validator(BaseNeuron):
         self.periodic_validation_queue_lock = Lock()
         self.periodic_validation_queue = {}
 
+        self.data_endpoint = select_endpoint(
+            self.config.data_endpoint,
+            self.config.subtensor.network,
+            "https://dev-neuron-identifier.api.wombo.ai/api/data",
+            "https://neuron-identifier.api.wombo.ai/api/data",
+        )
+
     @classmethod
     def check_config(cls, config: bt.config):
         check_config(config, "validator")
@@ -171,6 +178,20 @@ class Validator(BaseNeuron):
             type=str,
             help="The endpoint called when checking if the hotkey is accepted by validators",
             default="",
+        )
+
+        parser.add_argument(
+            "--data_endpoint",
+            type=str,
+            help="The endpoint to send metrics to if enabled",
+            default="",
+        )
+
+        parser.add_argument(
+            "--no_metrics",
+            action="store_true",
+            help="Disables metrics.",
+            default=False,
         )
 
         parser.add_argument(
