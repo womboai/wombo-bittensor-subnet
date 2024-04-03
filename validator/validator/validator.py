@@ -206,7 +206,7 @@ class Validator(BaseNeuron):
         if len(pending_validation_requests):
             pending_validation_requests[0].get_loop().run_until_complete(asyncio.gather(*pending_validation_requests))
 
-    def get_oldest_uid(self) -> tuple[int, str]:
+    def get_next_uid(self) -> tuple[int, str]:
         all_uids_and_hotkeys_dict = {
             self.metagraph.axons[uid].hotkey: uid
             for uid in range(self.metagraph.n.item())
@@ -214,10 +214,12 @@ class Validator(BaseNeuron):
         }
 
         hotkeys = list(all_uids_and_hotkeys_dict.keys())
+
+        # if this is not randomized,
+        # every new validator will have the same mining order in their heap upon first launch,
+        # which would likely perpetuate the problem this function solves
         random.shuffle(hotkeys)
         shuffled_miner_dict = {hotkey: all_uids_and_hotkeys_dict[hotkey] for hotkey in hotkeys}
-        # if this is not randomized, every new validator will have the same mining order in their heap upon first launch,
-        # which would likely perpetuate the problem this function solves
 
         infos = {
             uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
@@ -236,6 +238,7 @@ class Validator(BaseNeuron):
             shuffled_miner_dict.pop(hotkey)
 
         for hotkey in shuffled_miner_dict.keys():
+            # Push new miners to the start of the queue to give them a base score
             if hotkey not in self.miner_heap:
                 self.miner_heap[hotkey] = 0
 
@@ -248,7 +251,7 @@ class Validator(BaseNeuron):
         for hotkey in disconnected_miner_list:
             self.miner_heap.pop(hotkey)
 
-        hotkey, ts = self.miner_heap.popitem()
+        hotkey, _ = self.miner_heap.popitem()
 
         return shuffled_miner_dict[hotkey], hotkey
 
@@ -268,7 +271,7 @@ class Validator(BaseNeuron):
 
             hotkey = None
         else:
-            miner_uid, hotkey = self.get_oldest_uid()
+            miner_uid, hotkey = self.get_next_uid()
 
             # TODO Get prompt from prompt bank
             input_parameters = {
@@ -292,6 +295,8 @@ class Validator(BaseNeuron):
         self.update_base_scores(base_weight, miner_uid)
 
         if hotkey:
+            # Checked miners(with base scores) are pushed to the end of the queue
+            # to leave room for ones that have not been checked in a while
             self.miner_heap[hotkey] = self.block
 
     async def run(self):
