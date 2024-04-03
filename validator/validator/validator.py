@@ -76,8 +76,12 @@ class Validator(BaseNeuron):
 
     spec_version: int = 8
     neuron_info: dict[int, NeuronInfoSynapse]
-    pending_validation_lock: Lock
-    pending_validation_requests: list[Future[None]]
+
+    pending_requests_lock: Lock
+    pending_request_futures: list[Future[None]]
+
+    periodic_validation_queue_lock: Lock
+    periodic_validation_queue: dict[int, ImageGenerationInputs]
 
     def __init__(self):
         super().__init__()
@@ -119,8 +123,11 @@ class Validator(BaseNeuron):
         bt.logging.info("load_state()")
         self.load_state()
 
-        self.pending_validation_lock = Lock()
-        self.pending_validation_requests = []
+        self.pending_requests_lock = Lock()
+        self.pending_request_futures = []
+
+        self.periodic_validation_queue_lock = Lock()
+        self.periodic_validation_queue = {}
 
     @classmethod
     def check_config(cls, config: bt.config):
@@ -167,14 +174,6 @@ class Validator(BaseNeuron):
         )
 
         parser.add_argument(
-            "--neuron.sample_size",
-            type=int,
-            help="The number of miners to query in a single periodic validation step. "
-                 "0 for disabling periodic validation",
-            default=0,
-        )
-
-        parser.add_argument(
             "--neuron.disable_set_weights",
             action="store_true",
             help="Disables setting weights.",
@@ -185,7 +184,7 @@ class Validator(BaseNeuron):
             "--neuron.moving_average_alpha",
             type=float,
             help="Moving average alpha parameter, how much to add of the new observation.",
-            default=0.05,
+            default=0.5,
         )
 
     async def sync(self):
@@ -200,14 +199,14 @@ class Validator(BaseNeuron):
         # Always save state.
         self.save_state()
 
-        async with self.pending_validation_lock:
-            pending_validation_requests = self.pending_validation_requests.copy()
-            self.pending_validation_requests.clear()
+        async with self.pending_requests_lock:
+            pending_validation_requests = self.pending_request_futures.copy()
+            self.pending_request_futures.clear()
 
         if len(pending_validation_requests):
             pending_validation_requests[0].get_loop().run_until_complete(asyncio.gather(*pending_validation_requests))
 
-    def get_oldest_uids(self, k: int) -> Tensor:
+    def get_oldest_uid(self) -> tuple[int, str]:
         all_uids_and_hotkeys_dict = {
             self.metagraph.axons[uid].hotkey: uid
             for uid in range(self.metagraph.n.item())
@@ -238,7 +237,7 @@ class Validator(BaseNeuron):
 
         for hotkey in shuffled_miner_dict.keys():
             if hotkey not in self.miner_heap:
-                self.miner_heap[hotkey] = self.block
+                self.miner_heap[hotkey] = 0
 
         disconnected_miner_list = [
             hotkey
@@ -249,23 +248,11 @@ class Validator(BaseNeuron):
         for hotkey in disconnected_miner_list:
             self.miner_heap.pop(hotkey)
 
-        uids = torch.tensor(
-            [shuffled_miner_dict[hotkey] for hotkey in self.get_n_lowest_values(k)]
-        )
+        hotkey, ts = self.miner_heap.popitem()
 
-        return uids
+        return shuffled_miner_dict[hotkey], hotkey
 
-    def get_n_lowest_values(self, n):
-        lowest_values = []
-
-        for _ in range(min(n, len(self.miner_heap))):
-            hotkey, ts = self.miner_heap.popitem()
-            lowest_values.append(hotkey)
-            self.miner_heap[hotkey] = self.block
-
-        return lowest_values
-
-    async def check_miners(self):
+    async def check_next_miner(self):
         """
         Validator forward pass, called by the validator every time step. Consists of:
         - Generating the query
@@ -275,30 +262,37 @@ class Validator(BaseNeuron):
         - Updating the scores
         """
 
-        miner_uids = self.get_oldest_uids(k=1)
+        if self.step % 2 == 0:
+            async with self.periodic_validation_queue_lock:
+                miner_uid, inputs = self.periodic_validation_queue.popitem()
 
-        if not len(miner_uids):
-            return
+            hotkey = None
+        else:
+            miner_uid, hotkey = self.get_oldest_uid()
 
-        miner_uid = miner_uids[0].item()
+            # TODO Get prompt from prompt bank
+            input_parameters = {
+                "prompt": "Tao, scenic, mountain, night, moon, (deep blue)",
+                "negative_prompt": "blurry, nude, (out of focus), JPEG artifacts",
+                "width": 1024,
+                "height": 1024,
+                "steps": 30,
+            }
 
-        input_parameters = {
-            "prompt": "Tao, scenic, mountain, night, moon, (deep blue)",
-            "negative_prompt": "blurry, nude, (out of focus), JPEG artifacts",
-            "width": 1024,
-            "height": 1024,
-            "steps": 30,
-        }
+            inputs = ImageGenerationInputs(**input_parameters)
 
         base_weight = await get_base_weight(
             miner_uid,
-            ImageGenerationInputs(**input_parameters),
+            inputs,
             self.metagraph,
             self.periodic_check_dendrite,
             self.config,
         )
 
-        self.update_base_scores(tensor([base_weight]), [miner_uid])
+        self.update_base_scores(base_weight, miner_uid)
+
+        if hotkey:
+            self.miner_heap[hotkey] = self.block
 
     async def run(self):
         """
@@ -338,7 +332,7 @@ class Validator(BaseNeuron):
                 bt.logging.info(f"step({self.step}) block({self.block})")
 
                 try:
-                    await self.check_miners()
+                    await self.check_next_miner()
                 except Exception as _:
                     bt.logging.error("Failed to forward to miners, ", traceback.format_exc())
 
@@ -488,43 +482,20 @@ class Validator(BaseNeuron):
                 self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length
 
-    def update_base_scores(self, rewards: Tensor, uids: list[int]):
+    def update_base_scores(self, score: float, uid: int):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""
 
-        # Check if rewards contains NaN values.
-        if torch.isnan(rewards).any():
-            bt.logging.warning(f"NaN values detected in rewards: {rewards}")
-            # Replace any NaN values in rewards with 0.
-            rewards = torch.nan_to_num(rewards, 0)
-
-        # Compute forward pass rewards, assumes uids are mutually exclusive.
-        # shape: [ metagraph.n ]
-        scattered_rewards = self.base_scores.to(self.device).scatter(
-            0,
-            torch.tensor(uids).to(self.device),
-            rewards.to(self.device),
-        )
-
-        bt.logging.debug(f"Scattered base scores: {rewards}")
+        bt.logging.debug(f"Base score: {score} for UID {uid}")
 
         # Update scores with rewards produced by this step.
         # shape: [ metagraph.n ]
         alpha: float = self.config.neuron.moving_average_alpha
-        self.base_scores = (
-                scattered_rewards * alpha +
-                self.base_scores.to(self.device) * (1 - alpha)
-        )
+        self.base_scores[uid] = score * alpha + self.base_scores[uid] * (1 - alpha)
 
         bt.logging.debug(f"Updated base scores: {self.base_scores}")
 
     def update_score_bonuses(self, rewards: Tensor, uids: list[int]):
         """Performs exponential moving average on the scores based on the rewards received from the miners."""
-
-        # Check if rewards contains NaN values.
-        if torch.isnan(rewards).any():
-            bt.logging.warning(f"NaN values detected in rewards: {rewards}")
-            # Replace any NaN values in rewards with 0.
-            rewards = torch.nan_to_num(rewards, 0)
 
         # Compute forward pass rewards, assumes uids are mutually exclusive.
         # shape: [ metagraph.n ]
@@ -533,12 +504,11 @@ class Validator(BaseNeuron):
             torch.tensor(uids).to(self.device),
             rewards.to(self.device),
         )
-        bt.logging.debug(f"Scattered base scores: {rewards}")
+        bt.logging.debug(f"Scattered score bonuses: {rewards}")
 
         # Update scores with rewards produced by this step.
         # shape: [ metagraph.n ]
         self.scores_bonuses = scattered_rewards
-        bt.logging.debug(f"Updated base scores: {self.scores_bonuses}")
 
     def save_state(self):
         """Saves the state of the validator to a file."""
@@ -627,6 +597,9 @@ class Validator(BaseNeuron):
                 bad_miner_uids,
             )
 
+            async with self.periodic_validation_queue_lock:
+                self.periodic_validation_queue.update({uid: inputs for uid in bad_miner_uids})
+
             bt.logging.error(f"Failed to query some miners with {inputs} for axons {bad_axons}, {bad_dendrites}")
 
         working_miner_tensor = tensor(working_miner_uids, dtype=torch.int64)
@@ -638,18 +611,8 @@ class Validator(BaseNeuron):
         if random.random() >= RANDOM_VALIDATION_CHANCE:
             return
 
-        rewards = await asyncio.gather(*[
-            get_base_weight(
-                miner_uid,
-                inputs,
-                self.metagraph,
-                self.periodic_check_dendrite,
-                self.config,
-            )
-            for miner_uid in working_miner_uids
-        ])
-
-        self.update_base_scores(tensor(rewards), working_miner_uids)
+        async with self.periodic_validation_queue_lock:
+            self.periodic_validation_queue.update({uid: inputs for uid in working_miner_uids})
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uids = (
@@ -699,8 +662,8 @@ class Validator(BaseNeuron):
                 response_generator,
             )
 
-            async with self.pending_validation_lock:
-                self.pending_validation_requests.append(asyncio.ensure_future(validation_coroutine))
+            async with self.pending_requests_lock:
+                self.pending_request_futures.append(asyncio.ensure_future(validation_coroutine))
 
             return synapse
 
