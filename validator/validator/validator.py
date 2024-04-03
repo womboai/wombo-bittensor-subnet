@@ -487,16 +487,12 @@ class Validator(BaseNeuron):
 
         bt.logging.debug(f"Base score: {score} for UID {uid}")
 
-        # Update scores with rewards produced by this step.
-        # shape: [ metagraph.n ]
         alpha: float = self.config.neuron.moving_average_alpha
         self.base_scores[uid] = score * alpha + self.base_scores[uid] * (1 - alpha)
 
         bt.logging.debug(f"Updated base scores: {self.base_scores}")
 
     def update_score_bonuses(self, rewards: Tensor, uids: list[int]):
-        """Performs exponential moving average on the scores based on the rewards received from the miners."""
-
         # Compute forward pass rewards, assumes uids are mutually exclusive.
         # shape: [ metagraph.n ]
         scattered_rewards = self.scores_bonuses.to(self.device).scatter(
@@ -506,7 +502,7 @@ class Validator(BaseNeuron):
         )
         bt.logging.debug(f"Scattered score bonuses: {rewards}")
 
-        # Update scores with rewards produced by this step.
+        # Update scores with rewards for handling user requests.
         # shape: [ metagraph.n ]
         self.scores_bonuses = scattered_rewards
 
