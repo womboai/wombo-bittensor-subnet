@@ -233,7 +233,7 @@ class Miner(BaseNeuron):
         )
         return priority
 
-    async def verify_image(self, synapse: ImageGenerationSynapse):
+    async def verify_image(self, synapse: ImageGenerationSynapse) -> None:
         if synapse.dendrite is None:
             raise SynapseDendriteNoneException()
 
