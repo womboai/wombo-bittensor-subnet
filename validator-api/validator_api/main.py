@@ -56,7 +56,7 @@ def main():
 
             await asyncio.sleep(90)
 
-    asyncio.get_event_loop().create_task(resync_metagraph())
+    asyncio.ensure_future(resync_metagraph())
 
     @app.post("/api/validate")
     async def validate(
