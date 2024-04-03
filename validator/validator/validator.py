@@ -251,7 +251,14 @@ class Validator(BaseNeuron):
         for hotkey in disconnected_miner_list:
             self.miner_heap.pop(hotkey)
 
-        hotkey, _ = self.miner_heap.popitem()
+        last_block = max(self.miner_heap.values())
+
+        hotkey = random.choices(
+            list(self.miner_heap.keys()),
+            weights=[last_block - block for block in self.miner_heap.values()],
+        )[0]
+
+        self.miner_heap.pop(hotkey)
 
         return shuffled_miner_dict[hotkey], hotkey
 
