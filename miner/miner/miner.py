@@ -23,6 +23,8 @@ from typing import cast, Tuple
 
 import bittensor as bt
 from aiohttp import ClientSession, MultipartReader, BodyPartReader
+from bittensor import SynapseDendriteNoneException
+from substrateinterface import Keypair
 
 from image_generation_protocol.io_protocol import ImageGenerationOutput, ImageGenerationRequest
 from neuron.neuron import BaseNeuron
@@ -38,6 +40,9 @@ def miner_forward_info(synapse: NeuronInfoSynapse):
 
 
 class Miner(BaseNeuron):
+    nonces: dict[str, set[int]]
+    nonce_lock: asyncio.Lock
+
     def __init__(self):
         super().__init__()
 
@@ -63,6 +68,7 @@ class Miner(BaseNeuron):
             forward_fn=self.forward_image,
             blacklist_fn=self.blacklist_image,
             priority_fn=self.priority_image,
+            verify_fn=self.verify_image,
         )
 
         self.axon.fast_config.timeout_keep_alive = KEEP_ALIVE_TIMEOUT
@@ -199,9 +205,7 @@ class Miner(BaseNeuron):
 
         return synapse
 
-    async def blacklist_image(
-        self, synapse: ImageGenerationSynapse
-    ) -> Tuple[bool, str]:
+    async def blacklist_image(self, synapse: ImageGenerationSynapse) -> Tuple[bool, str]:
         if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
             # Ignore requests from unrecognized entities.
             bt.logging.trace(
@@ -225,3 +229,41 @@ class Miner(BaseNeuron):
             f"Prioritizing {synapse.dendrite.hotkey} with value: ", priority
         )
         return priority
+
+    async def verify_image(self, synapse: ImageGenerationSynapse):
+        if synapse.dendrite is None:
+            raise SynapseDendriteNoneException()
+
+        # Build the keypair from the dendrite_hotkey
+        keypair = Keypair(ss58_address=synapse.dendrite.hotkey)
+
+        # Build the signature messages.
+        message = f"{synapse.dendrite.nonce}.{synapse.dendrite.hotkey}.{self.wallet.hotkey.ss58_address}.{synapse.dendrite.uuid}.{synapse.computed_body_hash}"
+
+        if not keypair.verify(message, synapse.dendrite.signature):
+            raise Exception(
+                f"Signature mismatch with {message} and {synapse.dendrite.signature}"
+            )
+
+        # Build the unique endpoint key.
+        endpoint_key = f"{synapse.dendrite.hotkey}:{synapse.dendrite.uuid}"
+
+        async with self.nonce_lock:
+            known_key = endpoint_key in self.nonces.keys()
+
+            # Check the nonce from the endpoint key.
+            if (
+                known_key
+                and self.nonces[endpoint_key] is not None
+                and synapse.dendrite.nonce is not None
+                and synapse.dendrite.nonce in self.nonces[endpoint_key]
+            ):
+                raise Exception("Duplicate nonce")
+
+            if known_key:
+                nonces = self.nonces[endpoint_key]
+            else:
+                nonces = set()
+                self.nonces[endpoint_key] = nonces
+
+            nonces.add(cast(int, synapse.dendrite.nonce))

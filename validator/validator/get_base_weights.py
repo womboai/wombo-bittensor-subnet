@@ -68,7 +68,7 @@ async def get_base_weight(
 
         num_random_indices = 3
         step_indices = sorted(random.sample(
-            range(base_inputs.num_inference_steps),
+            range(base_inputs.num_inference_steps - 1),
             k=num_random_indices,
         ))
 
