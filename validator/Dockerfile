@@ -18,5 +18,4 @@ ENTRYPOINT python \
     --subtensor.network $NETWORK \
     --wallet.name $WALLET_NAME \
     --wallet.hotkey $WALLET_HOTKEY \
-    --neuron.sample_size $SAMPLE_SIZE \
     $EXTRA_ARGS \

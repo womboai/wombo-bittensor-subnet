@@ -3,11 +3,11 @@ import os
 import traceback
 from asyncio import Task
 from datetime import datetime
-from typing import List, Annotated, Union, Optional, AsyncGenerator
+from typing import Annotated, AsyncGenerator, cast, TypeAlias
 
 import bittensor as bt
 import uvicorn
-from bittensor import SubnetsAPI, TerminalInfo
+from bittensor import SubnetsAPI, TerminalInfo, AxonInfo
 from fastapi import FastAPI, Body, HTTPException, status
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
@@ -15,11 +15,12 @@ from pydantic import BaseModel
 from torch import tensor
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
-
-from tensor.config import config, check_config, add_args
-from tensor.protocol import ImageGenerationClientSynapse
 from neuron_selector.uids import get_best_uids, sync_neuron_info
+from tensor.config import config, add_args
+from tensor.protocol import ImageGenerationClientSynapse, MinerGenerationOutput
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
+
+Axon: TypeAlias = AxonInfo | bt.axon
 
 
 class ValidatorQueryException(Exception):
@@ -36,12 +37,13 @@ class NeuronGenerationInfo(BaseModel):
 
 
 class ImageGenerationResult(BaseModel):
-    images: List[bytes]
+    images: list[bytes]
     validator_info: NeuronGenerationInfo
     miner_info: NeuronGenerationInfo
 
 
 class ImageGenerationClientInputs(ImageGenerationInputs):
+    watermark: bool = True
     miner_uid: int | None
     validator_uid: int | None
 
@@ -51,7 +53,7 @@ class WomboSubnetAPI(SubnetsAPI):
         client_config = self.client_config()
 
         self.config = client_config
-        self.check_config(client_config)
+        bt.logging.check_config(client_config)
 
         # Set up logging with the provided configuration and directory.
         bt.logging(config=client_config, logging_dir=client_config.full_path)
@@ -74,7 +76,11 @@ class WomboSubnetAPI(SubnetsAPI):
         self.neuron_info = {}
 
     def prepare_synapse(self, inputs: ImageGenerationClientInputs) -> ImageGenerationClientSynapse:
-        return ImageGenerationClientSynapse(inputs=inputs, miner_uid=inputs.miner_uid)
+        return ImageGenerationClientSynapse(
+            inputs=inputs,
+            watermark=inputs.watermark,
+            miner_uid=inputs.miner_uid,
+        )
 
     async def process_responses(
         self,
@@ -95,13 +101,13 @@ class WomboSubnetAPI(SubnetsAPI):
 
     async def get_responses(
         self,
-        axons: Union[bt.axon, List[bt.axon]],
+        axons: bt.axon | list[bt.axon],
         synapse: ImageGenerationClientSynapse,
         timeout: int,
     ) -> AsyncGenerator[ImageGenerationClientSynapse, None]:
         if isinstance(axons, list):
             responses = asyncio.as_completed([
-                self.dendrite(
+                self.dendrite.forward(
                     axons=axon,
                     synapse=synapse,
                     deserialize=False,
@@ -124,8 +130,8 @@ class WomboSubnetAPI(SubnetsAPI):
     async def query_api(
         self,
         inputs: ImageGenerationClientInputs,
-        axons: Union[bt.axon, List[bt.axon]],
-        timeout: Optional[int] = CLIENT_REQUEST_TIMEOUT,
+        axons: Axon | list[Axon],
+        timeout: int = CLIENT_REQUEST_TIMEOUT,
     ) -> ImageGenerationClientSynapse:
         synapse = self.prepare_synapse(inputs)
         bt.logging.debug(f"Querying validator axons with synapse {synapse.name}...")
@@ -155,23 +161,15 @@ class WomboSubnetAPI(SubnetsAPI):
         self.periodic_metagraph_resync.cancel()
 
     @classmethod
-    def check_config(cls, client_config: "bt.Config"):
-        check_config(cls, client_config)
-
-    @classmethod
-    def add_args(cls, parser):
-        add_args(cls, parser)
-
-    @classmethod
     def client_config(cls):
-        return config(cls)
+        return config(add_args)
 
     async def generate(
         self,
         input_parameters: ImageGenerationClientInputs,
     ) -> ImageGenerationResult:
         validator_uids = (
-            get_best_uids(self, validators=True)
+            get_best_uids(self.metagraph, self.neuron_info, validators=True)
             if input_parameters.validator_uid is None
             else tensor([input_parameters.validator_uid])
         )
@@ -182,7 +180,7 @@ class WomboSubnetAPI(SubnetsAPI):
                 detail="No suitable validators found",
             )
 
-        axons = [self.metagraph.axons[uid] for uid in validator_uids]
+        axons: list[AxonInfo] = [self.metagraph.axons[uid.item()] for uid in validator_uids]
 
         axon_uids = {
             axon.hotkey: uid.item()
@@ -194,17 +192,19 @@ class WomboSubnetAPI(SubnetsAPI):
             axons,
         )
 
+        output = cast(MinerGenerationOutput, response.output)
+
         return ImageGenerationResult(
-            images=response.output.images,
+            images=output.images,
             validator_info=NeuronGenerationInfo(
                 process_time=response.dendrite.process_time,
                 uid=axon_uids[response.axon.hotkey],
                 hotkey=response.axon.hotkey,
             ),
             miner_info=NeuronGenerationInfo(
-                process_time=response.output.process_time,
-                uid=response.output.miner_uid,
-                hotkey=response.output.miner_hotkey,
+                process_time=output.process_time,
+                uid=output.miner_uid,
+                hotkey=output.miner_hotkey,
             ),
         )
 

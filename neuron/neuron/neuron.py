@@ -15,16 +15,14 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import copy
 import traceback
+from abc import ABC, abstractmethod
 
 import bittensor as bt
 
-from abc import ABC, abstractmethod
-
-# Sync calls set weights and also resyncs the metagraph.
-from tensor.config import check_config, add_args, config
 from neuron.misc import ttl_get_block
+# Sync calls set weights and also resyncs the metagraph.
+from tensor.config import config
 
 
 class BaseNeuron(ABC):
@@ -35,30 +33,27 @@ class BaseNeuron(ABC):
     """
 
     @classmethod
-    def check_config(cls, config: "bt.Config"):
-        check_config(cls, config)
+    @abstractmethod
+    def check_config(cls, config: bt.config):
+        ...
 
     @classmethod
     @abstractmethod
     def add_args(cls, parser):
         ...
 
-    @classmethod
-    def config(cls):
-        return config(cls)
-
-    subtensor: "bt.subtensor"
-    wallet: "bt.wallet"
-    metagraph: "bt.metagraph"
+    subtensor: bt.subtensor
+    wallet: bt.wallet
+    metagraph: bt.metagraph
+    config: bt.config
+    axon: bt.axon
 
     @property
     def block(self):
-        return ttl_get_block(self)
+        return ttl_get_block(self.subtensor)
 
-    def __init__(self, config=None):
-        base_config = copy.deepcopy(config or BaseNeuron.config())
-        self.config = self.config()
-        self.config.merge(base_config)
+    def __init__(self):
+        self.config = config(self.add_args)
         self.check_config(self.config)
 
         # Set up logging with the provided configuration and directory.
@@ -99,10 +94,10 @@ class BaseNeuron(ABC):
         self.step = 0
 
     @abstractmethod
-    def resync_metagraph(self):
+    async def resync_metagraph(self):
         ...
 
-    def sync(self):
+    async def sync(self):
         """
         Wrapper for synchronizing the state of the network for the given miner or validator.
         """
@@ -110,7 +105,7 @@ class BaseNeuron(ABC):
         self.check_registered()
 
         try:
-            self.resync_metagraph()
+            await self.resync_metagraph()
         except Exception as _:
             bt.logging.error("Failed to resync metagraph, ", traceback.format_exc())
 

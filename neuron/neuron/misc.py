@@ -1,25 +1,27 @@
-# The MIT License (MIT)
-# Copyright © 2023 Yuma Rao
-# Copyright © 2023 Opentensor Foundation
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
-# documentation files (the “Software”), to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-# and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all copies or substantial portions of
-# the Software.
-
-# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
-# THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
+#  The MIT License (MIT)
+#  Copyright © 2023 Yuma Rao
+#  Copyright © 2024 WOMBO
+#
+#  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+#  documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+#  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+#  and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+#
+#  The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+#  the Software.
+#
+#  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+#  THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+#  DEALINGS IN THE SOFTWARE.
 
 import time
+from functools import lru_cache, update_wrapper
 from math import floor
 from typing import Callable, Any
-from functools import lru_cache, update_wrapper
+
+import bittensor
 
 
 # LRU Cache with TTL
@@ -56,7 +58,7 @@ def ttl_cache(maxsize: int = 128, typed: bool = False, ttl: int = -1):
 
     def wrapper(func: Callable) -> Callable:
         @lru_cache(maxsize, typed)
-        def ttl_func(ttl_hash, *args, **kwargs):
+        def ttl_func(_, *args, **kwargs):
             return func(*args, **kwargs)
 
         def wrapped(*args, **kwargs) -> Any:
@@ -89,7 +91,7 @@ def _ttl_hash_gen(seconds: int):
 
 # 12 seconds updating block.
 @ttl_cache(maxsize=1, ttl=12)
-def ttl_get_block(self) -> int:
+def ttl_get_block(subtensor: bittensor.subtensor) -> int:
     """
     Retrieves the current block number from the blockchain. This method is cached with a time-to-live (TTL)
     of 12 seconds, meaning that it will only refresh the block number from the blockchain at most every 12 seconds,
@@ -107,4 +109,4 @@ def ttl_get_block(self) -> int:
 
     Note: self here is the miner or validator instance
     """
-    return self.subtensor.get_current_block()
+    return subtensor.get_current_block()

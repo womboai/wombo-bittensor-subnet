@@ -1,7 +1,6 @@
 from asyncio import Semaphore
 from PIL import Image
-import random
-from typing import List, Optional, Union, Tuple, Dict, Any, Callable
+from typing import List, Optional, Union, Tuple, Dict, Any, Callable, cast
 
 import torch
 from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import (
@@ -13,7 +12,7 @@ from diffusers.pipelines.controlnet.pipeline_controlnet_sd_xl import (
 )
 
 from gpu_pipeline.tensor import load_tensor
-from image_generation_protocol.io_protocol import ImageGenerationInputs
+from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationRequest
 from gpu_pipeline.pipeline import SDXLPipelines, parse_input_parameters
 
 
@@ -823,26 +822,24 @@ def __validate_internal_cn(
     # compute the previous noisy sample x_t -> x_t-1
     latents = pipeline.scheduler.step(noise_pred, t, latents, **extra_step_kwargs, return_dict=False)[0]
 
-    return __similarity(latents, expected_next_latents)
+    return __similarity(cast(torch.Tensor, latents), expected_next_latents)
 
 
 async def validate_frames(
     gpu_semaphore: Semaphore,
     pipelines: SDXLPipelines,
     frames: bytes,
-    miner_inputs: ImageGenerationInputs,
+    request: ImageGenerationRequest,
 ) -> float:
     frames_tensor = load_tensor(frames)
 
-    num_random_indices = 3
-    random_indices = sorted(random.sample(
-        range(frames_tensor.shape[0] - 1),
-        k=num_random_indices
-    ))
-
-    selected_pipeline, input_kwargs = parse_input_parameters(pipelines, miner_inputs)
+    selected_pipeline, input_kwargs = parse_input_parameters(pipelines, request.inputs)
     frames_tensor = frames_tensor.to(selected_pipeline.unet.device, selected_pipeline.unet.dtype)
-    validation_func = __validate_internal_cn if miner_inputs.controlnet_conditioning_scale > 0.0 else __validate_internal
+    validation_func = (
+        __validate_internal_cn
+        if request.inputs.controlnet_conditioning_scale > 0.0
+        else __validate_internal
+    )
 
     async with gpu_semaphore:
         similarities = torch.tensor([
@@ -852,7 +849,7 @@ async def validate_frames(
                 (frames_tensor[i], frames_tensor[i + 1]),
                 **input_kwargs
             )
-            for i in random_indices
+            for i in request.step_indices
         ])
 
     similarity = similarities.mean().item() * 0.5 + 0.5

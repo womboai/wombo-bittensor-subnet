@@ -18,13 +18,13 @@
 
 import os
 import argparse
-from typing import Optional
+from typing import Callable
 
 import bittensor as bt
 from loguru import logger
 
 
-def check_config(cls, config: "bt.Config"):
+def check_config(config: bt.config, name: str):
     r"""Checks/validates the config namespace object."""
     bt.logging.check_config(config)
 
@@ -34,7 +34,7 @@ def check_config(cls, config: "bt.Config"):
             config.wallet.name,
             config.wallet.hotkey,
             config.netuid,
-            config.neuron.name,
+            name,
         )
     )
     print("full path:", full_path)
@@ -57,23 +57,12 @@ def check_config(cls, config: "bt.Config"):
         )
 
 
-def add_args(cls, parser):
+def add_args(parser: argparse.ArgumentParser):
     """
     Adds relevant arguments to the parser for operation.
     """
     # Netuid Arg: The netuid of the subnet to connect to.
     parser.add_argument("--netuid", type=int, help="Subnet netuid", default=1)
-
-    neuron_type = (
-        "validator" if "miner" not in cls.__name__.lower() else "miner"
-    )
-
-    parser.add_argument(
-        "--neuron.name",
-        type=str,
-        help="Trials for this neuron go in neuron.root / (wallet_cold - wallet_hot) / neuron.name. ",
-        default=neuron_type,
-    )
 
     parser.add_argument(
         "--neuron.device",
@@ -104,7 +93,7 @@ def add_args(cls, parser):
     )
 
 
-def config(cls):
+def config(add_args_fn: Callable[[argparse.ArgumentParser], None]):
     """
     Returns the configuration object specific to this miner or validator after adding relevant arguments.
     """
@@ -113,5 +102,5 @@ def config(cls):
     bt.subtensor.add_args(parser)
     bt.logging.add_args(parser)
     bt.axon.add_args(parser)
-    cls.add_args(parser)
+    add_args_fn(parser)
     return bt.config(parser)
