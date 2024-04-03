@@ -76,6 +76,9 @@ class Miner(BaseNeuron):
 
         bt.logging.info(f"Axon created: {self.axon}")
 
+        self.nonces = {}
+        self.nonce_lock = asyncio.Lock()
+
     @classmethod
     def check_config(cls, config: bt.config):
         check_config(config, "miner")
