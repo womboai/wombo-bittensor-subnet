@@ -101,6 +101,7 @@ def get_tao_lora_path() -> str:
 
 def get_pipeline() -> tuple[Semaphore, SDXLPipelines]:
     device = os.getenv("DEVICE", "cuda")
+    concurrency = int(os.getenv("CONCURRENCY", str(1)))
 
     pipeline = (
         StableDiffusionXLPipeline
@@ -120,4 +121,4 @@ def get_pipeline() -> tuple[Semaphore, SDXLPipelines]:
         ),
     ).to(device)
 
-    return Semaphore(), SDXLPipelines(t2i_pipe=pipeline, cn_pipe=cn_pipeline)
+    return Semaphore(concurrency), SDXLPipelines(t2i_pipe=pipeline, cn_pipe=cn_pipeline)
