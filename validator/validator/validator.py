@@ -153,6 +153,8 @@ class Validator(BaseNeuron):
         hotkey = keypair.ss58_address
         signature = f"0x{keypair.sign(hotkey).hex()}"
 
+        bt.logging.info(f"Sending {endpoint} metrics {data}")
+
         async with ClientSession() as session:
             await session.post(
                     f"{self.data_endpoint}/{endpoint}",
