@@ -40,6 +40,7 @@ from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse
     MinerGenerationOutput
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
 from validator.get_base_weights import get_base_weight
+from validator.metrics import bonus_factor
 from validator.reward import select_endpoint
 from validator.watermark import add_watermarks
 
@@ -99,6 +100,10 @@ class Validator(BaseNeuron):
         bt.logging.info("Building validation weights.")
         self.base_scores = torch.zeros_like(self.metagraph.S, dtype=torch.float32)
         self.scores_bonuses = torch.ones_like(self.metagraph.S, dtype=torch.float32)
+
+        self.step = 0
+
+        self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
 
         # Serve axon to enable external connections.
         self.serve_axon()
@@ -188,11 +193,12 @@ class Validator(BaseNeuron):
             default="",
         )
 
+        parser.set_defaults(send_metrics=True)
         parser.add_argument(
             "--no_metrics",
-            action="store_true",
-            help="Disables metrics.",
-            default=False,
+            action="store_false",
+            dest="send_metrics",
+            help="Disables sending metrics.",
         )
 
         parser.add_argument(
@@ -208,31 +214,6 @@ class Validator(BaseNeuron):
             help="Moving average alpha parameter, how much to add of the new observation.",
             default=0.5,
         )
-
-    async def send_metrics(
-        self,
-        miner_uid: int,
-        similarity_score: float,
-        processing_time: float,
-        requests_processed: int,
-        error_rate: float,
-    ):
-        keypair: Keypair = self.periodic_check_dendrite.keypair
-        hotkey = keypair.ss58_address
-        signature = f"0x{keypair.sign(hotkey).hex()}"
-
-        async with ClientSession() as session:
-            await session.post(
-                    self.data_endpoint,
-                    auth=BasicAuth(hotkey, signature),
-                    json={
-                        "miner_uid": miner_uid,
-                        "similarity_score": similarity_score,
-                        "processing_time": processing_time,
-                        "requests_processed": requests_processed,
-                        "error_rate": error_rate,
-                    },
-            )
 
     async def sync(self):
         await super().sync()
@@ -537,6 +518,14 @@ class Validator(BaseNeuron):
 
         await sync_neuron_info(self, self.periodic_check_dendrite)
 
+    def should_sync_metagraph(self):
+        """
+        Check if enough epoch blocks have elapsed since the last checkpoint to sync.
+        """
+        return (
+            self.block - self.metagraph.last_update[self.uid]
+        ) > self.config.neuron.epoch_length
+
     def should_set_weights(self) -> bool:
         # Don't set weights on initialization.
         if self.step == 0:
@@ -574,6 +563,15 @@ class Validator(BaseNeuron):
         # Update scores with rewards for handling user requests.
         # shape: [ metagraph.n ]
         self.scores_bonuses = scattered_rewards
+
+        for index, uid in enumerate(uids):
+            bonus_factor.record(
+                rewards[index].item(),
+                {
+                    "validator_uid": self.uid,
+                    "miner_uid": uid,
+                },
+            )
 
     def save_state(self):
         """Saves the state of the validator to a file."""

@@ -81,17 +81,12 @@ class BaseNeuron(ABC):
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
-        # Check if the miner is registered on the Bittensor network before proceeding further.
+        # Check if the neuron is registered on the Bittensor network before proceeding further.
         self.check_registered()
 
-        # Each miner gets a unique identity (UID) in the network for differentiation.
-        self.uid = self.metagraph.hotkeys.index(
-            self.wallet.hotkey.ss58_address
-        )
         bt.logging.info(
-            f"Running neuron on subnet: {self.config.netuid} with uid {self.uid} using network: {self.subtensor.chain_endpoint}"
+            f"Running neuron on subnet: {self.config.netuid} with using network: {self.subtensor.chain_endpoint}"
         )
-        self.step = 0
 
     @abstractmethod
     async def resync_metagraph(self):
@@ -121,10 +116,6 @@ class BaseNeuron(ABC):
             )
             exit()
 
+    @abstractmethod
     def should_sync_metagraph(self):
-        """
-        Check if enough epoch blocks have elapsed since the last checkpoint to sync.
-        """
-        return (
-            self.block - self.metagraph.last_update[self.uid]
-        ) > self.config.neuron.epoch_length
+        ...
