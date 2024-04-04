@@ -22,7 +22,7 @@ import os
 import random
 import traceback
 from asyncio import Future, Lock
-from typing import AsyncGenerator, Tuple
+from typing import AsyncGenerator, Tuple, Any
 
 import bittensor as bt
 import heapdict
@@ -40,7 +40,6 @@ from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse
     MinerGenerationOutput
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
 from validator.get_base_weights import get_base_weight
-from validator.metrics import bonus_factor
 from validator.reward import select_endpoint
 from validator.watermark import add_watermarks
 
@@ -141,6 +140,25 @@ class Validator(BaseNeuron):
             "https://dev-neuron-identifier.api.wombo.ai/api/data",
             "https://neuron-identifier.api.wombo.ai/api/data",
         )
+
+    async def send_metrics(
+        self,
+        endpoint: str,
+        data: Any,
+    ):
+        if not self.config.send_metrics:
+            return
+
+        keypair: Keypair = self.periodic_check_dendrite.keypair
+        hotkey = keypair.ss58_address
+        signature = f"0x{keypair.sign(hotkey).hex()}"
+
+        async with ClientSession() as session:
+            await session.post(
+                    f"{self.data_endpoint}/{endpoint}",
+                    auth=BasicAuth(hotkey, signature),
+                    json=data,
+            )
 
     @classmethod
     def check_config(cls, config: bt.config):
@@ -550,7 +568,7 @@ class Validator(BaseNeuron):
 
         bt.logging.debug(f"Updated base scores: {self.base_scores}")
 
-    def update_score_bonuses(self, rewards: Tensor, uids: list[int]):
+    async def update_score_bonuses(self, rewards: Tensor, uids: list[int]):
         # Compute forward pass rewards, assumes uids are mutually exclusive.
         # shape: [ metagraph.n ]
         scattered_rewards = self.scores_bonuses.to(self.device).scatter(
@@ -564,14 +582,7 @@ class Validator(BaseNeuron):
         # shape: [ metagraph.n ]
         self.scores_bonuses = scattered_rewards
 
-        for index, uid in enumerate(uids):
-            bonus_factor.record(
-                rewards[index].item(),
-                {
-                    "validator_uid": self.uid,
-                    "miner_uid": uid,
-                },
-            )
+        await self.send_metrics("bonus_scores", [[uid, rewards[index].item()] for index, uid in enumerate(uids)])
 
     def save_state(self):
         """Saves the state of the validator to a file."""
@@ -655,7 +666,7 @@ class Validator(BaseNeuron):
             bad_miner_uids = [axon_uids[axon.hotkey] for axon in bad_axons]
 
             # Some failed to response, punish them
-            self.update_score_bonuses(
+            await self.update_score_bonuses(
                 self.scores_bonuses[tensor(bad_miner_uids, dtype=torch.int64)] * 0.85,
                 bad_miner_uids,
             )
@@ -669,7 +680,7 @@ class Validator(BaseNeuron):
         base = self.base_scores[working_miner_tensor]
         bonus = self.scores_bonuses[working_miner_tensor]
 
-        self.update_score_bonuses((base * bonus + 0.125) / base, working_miner_uids)
+        await self.update_score_bonuses((base * bonus + 0.125) / base, working_miner_uids)
 
         if random.random() >= RANDOM_VALIDATION_CHANCE:
             return
@@ -735,7 +746,10 @@ class Validator(BaseNeuron):
         bad_miner_uids = [axon_uids[axon.hotkey] for axon in bad_axons]
 
         # Some failed to response, punish them
-        self.update_score_bonuses(self.scores_bonuses[tensor(bad_miner_uids, dtype=torch.int64)] * 0.85, bad_miner_uids)
+        await self.update_score_bonuses(
+            self.scores_bonuses[tensor(bad_miner_uids, dtype=torch.int64)] * 0.85,
+            bad_miner_uids,
+        )
 
         raise GetMinerResponseException(bad_dendrites, bad_axons)
 

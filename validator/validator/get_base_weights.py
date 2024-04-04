@@ -26,7 +26,6 @@ from substrateinterface import Keypair
 from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationRequest
 from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
-from validator.metrics import generation_time, concurrent_requests_processed, error_rate, output_score
 from validator.reward import select_endpoint, reward
 
 TIME_CONSTRAINT = 30.0
@@ -117,17 +116,15 @@ async def get_base_weight(
 
         count *= 2
 
-    base_metric_attributes = {
-        "validator_uid": validator.uid,
-        "miner_uid": uid,
-    }
-
     if not fastest_response.output:
-        if response_time:
-            generation_time.record(response_time, base_metric_attributes)
-
-        concurrent_requests_processed.record(count, base_metric_attributes)
-        error_rate.record(1.0, base_metric_attributes)
+        await validator.send_metrics(
+            "success",
+            {
+                "miner_uid": uid,
+                "generation_time": response_time,
+                "concurrent_requests_processed": count,
+            },
+        )
 
         return 0.0
 
@@ -153,9 +150,15 @@ async def get_base_weight(
         fastest_response,
     )
 
-    output_score.record(score, base_metric_attributes)
-    generation_time.record(response_time, base_metric_attributes)
-    concurrent_requests_processed.record(count, base_metric_attributes)
-    error_rate.record(error_percentage, base_metric_attributes)
+    await validator.send_metrics(
+        "success",
+        {
+            "miner_uid": uid,
+            "similarity_score": score,
+            "generation_time": response_time,
+            "concurrent_requests_processed": count,
+            "error_rate": error_percentage,
+        },
+    )
 
     return score * rps * (1 - error_percentage)
