@@ -17,9 +17,11 @@
 #  DEALINGS IN THE SOFTWARE.
 
 import asyncio
+import base64
 import copy
 import os
 import random
+import time
 import traceback
 from asyncio import Future, Lock
 from typing import AsyncGenerator, Tuple
@@ -293,8 +295,10 @@ class Validator(BaseNeuron):
                     inputs = self.periodic_validation_queue.pop(miner_uid)
                 else:
                     # TODO Get prompt from prompt bank
+                    randomness = base64.b64encode(str(self.step * time.monotonic_ns()).encode("ascii")).decode("ascii")
+
                     input_parameters = {
-                        "prompt": "Tao, scenic, mountain, night, moon, (deep blue)",
+                        "prompt": f"Tao, scenic, mountain, night, moon, {randomness}, (deep blue)",
                         "negative_prompt": "blurry, nude, (out of focus), JPEG artifacts",
                         "width": 1024,
                         "height": 1024,
@@ -362,6 +366,8 @@ class Validator(BaseNeuron):
 
                 # Sync metagraph and potentially set weights.
                 await self.sync()
+
+                await asyncio.sleep(60)
 
                 self.step += 1
 
