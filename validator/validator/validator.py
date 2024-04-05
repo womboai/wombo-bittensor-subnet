@@ -101,6 +101,10 @@ class Validator(BaseNeuron):
         self.base_scores = torch.zeros_like(self.metagraph.S, dtype=torch.float32)
         self.scores_bonuses = torch.ones_like(self.metagraph.S, dtype=torch.float32)
 
+        self.step = 0
+
+        self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
+
         # Serve axon to enable external connections.
         self.serve_axon()
 
@@ -489,6 +493,14 @@ class Validator(BaseNeuron):
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
         await sync_neuron_info(self, self.periodic_check_dendrite)
+
+    def should_sync_metagraph(self):
+        """
+        Check if enough epoch blocks have elapsed since the last checkpoint to sync.
+        """
+        return (
+            self.block - self.metagraph.last_update[self.uid]
+        ) > self.config.neuron.epoch_length
 
     def should_set_weights(self) -> bool:
         # Don't set weights on initialization.

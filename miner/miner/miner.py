@@ -42,6 +42,7 @@ def miner_forward_info(synapse: NeuronInfoSynapse):
 class Miner(BaseNeuron):
     nonces: dict[str, set[int]]
     nonce_lock: asyncio.Lock
+    last_metagraph_sync: int
 
     def __init__(self):
         super().__init__()
@@ -127,16 +128,12 @@ class Miner(BaseNeuron):
         # This loop maintains the miner's operations until intentionally stopped.
         try:
             while True:
-                while (
-                    self.block - self.metagraph.last_update[self.uid]
-                    < self.config.neuron.epoch_length
-                ):
+                while not self.should_sync_metagraph():
                     # Wait before checking again.
                     await asyncio.sleep(1)
 
                 # Sync metagraph and potentially set weights.
                 await self.sync()
-                self.step += 1
 
         # If someone intentionally stops the miner, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -157,6 +154,11 @@ class Miner(BaseNeuron):
 
         # Sync the metagraph.
         self.metagraph.sync(subtensor=self.subtensor)
+
+        self.last_metagraph_sync = self.block
+
+    def should_sync_metagraph(self):
+        return self.block - self.last_metagraph_sync > self.config.neuron.epoch_length
 
     async def forward_image(
         self,
