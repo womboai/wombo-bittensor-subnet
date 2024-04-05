@@ -81,9 +81,6 @@ class BaseNeuron(ABC):
         self.metagraph = self.subtensor.metagraph(self.config.netuid)
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
-        # Check if the miner is registered on the Bittensor network before proceeding further.
-        self.check_registered()
-
         # Check if the neuron is registered on the Bittensor network before proceeding further.
         self.check_registered()
 
@@ -101,6 +98,9 @@ class BaseNeuron(ABC):
         """
         # Ensure miner or validator hotkey is still registered on the network.
         self.check_registered()
+
+        if not self.should_sync_metagraph():
+            return
 
         try:
             await self.resync_metagraph()

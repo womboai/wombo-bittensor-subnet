@@ -108,8 +108,6 @@ class Validator(BaseNeuron):
         # Serve axon to enable external connections.
         self.serve_axon()
 
-        asyncio.get_event_loop().run_until_complete(sync_neuron_info(self, self.periodic_check_dendrite))
-
         self.miner_heap = heapdict.heapdict()
 
         self.axon.attach(forward_fn=validator_forward_info)
@@ -338,9 +336,7 @@ class Validator(BaseNeuron):
             Exception: For unforeseen errors during the miner's operation, which are logged for diagnosis.
         """
 
-        # Check that validator is registered on the network.
-        await self.sync()
-        await self.resync_metagraph()
+        await sync_neuron_info(self, self.periodic_check_dendrite)
 
         self.axon.start()
 
@@ -354,6 +350,8 @@ class Validator(BaseNeuron):
         try:
             while True:
                 bt.logging.info(f"step({self.step}) block({self.block})")
+
+                await sync_neuron_info(self, self.periodic_check_dendrite)
 
                 try:
                     await self.check_next_miner()
@@ -442,12 +440,6 @@ class Validator(BaseNeuron):
             bt.logging.error(f"set_weights failed. {message}")
 
     async def resync_metagraph(self):
-        if not self.should_sync_metagraph():
-            if self.step == 0:
-                await sync_neuron_info(self, self.periodic_check_dendrite)
-
-            return
-
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
         bt.logging.info("resync_metagraph()")
 
@@ -459,8 +451,6 @@ class Validator(BaseNeuron):
 
         # Check if the metagraph axon info has changed.
         if previous_metagraph.axons == self.metagraph.axons:
-            await sync_neuron_info(self, self.periodic_check_dendrite)
-
             return
 
         bt.logging.info(
@@ -491,8 +481,6 @@ class Validator(BaseNeuron):
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
-
-        await sync_neuron_info(self, self.periodic_check_dendrite)
 
     def should_sync_metagraph(self):
         """
