@@ -86,7 +86,7 @@ def get_best_uids(
     uids = torch.tensor(
         random.choices(
             available_uids,
-            weights=[trust[uid] for uid in available_uids],
+            weights=[trust[uid].item() for uid in available_uids],
             k=k,
         )
     )
