@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import traceback
 from asyncio import Task
@@ -71,6 +72,7 @@ class WomboSubnetAPI(SubnetsAPI):
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
         self.metagraph.sync(subtensor=self.subtensor)
+        asyncio.get_event_loop().run_until_complete(sync_neuron_info(self, self.dendrite))
 
         self.periodic_metagraph_resync: Task
         self.neuron_info = {}
@@ -151,7 +153,7 @@ class WomboSubnetAPI(SubnetsAPI):
                 except Exception as _:
                     bt.logging.error("Failed to sync client metagraph, ", traceback.format_exc())
 
-                await asyncio.sleep(30)
+                await asyncio.sleep(1200)
 
         self.periodic_metagraph_resync = asyncio.get_event_loop().create_task(resync_metagraph())
 
@@ -211,9 +213,12 @@ class WomboSubnetAPI(SubnetsAPI):
 
 async def main():
     app = FastAPI()
+    logger = logging.getLogger("client")
 
     @app.exception_handler(ValidatorQueryException)
     async def validator_query_handler(_: Request, exception: ValidatorQueryException) -> JSONResponse:
+        logger.error("Subnetwork error", exc_info=exception)
+
         return JSONResponse(
             content={
                 "detail": str(exception),

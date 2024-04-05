@@ -45,7 +45,10 @@ async def generate(
             callback_on_step_end=save_frames,
         )
 
-    frame_st_bytes = save_tensor(torch.stack(frames))
+    if len(frames):
+        frame_st_bytes = save_tensor(torch.stack(frames))
+    else:
+        frame_st_bytes = None
 
     return frame_st_bytes, [image_stream(image) for image in output.images]
 
@@ -59,15 +62,15 @@ def main():
     async def generate_image(request: Annotated[ImageGenerationRequest, Body()]) -> Response:
         frames_bytes, images = await generate(gpu_semaphore, pipelines, request)
 
-        multipart = MultipartEncoder(
-            fields={
-                "frames": (None, BytesIO(frames_bytes), "application/octet-stream"),
-                **{
-                    f"image_{index}": (None, image, "image/jpeg")
-                    for index, image in enumerate(images)
-                },
-            }
-        )
+        fields = {
+            f"image_{index}": (None, image, "image/jpeg")
+            for index, image in enumerate(images)
+        }
+
+        if frames_bytes:
+            fields["frames"] = (None, BytesIO(frames_bytes), "application/octet-stream")
+
+        multipart = MultipartEncoder(fields=fields)
 
         return Response(
             multipart.to_string(),

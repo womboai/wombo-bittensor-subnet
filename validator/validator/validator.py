@@ -17,9 +17,11 @@
 #  DEALINGS IN THE SOFTWARE.
 
 import asyncio
+import base64
 import copy
 import os
 import random
+import time
 import traceback
 from asyncio import Future, Lock
 from typing import AsyncGenerator, Tuple, Any
@@ -106,8 +108,6 @@ class Validator(BaseNeuron):
 
         # Serve axon to enable external connections.
         self.serve_axon()
-
-        asyncio.get_event_loop().run_until_complete(sync_neuron_info(self, self.periodic_check_dendrite))
 
         self.miner_heap = heapdict.heapdict()
 
@@ -255,37 +255,29 @@ class Validator(BaseNeuron):
             pending_validation_requests[0].get_loop().run_until_complete(asyncio.gather(*pending_validation_requests))
 
     def get_next_uid(self) -> tuple[int, str]:
-        all_uids_and_hotkeys_dict = {
+        miners = {
             self.metagraph.axons[uid].hotkey: uid
             for uid in range(self.metagraph.n.item())
             if self.metagraph.axons[uid].is_serving
         }
 
-        hotkeys = list(all_uids_and_hotkeys_dict.keys())
-
-        # if this is not randomized,
-        # every new validator will have the same mining order in their heap upon first launch,
-        # which would likely perpetuate the problem this function solves
-        random.shuffle(hotkeys)
-        shuffled_miner_dict = {hotkey: all_uids_and_hotkeys_dict[hotkey] for hotkey in hotkeys}
-
         infos = {
             uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
-            for uid in shuffled_miner_dict.values()
+            for uid in miners.values()
         }
 
         bt.logging.info(f"Neuron info found: {infos}")
 
         invalid_miner_list = [
             hotkey
-            for hotkey, uid in shuffled_miner_dict.items()
+            for hotkey, uid in miners.items()
             if infos[uid].is_validator is not False
         ]
 
         for hotkey in invalid_miner_list:
-            shuffled_miner_dict.pop(hotkey)
+            miners.pop(hotkey)
 
-        for hotkey in shuffled_miner_dict.keys():
+        for hotkey in miners.keys():
             # Push new miners to the start of the queue to give them a base score
             if hotkey not in self.miner_heap:
                 self.miner_heap[hotkey] = 0
@@ -293,7 +285,7 @@ class Validator(BaseNeuron):
         disconnected_miner_list = [
             hotkey
             for hotkey in self.miner_heap.keys()
-            if hotkey not in shuffled_miner_dict.keys()
+            if hotkey not in miners.keys()
         ]
 
         for hotkey in disconnected_miner_list:
@@ -313,7 +305,7 @@ class Validator(BaseNeuron):
 
         self.miner_heap.pop(hotkey)
 
-        return shuffled_miner_dict[hotkey], hotkey
+        return miners[hotkey], hotkey
 
     async def check_next_miner(self):
         """
@@ -341,8 +333,10 @@ class Validator(BaseNeuron):
                     inputs = self.periodic_validation_queue.pop(miner_uid)
                 else:
                     # TODO Get prompt from prompt bank
+                    randomness = base64.b64encode(str(self.step * time.monotonic_ns()).encode("ascii")).decode("ascii")
+
                     input_parameters = {
-                        "prompt": "Tao, scenic, mountain, night, moon, (deep blue)",
+                        "prompt": f"Tao, scenic, mountain, night, moon, {randomness}, (deep blue)",
                         "negative_prompt": "blurry, nude, (out of focus), JPEG artifacts",
                         "width": 1024,
                         "height": 1024,
@@ -384,9 +378,7 @@ class Validator(BaseNeuron):
             Exception: For unforeseen errors during the miner's operation, which are logged for diagnosis.
         """
 
-        # Check that validator is registered on the network.
-        await self.sync()
-        await self.resync_metagraph()
+        await sync_neuron_info(self, self.periodic_check_dendrite)
 
         self.axon.start()
 
@@ -401,6 +393,8 @@ class Validator(BaseNeuron):
             while True:
                 bt.logging.info(f"step({self.step}) block({self.block})")
 
+                await sync_neuron_info(self, self.periodic_check_dendrite)
+
                 try:
                     await self.check_next_miner()
                 except Exception as _:
@@ -408,6 +402,8 @@ class Validator(BaseNeuron):
 
                 # Sync metagraph and potentially set weights.
                 await self.sync()
+
+                await asyncio.sleep(300)
 
                 self.step += 1
 
@@ -486,12 +482,6 @@ class Validator(BaseNeuron):
             bt.logging.error(f"set_weights failed. {message}")
 
     async def resync_metagraph(self):
-        if not self.should_sync_metagraph():
-            if self.step == 0:
-                await sync_neuron_info(self, self.periodic_check_dendrite)
-
-            return
-
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
         bt.logging.info("resync_metagraph()")
 
@@ -503,8 +493,6 @@ class Validator(BaseNeuron):
 
         # Check if the metagraph axon info has changed.
         if previous_metagraph.axons == self.metagraph.axons:
-            await sync_neuron_info(self, self.periodic_check_dendrite)
-
             return
 
         bt.logging.info(
@@ -536,7 +524,13 @@ class Validator(BaseNeuron):
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
-        await sync_neuron_info(self, self.periodic_check_dendrite)
+    def should_sync_metagraph(self):
+        """
+        Check if enough epoch blocks have elapsed since the last checkpoint to sync.
+        """
+        return (
+            self.block - self.metagraph.last_update[self.uid]
+        ) > self.config.neuron.epoch_length
 
     def should_sync_metagraph(self):
         """

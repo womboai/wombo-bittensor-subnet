@@ -80,6 +80,8 @@ class Miner(BaseNeuron):
         self.nonces = {}
         self.nonce_lock = asyncio.Lock()
 
+        self.last_metagraph_sync = self.block
+
     @classmethod
     def check_config(cls, config: bt.config):
         check_config(config, "miner")
@@ -146,9 +148,6 @@ class Miner(BaseNeuron):
             bt.logging.error(traceback.format_exc())
 
     async def resync_metagraph(self):
-        if not self.should_sync_metagraph():
-            return
-
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
         bt.logging.info("resync_metagraph()")
 
@@ -204,7 +203,7 @@ class Miner(BaseNeuron):
                         images[index] = base64.b64encode(await part.read(decode=True))
 
             synapse.output = ImageGenerationOutput(
-                frames=base64.b64encode(frames_tensor),
+                frames=base64.b64encode(frames_tensor) if frames_tensor else None,
                 images=images,
             )
 

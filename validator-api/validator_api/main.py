@@ -35,7 +35,7 @@ def get_hotkey(credentials: Annotated[HTTPBasicCredentials, Depends(security)]) 
     )
 
 
-def main():
+async def main():
     app = FastAPI()
 
     gpu_semaphore, pipelines = get_pipeline()
@@ -54,9 +54,7 @@ def main():
             except Exception as _:
                 bittensor.logging.error("Failed to sync metagraph, ", traceback.format_exc())
 
-            await asyncio.sleep(90)
-
-    asyncio.ensure_future(resync_metagraph())
+            await asyncio.sleep(1200)
 
     @app.post("/api/validate")
     async def validate(
@@ -84,8 +82,17 @@ def main():
     def healthcheck():
         return datetime.utcnow()
 
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", str(8001))))
+    server = asyncio.to_thread(
+        uvicorn.run,
+        app,
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", str(8001))),
+    )
+
+    metagraph_resync = resync_metagraph()
+
+    await asyncio.gather(server, metagraph_resync)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
