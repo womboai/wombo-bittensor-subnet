@@ -71,6 +71,7 @@ class WomboSubnetAPI(SubnetsAPI):
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
         self.metagraph.sync(subtensor=self.subtensor)
+        asyncio.get_event_loop().run_until_complete(sync_neuron_info(self, self.dendrite))
 
         self.periodic_metagraph_resync: Task
         self.neuron_info = {}

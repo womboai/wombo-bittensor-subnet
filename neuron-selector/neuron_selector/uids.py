@@ -83,6 +83,9 @@ def get_best_uids(
         if validator_condition(uid, infos[uid])
     ]
 
+    if not len(available_uids):
+        return torch.tensor([], dtype=torch.int64)
+
     uids = torch.tensor(
         random.choices(
             available_uids,
