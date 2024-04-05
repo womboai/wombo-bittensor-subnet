@@ -80,6 +80,8 @@ class Miner(BaseNeuron):
         self.nonces = {}
         self.nonce_lock = asyncio.Lock()
 
+        self.last_metagraph_sync = self.block
+
     @classmethod
     def check_config(cls, config: bt.config):
         check_config(config, "miner")
