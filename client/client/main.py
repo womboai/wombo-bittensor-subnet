@@ -151,7 +151,7 @@ class WomboSubnetAPI(SubnetsAPI):
                 except Exception as _:
                     bt.logging.error("Failed to sync client metagraph, ", traceback.format_exc())
 
-                await asyncio.sleep(30)
+                await asyncio.sleep(1200)
 
         self.periodic_metagraph_resync = asyncio.get_event_loop().create_task(resync_metagraph())
 

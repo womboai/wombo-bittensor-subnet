@@ -54,7 +54,7 @@ async def main():
             except Exception as _:
                 bittensor.logging.error("Failed to sync metagraph, ", traceback.format_exc())
 
-            await asyncio.sleep(90)
+            await asyncio.sleep(1200)
 
     @app.post("/api/validate")
     async def validate(
