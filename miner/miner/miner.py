@@ -202,7 +202,7 @@ class Miner(BaseNeuron):
                         images[index] = base64.b64encode(await part.read(decode=True))
 
             synapse.output = ImageGenerationOutput(
-                frames=base64.b64encode(frames_tensor),
+                frames=base64.b64encode(frames_tensor) if frames_tensor else None,
                 images=images,
             )
 

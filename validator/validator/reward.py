@@ -49,6 +49,11 @@ async def reward(
     - float: The reward value for the miner.
     """
 
+    frames = cast(ImageGenerationOutput, synapse.output).frames
+
+    if not frames:
+        return 0.0
+
     async with ClientSession() as session:
         data = FormData()
 
@@ -60,7 +65,7 @@ async def reward(
 
         data.add_field(
             "frames",
-            base64.b64decode(cast(ImageGenerationOutput, synapse.output).frames),
+            base64.b64decode(frames),
             content_type="application/octet-stream",
         )
 
