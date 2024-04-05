@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import traceback
 from asyncio import Task
@@ -212,9 +213,12 @@ class WomboSubnetAPI(SubnetsAPI):
 
 async def main():
     app = FastAPI()
+    logger = logging.getLogger("client")
 
     @app.exception_handler(ValidatorQueryException)
     async def validator_query_handler(_: Request, exception: ValidatorQueryException) -> JSONResponse:
+        logger.error("Subnetwork error", exc_info=exception)
+
         return JSONResponse(
             content={
                 "detail": str(exception),
