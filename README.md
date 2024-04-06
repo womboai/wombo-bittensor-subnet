@@ -1,4 +1,26 @@
-# wombo-bittensor-subnet
+# WOMBO Bittensor Subnet
+
+[![License](https://img.shields.io/github/license/womboai/wombo-bittensor-subnet)](https://github.com/womboai/wombo-bittensor-subnet/blob/master/LICENSE)
+
+![Wombo Cover](https://content.wombo.ai/bittensor/cover.png "Wombo AI")
+
+# Table of Contents 
+
+- [About WOMBO](#about-wombo)
+- [Subnet 30](#subnet-30)
+- [Running a miner](#running-a-miner)
+- [Running a validator](#running-a-validator)
+
+    
+## About WOMBO
+[WOMBO](http://w.ai/) is one of the world’s leading consumer AI companies, and earlier believers in generative AI.
+
+We've launched [two](http://wombo.ai/) #1 [apps](http://wombo.art/) - together, they’ve been **downloaded over 200M times** and have **each** **hit #1 on the app stores in 100+ countries**
+
+These results were **only possible due to the immense capabilities of bleeding edge generative AI techniques and the power of open source AI**. Our unique understanding of this research space through a consumer entertainment lens allows us to craft products people love to use and share.
+
+We are at the very beginning of the Synthetic Media Revolution, which will completely transform how people create, consume, and distribute content. We're building the apps and infrastructure to power this and bring AI entertainment potential to the masses.
+
 
 ## Running a miner
 
