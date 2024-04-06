@@ -1,13 +1,12 @@
 # WOMBO Bittensor Subnet
 
-[![License](https://img.shields.io/github/license/womboai/wombo-bittensor-subnet)](https://github.com/womboai/wombo-bittensor-subnet/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/womboai/wombo-bittensor-subnet)](https://github.com/womboai/wombo-bittensor-subnet/blob/main/LICENSE)
 
 ![Wombo Cover](https://content.wombo.ai/bittensor/cover.png "Wombo AI")
 
 # Table of Contents 
 
 - [About WOMBO](#about-wombo)
-- [Subnet 30](#subnet-30)
 - [Running a miner](#running-a-miner)
 - [Running a validator](#running-a-validator)
 
