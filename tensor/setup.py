@@ -29,6 +29,7 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
+
 setup(
     name="wombo-bittensor-subnet-tensor",
     version="1.0.0",
@@ -45,7 +46,7 @@ setup(
     install_requires=[
         "wombo-bittensor-subnet-image-generation-protocol",
         "torch==2.2.0+cpu",
-        "bittensor==6.9.3",
+        "bittensor==6.10.1",
         "pillow==10.2.0",
         "loguru==0.7.2",
     ],
