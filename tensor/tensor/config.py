@@ -21,6 +21,7 @@ import argparse
 from typing import Callable
 
 import bittensor as bt
+from loguru import logger
 
 
 def check_config(config: bt.config, name: str):
@@ -40,6 +41,20 @@ def check_config(config: bt.config, name: str):
     config.neuron.full_path = os.path.expanduser(full_path)
     if not os.path.exists(config.neuron.full_path):
         os.makedirs(config.neuron.full_path, exist_ok=True)
+
+    if not config.neuron.dont_save_events:
+        # Add custom event logger for the events.
+        logger.level("EVENTS", no=38, icon="📝")
+        logger.add(
+            os.path.join(config.neuron.full_path, "events.log"),
+            rotation=config.neuron.events_retention_size,
+            serialize=True,
+            enqueue=True,
+            backtrace=False,
+            diagnose=False,
+            level="EVENTS",
+            format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
+        )
 
 
 def add_args(parser: argparse.ArgumentParser):
