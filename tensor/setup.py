@@ -48,7 +48,7 @@ setup(
         "torch==2.2.0+cpu",
         "bittensor==6.10.1",
         "pillow==10.2.0",
-        "loguru==0.7.2",
+        "loguru>=0.7.0",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
