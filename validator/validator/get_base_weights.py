@@ -143,7 +143,7 @@ async def get_base_weight(
     hotkey = keypair.ss58_address
     signature = f"0x{keypair.sign(hotkey).hex()}"
 
-    check_count = min(1, int(len(finished_responses) * 0.05))
+    check_count = min(1, int(len(finished_responses) * 0.125))
 
     score = torch.tensor(await asyncio.gather(*[
         reward(
