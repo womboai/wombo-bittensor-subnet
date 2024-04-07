@@ -135,15 +135,17 @@ async def get_base_weight(
     hotkey = keypair.ss58_address
     signature = f"0x{keypair.sign(hotkey).hex()}"
 
+    request = ImageGenerationRequest(
+        inputs=inputs,
+        step_indices=step_indices,
+    )
+
     score = torch.tensor(await asyncio.gather(*[
         reward(
             validation_endpoint,
             hotkey,
             signature,
-            ImageGenerationRequest(
-                inputs=inputs,
-                step_indices=step_indices,
-            ),
+            request,
             response,
         )
         for response in random.sample(finished_responses, min(0, int(len(finished_responses) * 0.05)))
