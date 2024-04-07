@@ -75,6 +75,9 @@ async def reward(
             auth=BasicAuth(hotkey, signature),
             data=data,
         ) as response:
+            if response.status == 401 or response.status == 403:
+                response.raise_for_status()
+
             if response.status != 200:
                 bittensor.logging.error(f"Failed to validate one output, error code {response.status} with error {await response.text()}")
 
