@@ -15,12 +15,13 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
-
+import asyncio
 import random
 import sys
 from typing import Any
 
 import bittensor as bt
+import torch
 from substrateinterface import Keypair
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationRequest
@@ -52,6 +53,8 @@ async def get_base_weight(
 
     count = 8
     rps: float | None = None
+
+    finished_responses: list[ImageGenerationSynapse] = []
 
     while True:
         bt.logging.info(f"\tTesting {count} requests")
@@ -89,14 +92,7 @@ async def get_base_weight(
             ),
         )
 
-        fastest_response = min(
-            responses,
-            key=lambda response: (
-                response.dendrite.process_time
-                if response.dendrite and response.dendrite.process_time
-                else sys.float_info.max
-            ),
-        )
+        finished_responses.extend([response for response in responses if response.output])
 
         error_count = [bool(response.output) for response in responses].count(False)
 
@@ -116,7 +112,7 @@ async def get_base_weight(
 
         count *= 2
 
-    if not fastest_response.output:
+    if not len(finished_responses):
         await validator.send_metrics(
             "success",
             {
@@ -139,16 +135,19 @@ async def get_base_weight(
     hotkey = keypair.ss58_address
     signature = f"0x{keypair.sign(hotkey).hex()}"
 
-    score = await reward(
-        validation_endpoint,
-        hotkey,
-        signature,
-        ImageGenerationRequest(
-            inputs=inputs,
-            step_indices=step_indices,
-        ),
-        fastest_response,
-    )
+    score = torch.tensor(await asyncio.gather(*[
+        reward(
+            validation_endpoint,
+            hotkey,
+            signature,
+            ImageGenerationRequest(
+                inputs=inputs,
+                step_indices=step_indices,
+            ),
+            response,
+        )
+        for response in random.sample(finished_responses, min(0, int(len(finished_responses) * 0.05)))
+    ])).mean().item()
 
     await validator.send_metrics(
         "success",

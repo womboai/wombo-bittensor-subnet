@@ -19,6 +19,7 @@
 import base64
 from typing import cast
 
+import bittensor
 from aiohttp import ClientSession, FormData, BasicAuth
 
 from image_generation_protocol.io_protocol import ImageGenerationRequest, ImageGenerationOutput
@@ -74,7 +75,10 @@ async def reward(
             auth=BasicAuth(hotkey, signature),
             data=data,
         ) as response:
-            response.raise_for_status()
+            if response.status != 200:
+                bittensor.logging.error(f"Failed to validate one output, error code {response.status} with error {await response.text()}")
+
+                return 0.0
 
             score = await response.json()
 
