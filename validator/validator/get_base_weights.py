@@ -18,7 +18,7 @@
 import asyncio
 import random
 import sys
-from typing import Any
+from typing import Any, TypeAlias
 
 import bittensor as bt
 import torch
@@ -41,6 +41,8 @@ The max percentage of failures acceptable before stopping
  and assuming we have reached the maximum viable RPS 
 """
 
+ValidatableResponse: TypeAlias = tuple[ImageGenerationSynapse, ImageGenerationRequest]
+
 
 async def get_base_weight(
     validator,
@@ -54,7 +56,7 @@ async def get_base_weight(
     count = 8
     rps: float | None = None
 
-    finished_responses: list[ImageGenerationSynapse] = []
+    finished_responses: list[ValidatableResponse] = []
 
     while True:
         bt.logging.info(f"\tTesting {count} requests")
@@ -92,7 +94,13 @@ async def get_base_weight(
             ),
         )
 
-        finished_responses.extend([response for response in responses if response.output])
+        request = ImageGenerationRequest(inputs=inputs, step_indices=step_indices)
+
+        finished_responses.extend([
+            (response, request)
+            for response in responses
+            if response.output
+        ])
 
         error_count = [bool(response.output) for response in responses].count(False)
 
@@ -135,10 +143,7 @@ async def get_base_weight(
     hotkey = keypair.ss58_address
     signature = f"0x{keypair.sign(hotkey).hex()}"
 
-    request = ImageGenerationRequest(
-        inputs=inputs,
-        step_indices=step_indices,
-    )
+    check_count = min(1, int(len(finished_responses) * 0.05))
 
     score = torch.tensor(await asyncio.gather(*[
         reward(
@@ -148,7 +153,7 @@ async def get_base_weight(
             request,
             response,
         )
-        for response in random.sample(finished_responses, min(0, int(len(finished_responses) * 0.05)))
+        for response, request in random.sample(finished_responses, check_count)
     ])).mean().item()
 
     await validator.send_metrics(
