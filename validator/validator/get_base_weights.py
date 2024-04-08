@@ -134,16 +134,18 @@ async def get_base_weight(
 
     check_count = min(1, int(len(finished_responses) * 0.125))
 
-    score = torch.tensor(await asyncio.gather(*[
+    scores = await asyncio.gather(*[
         reward(
             validation_endpoint,
             hotkey,
             signature,
-            request,
+            inputs,
             response,
         )
-        for response, request in cryptographic_sample(finished_responses, check_count)
-    ])).mean().item()
+        for response, inputs in cryptographic_sample(finished_responses, check_count)
+    ])
+
+    score = torch.tensor(scores).mean().item()
 
     await validator.send_metrics(
         "success",

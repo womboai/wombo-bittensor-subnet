@@ -34,6 +34,7 @@
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
 import os
+from functools import reduce
 from math import ceil, log
 from typing import TypeVar, Sequence
 
@@ -42,7 +43,8 @@ T = TypeVar("T")
 
 def __get_rand_bits(k: int) -> int:
     # k is the bits, os.urandom takes in a byte count
-    return int.from_bytes(os.urandom(ceil(k / 8)), "little")
+    mask = reduce(lambda aggregate, bit: aggregate | (1 << bit), range(k), 0)
+    return int.from_bytes(os.urandom(ceil(k / 8)), "little") & mask
 
 
 def __rand_below(n: int):
@@ -91,3 +93,18 @@ def cryptographic_sample(population: Sequence[T], k: int):
             result[i] = population[j]
 
     return result
+
+
+visited = set()
+
+i = 1
+while True:
+    if i == 1024:
+        break
+
+    for x in cryptographic_sample(range(1024), i):
+        visited.add(x)
+
+    print(list(visited))
+
+    i *= 2
