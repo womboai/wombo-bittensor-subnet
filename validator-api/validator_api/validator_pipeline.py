@@ -1,4 +1,3 @@
-import random
 from asyncio import Semaphore
 from typing import List, Optional, Union, Tuple, Dict, Any, Callable, cast
 
@@ -15,6 +14,7 @@ from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import
 from gpu_pipeline.pipeline import SDXLPipelines, parse_input_parameters
 from gpu_pipeline.tensor import load_tensor
 from image_generation_protocol.io_protocol import ImageGenerationInputs
+from validator.cryptographic_sample import cryptographic_sample
 
 
 # Credits to Huggingface for the SDXL pipeline code
@@ -835,7 +835,8 @@ async def validate_frames(
     frames_tensor = load_tensor(frames)
 
     num_random_indices = 3
-    random_indices = sorted(random.sample(
+    list()
+    random_indices = sorted(cryptographic_sample(
         range(frames_tensor.shape[0] - 1),
         k=num_random_indices
     ))

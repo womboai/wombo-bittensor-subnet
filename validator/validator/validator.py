@@ -670,7 +670,7 @@ class Validator(BaseNeuron):
 
         await self.update_score_bonuses((base * bonus + 0.125) / base, working_miner_uids)
 
-        if random.random() >= RANDOM_VALIDATION_CHANCE:
+        if (os.urandom(1)[0] / 255) >= RANDOM_VALIDATION_CHANCE:
             return
 
         async with self.periodic_validation_queue_lock:

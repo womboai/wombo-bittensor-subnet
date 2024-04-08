@@ -26,6 +26,7 @@ from substrateinterface import Keypair
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
+from validator.cryptographic_sample import cryptographic_sample
 from validator.reward import select_endpoint, reward
 
 TIME_CONSTRAINT = 30.0
@@ -141,7 +142,7 @@ async def get_base_weight(
             request,
             response,
         )
-        for response, request in random.sample(finished_responses, check_count)
+        for response, request in cryptographic_sample(finished_responses, check_count)
     ])).mean().item()
 
     await validator.send_metrics(
