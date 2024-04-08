@@ -161,4 +161,5 @@ async def get_base_weight(
         },
     )
 
-    return score * rps * (1 - error_percentage)
+    success_rate = 1 - error_percentage
+    return pow(score, 8) * rps * pow(success_rate, 2)
