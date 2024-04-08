@@ -23,10 +23,10 @@ import bittensor as bt
 import torch
 from substrateinterface import Keypair
 
+from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
-from validator.cryptographic_sample import cryptographic_sample
 from validator.reward import select_endpoint, reward
 
 TIME_CONSTRAINT = 30.0

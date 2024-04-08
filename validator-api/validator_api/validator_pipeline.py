@@ -13,8 +13,8 @@ from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import
 
 from gpu_pipeline.pipeline import SDXLPipelines, parse_input_parameters
 from gpu_pipeline.tensor import load_tensor
+from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
-from validator.cryptographic_sample import cryptographic_sample
 
 
 # Credits to Huggingface for the SDXL pipeline code
