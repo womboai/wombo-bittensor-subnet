@@ -109,9 +109,9 @@ async def get_base_weight(
 
         count *= 2
 
-    if not len(finished_responses):
+    if error_count == len(responses):
         await validator.send_metrics(
-            "success",
+            "failure",
             {
                 "miner_uid": uid,
                 "generation_time": response_time,
