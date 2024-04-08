@@ -128,6 +128,7 @@ class Validator(BaseNeuron):
 
         bt.logging.info("load_state()")
         self.load_state()
+        self.base_scores = self.base_scores.nan_to_num(0.0)
         self.scores_bonuses = self.scores_bonuses.nan_to_num(1.0)
 
         self.pending_requests_lock = Lock()
