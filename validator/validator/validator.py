@@ -21,6 +21,7 @@ import base64
 import copy
 import os
 import random
+import sys
 import time
 import traceback
 from asyncio import Future, Lock
@@ -127,6 +128,7 @@ class Validator(BaseNeuron):
 
         bt.logging.info("load_state()")
         self.load_state()
+        self.scores_bonuses = self.scores_bonuses.nan_to_num(1.0)
 
         self.pending_requests_lock = Lock()
         self.pending_request_futures = []
@@ -655,7 +657,7 @@ class Validator(BaseNeuron):
 
             # Some failed to response, punish them
             await self.update_score_bonuses(
-                self.scores_bonuses[tensor(bad_miner_uids, dtype=torch.int64)] * 0.85,
+                self.scores_bonuses[tensor(bad_miner_uids, dtype=torch.int64)] * 0.75,
                 bad_miner_uids,
             )
 
@@ -664,11 +666,10 @@ class Validator(BaseNeuron):
 
             bt.logging.error(f"Failed to query some miners with {inputs} for axons {bad_axons}, {bad_dendrites}")
 
-        working_miner_tensor = tensor(working_miner_uids, dtype=torch.int64)
-        base = self.base_scores[working_miner_tensor]
-        bonus = self.scores_bonuses[working_miner_tensor]
-
-        await self.update_score_bonuses((base * bonus + 0.125) / base, working_miner_uids)
+        await self.update_score_bonuses(
+            self.scores_bonuses[tensor(working_miner_uids, dtype=torch.int64)] * 1.05,
+            working_miner_uids,
+        )
 
         if (os.urandom(1)[0] / 255) >= RANDOM_VALIDATION_CHANCE:
             return
@@ -735,7 +736,7 @@ class Validator(BaseNeuron):
 
         # Some failed to response, punish them
         await self.update_score_bonuses(
-            self.scores_bonuses[tensor(bad_miner_uids, dtype=torch.int64)] * 0.85,
+            self.scores_bonuses[tensor(bad_miner_uids, dtype=torch.int64)] * 0.75,
             bad_miner_uids,
         )
 
