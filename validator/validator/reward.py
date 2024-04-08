@@ -19,6 +19,7 @@
 import base64
 from typing import cast
 
+import bittensor
 from aiohttp import ClientSession, FormData, BasicAuth
 
 from image_generation_protocol.io_protocol import ImageGenerationRequest, ImageGenerationOutput
