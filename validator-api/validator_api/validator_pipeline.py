@@ -834,8 +834,14 @@ async def validate_frames(
 ) -> float:
     frames_tensor = load_tensor(frames)
 
-    num_random_indices = 3
-    list()
+    if frames_tensor.shape[0] != inputs.num_inference_steps:
+        return 0.0
+
+    num_random_indices = min(3, inputs.num_inference_steps)
+
+    if frames_tensor.shape[0] - 1 < num_random_indices:
+        return 0.0
+
     random_indices = sorted(cryptographic_sample(
         range(frames_tensor.shape[0] - 1),
         k=num_random_indices
