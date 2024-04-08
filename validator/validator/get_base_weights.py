@@ -145,7 +145,10 @@ async def get_base_weight(
         for response, inputs in cryptographic_sample(finished_responses, check_count)
     ])
 
-    score = torch.tensor(scores).mean().item()
+    if len(scores):
+        score = torch.tensor(scores).mean().item()
+    else:
+        score = 0.0
 
     await validator.send_metrics(
         "success",
