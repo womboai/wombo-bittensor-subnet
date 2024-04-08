@@ -26,7 +26,7 @@ from aiohttp import ClientSession, MultipartReader, BodyPartReader
 from bittensor import SynapseDendriteNoneException
 from substrateinterface import Keypair
 
-from image_generation_protocol.io_protocol import ImageGenerationOutput, ImageGenerationRequest
+from image_generation_protocol.io_protocol import ImageGenerationOutput
 from neuron.neuron import BaseNeuron
 from tensor.config import add_args, check_config
 from tensor.protocol import ImageGenerationSynapse, NeuronInfoSynapse
@@ -164,14 +164,9 @@ class Miner(BaseNeuron):
         synapse: ImageGenerationSynapse,
     ) -> ImageGenerationSynapse:
         async with ClientSession() as session:
-            request = ImageGenerationRequest(
-                inputs=synapse.inputs,
-                step_indices=synapse.step_indices,
-            )
-
             async with session.post(
                 self.config.generation_endpoint,
-                json=request.dict(),
+                json=synapse.inputs.dict(),
             ) as response:
                 response.raise_for_status()
 

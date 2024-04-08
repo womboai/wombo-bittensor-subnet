@@ -19,10 +19,9 @@
 import base64
 from typing import cast
 
-import bittensor
 from aiohttp import ClientSession, FormData, BasicAuth
 
-from image_generation_protocol.io_protocol import ImageGenerationRequest, ImageGenerationOutput
+from image_generation_protocol.io_protocol import ImageGenerationOutput, ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse
 
 
@@ -39,7 +38,7 @@ async def reward(
     validation_endpoint: str,
     hotkey: str,
     signature: str,
-    query: ImageGenerationRequest,
+    query: ImageGenerationInputs,
     synapse: ImageGenerationSynapse,
 ) -> float:
     """

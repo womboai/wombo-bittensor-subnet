@@ -1,19 +1,20 @@
+import random
 from asyncio import Semaphore
-from PIL import Image
 from typing import List, Optional, Union, Tuple, Dict, Any, Callable, cast
 
 import torch
-from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import (
-    retrieve_timesteps, rescale_noise_cfg, StableDiffusionXLPipeline
-)
+from PIL import Image
 from diffusers.pipelines.controlnet.pipeline_controlnet_sd_xl import (
     is_compiled_module, StableDiffusionXLControlNetPipeline, is_torch_version,
     ControlNetModel, MultiControlNetModel,
 )
+from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import (
+    retrieve_timesteps, rescale_noise_cfg, StableDiffusionXLPipeline
+)
 
-from gpu_pipeline.tensor import load_tensor
-from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationRequest
 from gpu_pipeline.pipeline import SDXLPipelines, parse_input_parameters
+from gpu_pipeline.tensor import load_tensor
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 
 
 # Credits to Huggingface for the SDXL pipeline code
@@ -829,15 +830,21 @@ async def validate_frames(
     gpu_semaphore: Semaphore,
     pipelines: SDXLPipelines,
     frames: bytes,
-    request: ImageGenerationRequest,
+    inputs: ImageGenerationInputs,
 ) -> float:
     frames_tensor = load_tensor(frames)
 
-    selected_pipeline, input_kwargs = parse_input_parameters(pipelines, request.inputs)
+    num_random_indices = 3
+    random_indices = sorted(random.sample(
+        range(frames_tensor.shape[0] - 1),
+        k=num_random_indices
+    ))
+
+    selected_pipeline, input_kwargs = parse_input_parameters(pipelines, inputs)
     frames_tensor = frames_tensor.to(selected_pipeline.unet.device, selected_pipeline.unet.dtype)
     validation_func = (
         __validate_internal_cn
-        if request.inputs.controlnet_conditioning_scale > 0.0
+        if inputs.controlnet_conditioning_scale > 0.0
         else __validate_internal
     )
 
@@ -849,7 +856,7 @@ async def validate_frames(
                 (frames_tensor[i], frames_tensor[i + 1]),
                 **input_kwargs
             )
-            for i in request.step_indices
+            for i in random_indices
         ])
 
     similarity = similarities.mean().item() * 0.5 + 0.5

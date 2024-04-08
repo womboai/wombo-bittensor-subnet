@@ -32,11 +32,6 @@ class ImageGenerationInputs(BaseModel):
     controlnet_conditioning_scale: float = 0.0
 
 
-class ImageGenerationRequest(BaseModel):
-    inputs: ImageGenerationInputs
-    step_indices: list[int]
-
-
 class ImageGenerationOutput(BaseModel):
     frames: Frames
     images: list[bytes]

@@ -17,14 +17,13 @@
 #  DEALINGS IN THE SOFTWARE.
 import asyncio
 import random
-import sys
 from typing import Any, TypeAlias
 
 import bittensor as bt
 import torch
 from substrateinterface import Keypair
 
-from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationRequest
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 from validator.reward import select_endpoint, reward
@@ -41,7 +40,7 @@ The max percentage of failures acceptable before stopping
  and assuming we have reached the maximum viable RPS 
 """
 
-ValidatableResponse: TypeAlias = tuple[ImageGenerationSynapse, ImageGenerationRequest]
+ValidatableResponse: TypeAlias = tuple[ImageGenerationSynapse, ImageGenerationInputs]
 
 
 async def get_base_weight(
@@ -69,18 +68,9 @@ async def get_base_weight(
 
         inputs = ImageGenerationInputs(**input_dict, seed=seed)
 
-        num_random_indices = 3
-        step_indices = sorted(random.sample(
-            range(base_inputs.num_inference_steps - 1),
-            k=num_random_indices,
-        ))
-
         responses: list[ImageGenerationSynapse] = await validator.periodic_check_dendrite(
             axons=[axon] * count,
-            synapse=ImageGenerationSynapse(
-                inputs=inputs,
-                step_indices=step_indices,
-            ),
+            synapse=ImageGenerationSynapse(inputs=inputs),
             deserialize=False,
             timeout=CLIENT_REQUEST_TIMEOUT,
         )
@@ -94,10 +84,8 @@ async def get_base_weight(
             ),
         )
 
-        request = ImageGenerationRequest(inputs=inputs, step_indices=step_indices)
-
         finished_responses.extend([
-            (response, request)
+            (response, inputs)
             for response in responses
             if response.output
         ])

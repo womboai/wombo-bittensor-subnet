@@ -37,7 +37,6 @@ class NeuronInfoSynapse(bt.Synapse):
 
 class ImageGenerationSynapse(bt.Synapse):
     inputs: ImageGenerationInputs
-    step_indices: list[int] = []
     output: ImageGenerationOutput | None = None
 
 

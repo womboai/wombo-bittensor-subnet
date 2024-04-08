@@ -13,7 +13,7 @@ from starlette import status
 from substrateinterface import Keypair
 
 from gpu_pipeline.pipeline import get_pipeline
-from image_generation_protocol.io_protocol import ImageGenerationRequest
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 from validator_api.validator_pipeline import validate_frames
 
 NETWORK = os.environ["NETWORK"]
@@ -58,7 +58,7 @@ async def main():
 
     @app.post("/api/validate")
     async def validate(
-        input_parameters: Annotated[Json[ImageGenerationRequest], Form(media_type="application/json")],
+        input_parameters: Annotated[Json[ImageGenerationInputs], Form(media_type="application/json")],
         frames: Annotated[UploadFile, File(media_type="application/octet-stream")],
         hotkey: Annotated[str, Depends(get_hotkey)],
     ) -> float:
