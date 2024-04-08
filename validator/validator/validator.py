@@ -405,7 +405,7 @@ class Validator(BaseNeuron):
                 # Sync metagraph and potentially set weights.
                 await self.sync()
 
-                await asyncio.sleep(300)
+                await asyncio.sleep(60)
 
                 self.step += 1
 
