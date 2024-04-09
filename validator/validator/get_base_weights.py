@@ -16,6 +16,7 @@
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
 import asyncio
+import os
 import random
 from typing import Any, TypeAlias
 
@@ -61,20 +62,24 @@ async def get_base_weight(
     while True:
         bt.logging.info(f"\tTesting {count} requests")
 
-        seed = random.randint(0, 2 ** 32)
+        def get_inputs():
+            seed = int.from_bytes(os.urandom(4), "little")
 
-        input_dict: dict[str, Any] = base_inputs.dict()
+            input_dict: dict[str, Any] = base_inputs.dict()
 
-        input_dict.pop("seed")
+            input_dict.pop("seed")
 
-        inputs = ImageGenerationInputs(**input_dict, seed=seed)
+            return ImageGenerationInputs(**input_dict, seed=seed)
 
-        responses: list[ImageGenerationSynapse] = await validator.periodic_check_dendrite(
-            axons=[axon] * count,
-            synapse=ImageGenerationSynapse(inputs=inputs),
-            deserialize=False,
-            timeout=CLIENT_REQUEST_TIMEOUT,
-        )
+        responses: list[ImageGenerationSynapse] = list(await asyncio.gather(*[
+            validator.periodic_check_dendrite(
+                axons=axon,
+                synapse=ImageGenerationSynapse(inputs=get_inputs()),
+                deserialize=False,
+                timeout=CLIENT_REQUEST_TIMEOUT,
+            )
+            for _ in range(count)
+        ]))
 
         slowest_response = max(
             responses,
