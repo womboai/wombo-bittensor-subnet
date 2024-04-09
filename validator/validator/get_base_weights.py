@@ -79,7 +79,7 @@ async def get_base_weight(
         responses: list[ImageGenerationSynapse] = list(await asyncio.gather(*[
             validator.periodic_check_dendrite(
                 axons=axon,
-                synapse=ImageGenerationSynapse(inputs=get_inputs()),
+                synapse=ImageGenerationSynapse(inputs=inputs),
                 deserialize=False,
                 timeout=CLIENT_REQUEST_TIMEOUT,
             )
