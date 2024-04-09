@@ -71,6 +71,11 @@ async def get_base_weight(
 
             return ImageGenerationInputs(**input_dict, seed=seed)
 
+        request_inputs = [
+            get_inputs()
+            for _ in range(count)
+        ]
+
         responses: list[ImageGenerationSynapse] = list(await asyncio.gather(*[
             validator.periodic_check_dendrite(
                 axons=axon,
@@ -78,7 +83,7 @@ async def get_base_weight(
                 deserialize=False,
                 timeout=CLIENT_REQUEST_TIMEOUT,
             )
-            for _ in range(count)
+            for inputs in request_inputs
         ]))
 
         slowest_response = max(
@@ -91,8 +96,8 @@ async def get_base_weight(
         )
 
         finished_responses.extend([
-            (response, inputs)
-            for response in responses
+            (response, request_inputs[index])
+            for index, response in enumerate(responses)
             if response.output
         ])
 
