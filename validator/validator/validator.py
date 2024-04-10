@@ -255,7 +255,7 @@ class Validator(BaseNeuron):
             self.pending_request_futures.clear()
 
         if len(pending_validation_requests):
-            pending_validation_requests[0].get_loop().run_until_complete(asyncio.gather(*pending_validation_requests))
+            await asyncio.gather(*pending_validation_requests)
 
     def get_next_uid(self) -> tuple[int, str]:
         miners = {
