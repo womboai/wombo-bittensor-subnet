@@ -235,7 +235,7 @@ class Validator(BaseNeuron):
             "--blacklist.coldkeys",
             action='append',
             help="The coldkeys to block when sending requests",
-            default=["5DhPDjLR4YNAixDLNFNP2pTiCpkDQ5A5vm5fyQ3Q52rYcEaw"],
+            default=[],
         )
 
         parser.add_argument(
