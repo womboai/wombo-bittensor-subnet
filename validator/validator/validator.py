@@ -225,6 +225,20 @@ class Validator(BaseNeuron):
         )
 
         parser.add_argument(
+            "--blacklist.hotkeys",
+            action='append',
+            help="The hotkeys to block when sending requests",
+            default=[],
+        )
+
+        parser.add_argument(
+            "--blacklist.coldkeys",
+            action='append',
+            help="The coldkeys to block when sending requests",
+            default=["5DhPDjLR4YNAixDLNFNP2pTiCpkDQ5A5vm5fyQ3Q52rYcEaw"],
+        )
+
+        parser.add_argument(
             "--neuron.disable_set_weights",
             action="store_true",
             help="Disables setting weights.",
@@ -687,7 +701,7 @@ class Validator(BaseNeuron):
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uids = (
-            get_best_uids(self.metagraph, self.neuron_info, validators=False)
+            get_best_uids(self.config.blacklist, self.metagraph, self.neuron_info, validators=False)
             if synapse.miner_uid is None
             else tensor([synapse.miner_uid])
         )

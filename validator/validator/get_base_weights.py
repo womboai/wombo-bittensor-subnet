@@ -50,7 +50,11 @@ async def get_base_weight(
     uid: int,
     base_inputs: ImageGenerationInputs,
 ) -> float:
+    blacklist = validator.config.blacklist
     axon = validator.metagraph.axons[uid]
+
+    if axon.hotkey in blacklist.hotkeys or axon.coldkey in blacklist.coldkeys:
+        return 0.0
 
     bt.logging.info(f"Measuring RPS of UID {uid} with Axon {axon}")
 

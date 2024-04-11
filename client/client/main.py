@@ -171,7 +171,7 @@ class WomboSubnetAPI(SubnetsAPI):
         input_parameters: ImageGenerationClientInputs,
     ) -> ImageGenerationResult:
         validator_uids = (
-            get_best_uids(self.metagraph, self.neuron_info, validators=True)
+            get_best_uids(self.config.blacklist, self.metagraph, self.neuron_info, validators=True)
             if input_parameters.validator_uid is None
             else tensor([input_parameters.validator_uid])
         )
