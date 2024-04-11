@@ -733,7 +733,7 @@ class Validator(BaseNeuron):
                 response,
             )
 
-            if similarity_score < 0.8:
+            if similarity_score < 0.85:
                 bad_responses.append(response)
                 continue
 
