@@ -78,7 +78,7 @@ class Validator(BaseNeuron):
     This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
     """
 
-    spec_version: int = 9
+    spec_version: int = 10
     neuron_info: dict[int, NeuronInfoSynapse]
 
     pending_requests_lock: Lock
@@ -251,11 +251,18 @@ class Validator(BaseNeuron):
         self.save_state()
 
         async with self.pending_requests_lock:
-            pending_validation_requests = self.pending_request_futures.copy()
-            self.pending_request_futures.clear()
+            remaining_futures = []
+            for future in self.pending_request_futures:
+                if not future.done():
+                    remaining_futures.append(future)
+                    continue
+                try:
+                    future.result()
+                except Exception as e:
+                    error_traceback = traceback.format_exc()
+                    bt.logging.error(f"Error in validation coroutine: {e}\n{error_traceback}")
 
-        if len(pending_validation_requests):
-            pending_validation_requests[0].get_loop().run_until_complete(asyncio.gather(*pending_validation_requests))
+            self.pending_request_futures = remaining_futures
 
     def get_next_uid(self) -> tuple[int, str]:
         miners = {
