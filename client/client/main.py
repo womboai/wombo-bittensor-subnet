@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import traceback
+from argparse import ArgumentParser
 from asyncio import Task
 from datetime import datetime
 from typing import Annotated, AsyncGenerator, cast, TypeAlias
@@ -163,8 +164,26 @@ class WomboSubnetAPI(SubnetsAPI):
         self.periodic_metagraph_resync.cancel()
 
     @classmethod
+    def add_args(cls, parser: ArgumentParser):
+        add_args(parser)
+
+        parser.add_argument(
+            "--blacklist.hotkeys",
+            action='append',
+            help="The hotkeys to block when sending requests",
+            default=[],
+        )
+
+        parser.add_argument(
+            "--blacklist.coldkeys",
+            action='append',
+            help="The coldkeys to block when sending requests",
+            default=[],
+        )
+
+    @classmethod
     def client_config(cls):
-        return config(add_args)
+        return config(cls.add_args)
 
     async def generate(
         self,
