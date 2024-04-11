@@ -78,7 +78,7 @@ class Validator(BaseNeuron):
     This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
     """
 
-    spec_version: int = 11
+    spec_version: int = 12
     neuron_info: dict[int, NeuronInfoSynapse]
 
     pending_requests_lock: Lock
@@ -222,6 +222,20 @@ class Validator(BaseNeuron):
             action="store_false",
             dest="send_metrics",
             help="Disables sending metrics.",
+        )
+
+        parser.add_argument(
+            "--blacklist.hotkeys",
+            action='append',
+            help="The hotkeys to block when sending requests",
+            default=[],
+        )
+
+        parser.add_argument(
+            "--blacklist.coldkeys",
+            action='append',
+            help="The coldkeys to block when sending requests",
+            default=[],
         )
 
         parser.add_argument(
@@ -687,7 +701,7 @@ class Validator(BaseNeuron):
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uids = (
-            get_best_uids(self.metagraph, self.neuron_info, validators=False)
+            get_best_uids(self.config.blacklist, self.metagraph, self.neuron_info, validators=False)
             if synapse.miner_uid is None
             else tensor([synapse.miner_uid])
         )
