@@ -142,7 +142,7 @@ async def get_base_weight(
     hotkey = keypair.ss58_address
     signature = f"0x{keypair.sign(hotkey).hex()}"
 
-    check_count = min(1, int(len(finished_responses) * 0.125))
+    check_count = max(1, int(len(finished_responses) * 0.125))
 
     scores = await asyncio.gather(*[
         reward(
