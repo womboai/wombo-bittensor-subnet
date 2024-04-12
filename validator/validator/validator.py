@@ -21,7 +21,6 @@ import base64
 import copy
 import os
 import random
-import sys
 import time
 import traceback
 from asyncio import Future, Lock
@@ -43,7 +42,7 @@ from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse
     MinerGenerationOutput
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
 from validator.get_base_weights import get_base_weight
-from validator.reward import select_endpoint
+from validator.reward import select_endpoint, reward
 from validator.watermark import add_watermarks
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
@@ -235,7 +234,7 @@ class Validator(BaseNeuron):
             "--blacklist.coldkeys",
             action='append',
             help="The coldkeys to block when sending requests",
-            default=[],
+            default=["5DhPDjLR4YNAixDLNFNP2pTiCpkDQ5A5vm5fyQ3Q52rYcEaw"],
         )
 
         parser.add_argument(
@@ -725,6 +724,29 @@ class Validator(BaseNeuron):
 
         async for response in response_generator:
             if not response.output:
+                bad_responses.append(response)
+                continue
+
+            validation_endpoint = select_endpoint(
+                self.config.validation_endpoint,
+                self.config.subtensor.network,
+                "https://dev-validate.api.wombo.ai/api/validate",
+                "https://validate.api.wombo.ai/api/validate",
+            )
+
+            keypair: Keypair = self.forward_dendrite.keypair
+            hotkey = keypair.ss58_address
+            signature = f"0x{keypair.sign(hotkey).hex()}"
+
+            similarity_score = await reward(
+                validation_endpoint,
+                hotkey,
+                signature,
+                synapse.inputs,
+                response,
+            )
+
+            if similarity_score < 0.85:
                 bad_responses.append(response)
                 continue
 
