@@ -1,3 +1,4 @@
+import random
 from typing import Annotated, TypeAlias
 
 from pydantic import BaseModel, Field
@@ -28,7 +29,7 @@ class ImageGenerationInputs(BaseModel):
     negative_prompt: str | None = None
     negative_prompt_2: str | None = None
     num_images_per_prompt: Annotated[int, Field(gt=0, le=4)] = 1
-    seed: int | None = None
+    seed: Annotated[int | None, Field(default_factory=lambda: random.randint(0, (2**32) - 1))]
     controlnet_conditioning_scale: float = 0.0
 
 
