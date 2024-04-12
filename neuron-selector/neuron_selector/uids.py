@@ -1,4 +1,6 @@
 import random
+from typing import Any
+
 import bittensor
 
 import torch
@@ -48,10 +50,11 @@ async def sync_neuron_info(self, dendrite: bittensor.dendrite):
 
 
 def get_best_uids(
-    metagraph: bittensor.metagraph,
-    neuron_info: dict[int, NeuronInfoSynapse],
-    validators: bool,
-    k: int = 3,
+        blacklist: Any,
+        metagraph: bittensor.metagraph,
+        neuron_info: dict[int, NeuronInfoSynapse],
+        validators: bool,
+        k: int = 3,
 ) -> Tensor:
     if validators:
         trust = metagraph.validator_trust
@@ -67,7 +70,14 @@ def get_best_uids(
     available_uids = [
         uid
         for uid in range(metagraph.n.item())
-        if metagraph.axons[uid].is_serving
+        if (
+                metagraph.axons[uid].is_serving and
+                (not blacklist or
+                 (
+                         metagraph.axons[uid].hotkey not in blacklist.hotkeys and
+                         metagraph.axons[uid].coldkey not in blacklist.coldkeys
+                 ))
+        )
     ]
 
     infos = {
