@@ -21,7 +21,6 @@ import base64
 import copy
 import os
 import random
-import sys
 import time
 import traceback
 from asyncio import Future, Lock
