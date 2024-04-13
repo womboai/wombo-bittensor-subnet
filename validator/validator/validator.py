@@ -24,12 +24,12 @@ import random
 import time
 import traceback
 from asyncio import Future, Lock
-from typing import AsyncGenerator, Tuple, Any
+from typing import AsyncGenerator, Tuple
 
 import bittensor as bt
 import heapdict
 import torch
-from aiohttp import ClientSession, BasicAuth
+from aiohttp import ClientSession
 from bittensor import AxonInfo, TerminalInfo
 from substrateinterface import Keypair
 from torch import tensor, Tensor
@@ -41,7 +41,7 @@ from tensor.config import add_args, check_config
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse, \
     MinerGenerationOutput
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
-from validator.get_base_weights import get_base_weight
+from validator.miner_metrics import MinerMetricManager, set_miner_metrics
 from validator.reward import select_endpoint, reward
 from validator.watermark import add_watermarks
 
@@ -99,8 +99,7 @@ class Validator(BaseNeuron):
 
         # Set up initial scoring weights for validation
         bt.logging.info("Building validation weights.")
-        self.base_scores = torch.zeros_like(self.metagraph.S, dtype=torch.float32)
-        self.scores_bonuses = torch.ones_like(self.metagraph.S, dtype=torch.float32)
+        self.metric_manager = MinerMetricManager(self)
 
         self.step = 0
 
@@ -127,42 +126,12 @@ class Validator(BaseNeuron):
 
         bt.logging.info("load_state()")
         self.load_state()
-        self.base_scores = self.base_scores.nan_to_num(0.0)
-        self.scores_bonuses = self.scores_bonuses.nan_to_num(1.0)
 
         self.pending_requests_lock = Lock()
         self.pending_request_futures = []
 
         self.periodic_validation_queue_lock = Lock()
         self.periodic_validation_queue = {}
-
-        self.data_endpoint = select_endpoint(
-            self.config.data_endpoint,
-            self.config.subtensor.network,
-            "https://dev-neuron-identifier.api.wombo.ai/api/data",
-            "https://neuron-identifier.api.wombo.ai/api/data",
-        )
-
-    async def send_metrics(
-        self,
-        endpoint: str,
-        data: Any,
-    ):
-        if not self.config.send_metrics:
-            return
-
-        keypair: Keypair = self.periodic_check_dendrite.keypair
-        hotkey = keypair.ss58_address
-        signature = f"0x{keypair.sign(hotkey).hex()}"
-
-        bt.logging.info(f"Sending {endpoint} metrics {data}")
-
-        async with ClientSession() as session:
-            await session.post(
-                    f"{self.data_endpoint}/{endpoint}",
-                    auth=BasicAuth(hotkey, signature),
-                    json=data,
-            )
 
     @classmethod
     def check_config(cls, config: bt.config):
@@ -368,13 +337,11 @@ class Validator(BaseNeuron):
 
                     inputs = ImageGenerationInputs(**input_parameters)
 
-        base_weight = await get_base_weight(
+        await set_miner_metrics(
             self,
             miner_uid,
             inputs,
         )
-
-        self.update_base_scores(base_weight, miner_uid)
 
         if hotkey:
             # Checked miners(with base scores) are pushed to the end of the queue
@@ -426,8 +393,6 @@ class Validator(BaseNeuron):
                 # Sync metagraph and potentially set weights.
                 await self.sync()
 
-                await asyncio.sleep(60)
-
                 self.step += 1
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
@@ -448,7 +413,12 @@ class Validator(BaseNeuron):
         Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miners. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
         """
 
-        scores = self.base_scores * self.scores_bonuses
+        metrics = [self.metric_manager[uid] for uid in range(self.metagraph.n.item())]
+
+        scores = tensor([
+            miner_metrics.get_weight() if miner_metrics else 0.0
+            for miner_metrics in metrics
+        ])
 
         # Check if self.scores contains any NaN values and log a warning if it does.
         if torch.isnan(scores).any():
@@ -526,23 +496,12 @@ class Validator(BaseNeuron):
         for uid, hotkey in enumerate(self.hotkeys):
             if hotkey != self.metagraph.hotkeys[uid]:
                 # hotkey has been replaced
-                self.base_scores[uid] = 0.0
-                self.scores_bonuses[uid] = 1.0
+                self.metric_manager.reset(uid)
 
         # Check to see if the metagraph has changed size.
         # If so, we need to add new hotkeys and moving averages.
         if len(self.hotkeys) < len(self.metagraph.hotkeys):
-            # Update the size of the moving average scores.
-            new_bases = torch.zeros(self.metagraph.n).to(self.device)
-            new_bonuses = torch.ones(self.metagraph.n).to(self.device)
-
-            min_len = min(len(self.hotkeys), len(self.base_scores))
-
-            new_bases[:min_len] = self.base_scores[:min_len]
-            new_bonuses[:min_len] = self.scores_bonuses[:min_len]
-
-            self.base_scores = new_bases
-            self.scores_bonuses = new_bonuses
+            self.metric_manager.resize()
 
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
@@ -569,32 +528,6 @@ class Validator(BaseNeuron):
                 self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length
 
-    def update_base_scores(self, score: float, uid: int):
-        """Performs exponential moving average on the scores based on the rewards received from the miners."""
-
-        bt.logging.debug(f"Base score: {score} for UID {uid}")
-
-        alpha: float = self.config.neuron.moving_average_alpha
-        self.base_scores[uid] = score * alpha + self.base_scores[uid] * (1 - alpha)
-
-        bt.logging.debug(f"Updated base scores: {self.base_scores}")
-
-    async def update_score_bonuses(self, rewards: Tensor, uids: list[int]):
-        # Compute forward pass rewards, assumes uids are mutually exclusive.
-        # shape: [ metagraph.n ]
-        scattered_rewards = self.scores_bonuses.to(self.device).scatter(
-            0,
-            torch.tensor(uids).to(self.device),
-            rewards.to(self.device),
-        )
-        bt.logging.debug(f"Scattered score bonuses: {rewards}")
-
-        # Update scores with rewards for handling user requests.
-        # shape: [ metagraph.n ]
-        self.scores_bonuses = scattered_rewards
-
-        await self.send_metrics("bonus_scores", [[uid, rewards[index].item()] for index, uid in enumerate(uids)])
-
     def save_state(self):
         """Saves the state of the validator to a file."""
         bt.logging.info("Saving validator state.")
@@ -603,8 +536,7 @@ class Validator(BaseNeuron):
         torch.save(
             {
                 "step": self.step,
-                "base_scores": self.base_scores,
-                "score_bonuses": self.scores_bonuses,
+                "miner_metrics": self.metric_manager,
                 "hotkeys": self.hotkeys,
                 "miner_heap": self.miner_heap,
             },
@@ -623,8 +555,7 @@ class Validator(BaseNeuron):
         # Load the state of the validator from file.
         state = torch.load(path)
         self.step = state["step"]
-        self.base_scores = state.get("base_scores", self.base_scores)
-        self.scores_bonuses = state.get("scores_bonuses", self.scores_bonuses)
+        self.metric_manager = state.get("miner_metrics", self.metric_manager)
         self.hotkeys = state["hotkeys"]
         self.miner_heap = state.get("miner_heap", self.miner_heap)
 
@@ -647,13 +578,13 @@ class Validator(BaseNeuron):
             yield await response
 
     async def validate_user_request_responses(
-            self,
-            inputs: ImageGenerationInputs,
-            finished_response: ImageGenerationSynapse,
-            miner_uids: Tensor,
-            axons: list[AxonInfo],
-            bad_responses: list[ImageGenerationSynapse],
-            response_generator: AsyncGenerator[ImageGenerationSynapse, None],
+        self,
+        inputs: ImageGenerationInputs,
+        finished_response: ImageGenerationSynapse,
+        miner_uids: Tensor,
+        axons: list[AxonInfo],
+        bad_responses: list[tuple[ImageGenerationSynapse, float | None]],
+        response_generator: AsyncGenerator[ImageGenerationSynapse, None],
     ):
         axon_uids = {
             axon.hotkey: uid.item()
@@ -665,38 +596,69 @@ class Validator(BaseNeuron):
 
         async for response in response_generator:
             if not response.output:
-                bad_responses.append(response)
+                bad_responses.append((response, None))
+                continue
+
+            similarity_score = await self.score_output(inputs, response)
+
+            if similarity_score < 0.85:
+                bad_responses.append((response, similarity_score))
                 continue
 
             working_miner_uids.append(axon_uids[response.axon.hotkey])
             finished_responses.append(response)
 
         if len(bad_responses):
-            bad_axons = [response.axon for response in bad_responses]
-            bad_dendrites = [response.dendrite for response in bad_responses]
-            bad_miner_uids = [axon_uids[axon.hotkey] for axon in bad_axons]
+            bad_axons = [(response.axon, similarity_score) for response, similarity_score in bad_responses]
+            bad_dendrites = [response.dendrite for response, _ in bad_responses]
+            bad_miner_uids = [(axon_uids[axon.hotkey], similarity_score) for axon, similarity_score in bad_axons]
 
             # Some failed to response, punish them
-            await self.update_score_bonuses(
-                self.scores_bonuses[tensor(bad_miner_uids, dtype=torch.int64)] * 0.75,
-                bad_miner_uids,
-            )
+            await asyncio.gather(*[
+                self.metric_manager.failed_user_request(uid, similarity_score)
+                for uid, similarity_score in bad_miner_uids
+            ])
 
             async with self.periodic_validation_queue_lock:
-                self.periodic_validation_queue.update({uid: inputs for uid in bad_miner_uids})
+                self.periodic_validation_queue.update({uid: inputs for uid, _ in bad_miner_uids})
 
             bt.logging.error(f"Failed to query some miners with {inputs} for axons {bad_axons}, {bad_dendrites}")
 
-        await self.update_score_bonuses(
-            self.scores_bonuses[tensor(working_miner_uids, dtype=torch.int64)] * 1.05,
-            working_miner_uids,
-        )
+        async def rank_response(uid: int):
+            score = await self.score_output(inputs, response)
+            await self.metric_manager.successful_user_request(uid, score)
+
+        # Some failed to response, punish them
+        await asyncio.gather(*[
+            rank_response(uid)
+            for uid in working_miner_uids
+        ])
 
         if (os.urandom(1)[0] / 255) >= RANDOM_VALIDATION_CHANCE:
             return
 
         async with self.periodic_validation_queue_lock:
             self.periodic_validation_queue.update({uid: inputs for uid in working_miner_uids})
+
+    def score_output(self, inputs: ImageGenerationInputs, response: ImageGenerationSynapse):
+        validation_endpoint = select_endpoint(
+            self.config.validation_endpoint,
+            self.config.subtensor.network,
+            "https://dev-validate.api.wombo.ai/api/validate",
+            "https://validate.api.wombo.ai/api/validate",
+        )
+
+        keypair: Keypair = self.forward_dendrite.keypair
+        hotkey = keypair.ss58_address
+        signature = f"0x{keypair.sign(hotkey).hex()}"
+
+        return reward(
+            validation_endpoint,
+            hotkey,
+            signature,
+            inputs,
+            response,
+        )
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uids = (
@@ -715,7 +677,7 @@ class Validator(BaseNeuron):
             ImageGenerationSynapse(inputs=synapse.inputs),
         )
 
-        bad_responses: list[ImageGenerationSynapse] = []
+        bad_responses: list[tuple[ImageGenerationSynapse, float | None]] = []
 
         axon_uids = {
             axon.hotkey: uid.item()
@@ -724,30 +686,13 @@ class Validator(BaseNeuron):
 
         async for response in response_generator:
             if not response.output:
-                bad_responses.append(response)
+                bad_responses.append((response, None))
                 continue
 
-            validation_endpoint = select_endpoint(
-                self.config.validation_endpoint,
-                self.config.subtensor.network,
-                "https://dev-validate.api.wombo.ai/api/validate",
-                "https://validate.api.wombo.ai/api/validate",
-            )
-
-            keypair: Keypair = self.forward_dendrite.keypair
-            hotkey = keypair.ss58_address
-            signature = f"0x{keypair.sign(hotkey).hex()}"
-
-            similarity_score = await reward(
-                validation_endpoint,
-                hotkey,
-                signature,
-                synapse.inputs,
-                response,
-            )
+            similarity_score = await self.score_output(synapse.inputs, response)
 
             if similarity_score < 0.85:
-                bad_responses.append(response)
+                bad_responses.append((response, similarity_score))
                 continue
 
             synapse.output = MinerGenerationOutput(
@@ -774,17 +719,17 @@ class Validator(BaseNeuron):
 
             return synapse
 
-        bad_axons = [response.axon for response in bad_responses]
-        bad_dendrites = [response.dendrite for response in bad_responses]
-        bad_miner_uids = [axon_uids[axon.hotkey] for axon in bad_axons]
+        bad_axons = [(response.axon, similarity_score) for response, similarity_score in bad_responses]
+        bad_dendrites = [response.dendrite for response, _ in bad_responses]
+        bad_miner_uids = [(axon_uids[axon.hotkey], similarity_score) for axon, similarity_score in bad_axons]
 
-        # Some failed to response, punish them
-        await self.update_score_bonuses(
-            self.scores_bonuses[tensor(bad_miner_uids, dtype=torch.int64)] * 0.75,
-            bad_miner_uids,
-        )
+        # All failed to response, punish them
+        await asyncio.gather(*[
+            self.metric_manager.failed_user_request(uid, similarity_score)
+            for uid, similarity_score in bad_miner_uids
+        ])
 
-        raise GetMinerResponseException(bad_dendrites, bad_axons)
+        raise GetMinerResponseException(bad_dendrites, [axon for axon, _ in bad_axons])
 
     async def blacklist_image(self, synapse: ImageGenerationClientSynapse) -> Tuple[bool, str]:
         is_hotkey_allowed_endpoint = select_endpoint(
