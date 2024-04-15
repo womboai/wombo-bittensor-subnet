@@ -17,11 +17,8 @@
 #  DEALINGS IN THE SOFTWARE.
 
 import asyncio
-import base64
 import copy
 import os
-import random
-import time
 import traceback
 from asyncio import Future, Lock
 from typing import AsyncGenerator, Tuple
@@ -34,6 +31,7 @@ from bittensor import AxonInfo, TerminalInfo
 from substrateinterface import Keypair
 from torch import tensor, Tensor
 
+from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from neuron.neuron import BaseNeuron
 from neuron_selector.uids import get_best_uids, sync_neuron_info, DEFAULT_NEURON_INFO
@@ -45,7 +43,23 @@ from validator.miner_metrics import MinerMetricManager, set_miner_metrics
 from validator.reward import select_endpoint, reward
 from validator.watermark import add_watermarks
 
+import nltk
+
+nltk.download('words')
+nltk.download('universal_tagset')
+
+from nltk.corpus import words
+from nltk import pos_tag
+import random
+
+
+WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ"]
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
+
+
+def generate_random_prompt():
+    words = cryptographic_sample(WORDS, k=min(len(WORDS), min(os.urandom(1)[0] % 32, 8)))
+    return ", ".join(words + ["tao"])
 
 
 def validator_forward_info(synapse: NeuronInfoSynapse):
@@ -324,11 +338,8 @@ class Validator(BaseNeuron):
                 if miner_uid in self.periodic_validation_queue:
                     inputs = self.periodic_validation_queue.pop(miner_uid)
                 else:
-                    # TODO Get prompt from prompt bank
-                    randomness = base64.b64encode(str(self.step * time.monotonic_ns()).encode("ascii")).decode("ascii")
-
                     input_parameters = {
-                        "prompt": f"Tao, scenic, mountain, night, moon, {randomness}, (deep blue)",
+                        "prompt": generate_random_prompt(),
                         "negative_prompt": "blurry, nude, (out of focus), JPEG artifacts",
                         "width": 1024,
                         "height": 1024,

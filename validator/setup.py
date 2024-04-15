@@ -46,6 +46,7 @@ setup(
         "wombo-bittensor-subnet-neuron",
         "wombo-bittensor-subnet-neuron-selector",
         "pillow==10.2.0",
+        "nltk==3.8.1"
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
