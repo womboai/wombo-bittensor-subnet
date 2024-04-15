@@ -108,6 +108,12 @@ class MinerMetricManager:
             failed_user_requests=self.failed_user_requests[uid],
         )
 
+    def failed_miner(self, uid: int):
+        self.generation_counts[uid] = 0
+        self.generation_times[uid] = 0.0
+        self.similarity_scores[uid] = 0.0
+        self.error_rates[uid] = 1.0
+
     def reset(self, uid: int):
         self.generation_counts[uid] = 0
         self.generation_times[uid] = 0.0
@@ -198,10 +204,7 @@ class MinerMetricManager:
         )
 
     async def failed_stress_test(self, uid: int):
-        self.generation_counts[uid] = 0
-        self.generation_times[uid] = 0.0
-        self.similarity_scores[uid] = 0.0
-        self.error_rates[uid] = 1.0
+        self.failed_miner(uid)
 
         await self.send_metrics(
             self.validator.periodic_check_dendrite,
@@ -235,7 +238,8 @@ async def set_miner_metrics(
     axon = validator.metagraph.axons[uid]
 
     if blacklist and (axon.hotkey in blacklist.hotkeys or axon.coldkey in blacklist.coldkeys):
-        return 0.0
+        validator.metric_manager.failed_miner(uid)
+        return
 
     bt.logging.info(f"Measuring RPS of UID {uid} with Axon {axon}")
 
