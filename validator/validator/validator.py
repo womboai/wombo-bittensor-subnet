@@ -662,7 +662,13 @@ class Validator(BaseNeuron):
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uids = (
-            get_best_uids(self.config.blacklist, self.metagraph, self.neuron_info, validators=False)
+            get_best_uids(
+                self.config.blacklist,
+                self.metagraph,
+                self.neuron_info,
+                (self.metric_manager.generation_counts / self.metric_manager.generation_times).nan_to_num(0.0),
+                lambda _, info: info.is_validator is False,
+            )
             if synapse.miner_uid is None
             else tensor([synapse.miner_uid])
         )
