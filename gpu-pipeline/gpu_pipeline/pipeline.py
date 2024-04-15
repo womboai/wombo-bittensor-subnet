@@ -12,6 +12,7 @@ import cv2
 import numpy as np
 from diffusers import (
     StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline, ControlNetModel,
+    DPMSolverMultistepScheduler,
 )
 import torch
 
@@ -111,6 +112,10 @@ def get_pipeline() -> tuple[Semaphore, SDXLPipelines]:
 
     pipeline.load_lora_weights(get_tao_lora_path())
     pipeline.fuse_lora()
+    pipeline.scheduler = DPMSolverMultistepScheduler(
+        use_karras_sigmas=True,
+        algorithm_type="sde-dpmsolver++",
+    )
 
     cn_pipeline = StableDiffusionXLControlNetPipeline(
         **pipeline.components,
