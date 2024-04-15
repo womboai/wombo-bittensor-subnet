@@ -344,6 +344,7 @@ class Validator(BaseNeuron):
                         "width": 1024,
                         "height": 1024,
                         "steps": 30,
+                        "controlnet_conditioning_scale": 0.5,
                     }
 
                     inputs = ImageGenerationInputs(**input_parameters)
