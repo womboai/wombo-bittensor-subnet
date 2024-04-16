@@ -95,19 +95,26 @@ def get_pipeline() -> tuple[Semaphore, StableDiffusionXLControlNetPipeline]:
     device = os.getenv("DEVICE", "cuda")
     concurrency = int(os.getenv("CONCURRENCY", str(1)))
 
-    pipeline = StableDiffusionXLControlNetPipeline(
+    pipeline = (
+        StableDiffusionXLPipeline
+        .from_single_file(get_model_path(), torch_dtype=torch.float16)
+        .to(device)
+    )
+
+    pipeline.load_lora_weights(get_tao_lora_path())
+    pipeline.fuse_lora()
+    pipeline.scheduler = DPMSolverMultistepScheduler(
+        use_karras_sigmas=True,
+        algorithm_type="sde-dpmsolver++",
+    )
+
+    cn_pipeline = StableDiffusionXLControlNetPipeline(
+        **pipeline.components,
         controlnet=ControlNetModel.from_pretrained(
             "diffusers/controlnet-canny-sdxl-1.0",
             torch_dtype=torch.float16,
             variant="fp16",
         ),
-        scheduler=DPMSolverMultistepScheduler(
-            use_karras_sigmas=True,
-            algorithm_type="sde-dpmsolver++",
-        )
-    ).to(device, dtype=torch.float16)
+    ).to(device)
 
-    pipeline.load_lora_weights(get_tao_lora_path())
-    pipeline.fuse_lora()
-
-    return Semaphore(concurrency), pipeline
+    return Semaphore(concurrency), cn_pipeline
