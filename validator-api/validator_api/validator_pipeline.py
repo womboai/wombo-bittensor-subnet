@@ -370,7 +370,7 @@ def __validate_internal(
         # Based on 3.4. in https://arxiv.org/pdf/2305.08891.pdf
         noise_pred = rescale_noise_cfg(noise_pred, noise_pred_text, guidance_rescale=pipeline.guidance_rescale)
 
-    for i in range(index + 1):
+    for i in range(index - 1):
         randn_tensor(
             latents.shape,
             generator=generator,
@@ -829,7 +829,7 @@ def __validate_internal_cn(
         noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
         noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
 
-    for i in range(index + 1):
+    for i in range(index - 1):
         randn_tensor(
             latents.shape,
             generator=generator,
