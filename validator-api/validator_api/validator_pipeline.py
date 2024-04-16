@@ -514,6 +514,4 @@ async def validate_frames(
             for i in random_indices
         ])
 
-    similarity = similarities.mean().item() * 0.5 + 0.5
-
-    return pow(similarity, 4)
+    return similarities.min().item() * 0.5 + 0.5
