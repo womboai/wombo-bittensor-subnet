@@ -43,23 +43,10 @@ from validator.miner_metrics import MinerMetricManager, set_miner_metrics
 from validator.reward import select_endpoint, reward
 from validator.watermark import add_watermarks
 
-import nltk
-
-nltk.download('words')
-nltk.download('universal_tagset')
-
-from nltk.corpus import words
-from nltk import pos_tag
 import random
 
 
-WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ"]
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
-
-
-def generate_random_prompt():
-    words = cryptographic_sample(WORDS, k=min(len(WORDS), min(os.urandom(1)[0] % 32, 8)))
-    return ", ".join(words + ["tao"])
 
 
 def validator_forward_info(synapse: NeuronInfoSynapse):
@@ -98,7 +85,7 @@ class Validator(BaseNeuron):
     pending_request_futures: list[Future[None]]
 
     periodic_validation_queue_lock: Lock
-    periodic_validation_queue: dict[int, ImageGenerationInputs]
+    periodic_validation_queue: set[int]
 
     def __init__(self):
         super().__init__()
@@ -145,7 +132,7 @@ class Validator(BaseNeuron):
         self.pending_request_futures = []
 
         self.periodic_validation_queue_lock = Lock()
-        self.periodic_validation_queue = {}
+        self.periodic_validation_queue = set()
 
     @classmethod
     def check_config(cls, config: bt.config):
@@ -324,35 +311,22 @@ class Validator(BaseNeuron):
         """
 
         if self.step % 2 == 0:
-            hotkey = None
-
             async with self.periodic_validation_queue_lock:
-                if not len(self.periodic_validation_queue):
-                    return
-
-                miner_uid, inputs = self.periodic_validation_queue.popitem()
+                if len(self.periodic_validation_queue):
+                    hotkey = None
+                    miner_uid = self.periodic_validation_queue.pop()
+                else:
+                    miner_uid, hotkey = self.get_next_uid()
         else:
             miner_uid, hotkey = self.get_next_uid()
 
             async with self.periodic_validation_queue_lock:
                 if miner_uid in self.periodic_validation_queue:
-                    inputs = self.periodic_validation_queue.pop(miner_uid)
-                else:
-                    input_parameters = {
-                        "prompt": generate_random_prompt(),
-                        "negative_prompt": "blurry, nude, (out of focus), JPEG artifacts",
-                        "width": 1024,
-                        "height": 1024,
-                        "steps": 30,
-                        "controlnet_conditioning_scale": 0.5,
-                    }
-
-                    inputs = ImageGenerationInputs(**input_parameters)
+                    self.periodic_validation_queue.remove(miner_uid)
 
         await set_miner_metrics(
             self,
             miner_uid,
-            inputs,
         )
 
         if hotkey:
@@ -632,7 +606,7 @@ class Validator(BaseNeuron):
             ])
 
             async with self.periodic_validation_queue_lock:
-                self.periodic_validation_queue.update({uid: inputs for uid, _ in bad_miner_uids})
+                self.periodic_validation_queue.update({uid for uid, _ in bad_miner_uids})
 
             bt.logging.error(f"Failed to query some miners with {inputs} for axons {bad_axons}, {bad_dendrites}")
 
@@ -650,7 +624,7 @@ class Validator(BaseNeuron):
             return
 
         async with self.periodic_validation_queue_lock:
-            self.periodic_validation_queue.update({uid: inputs for uid in working_miner_uids})
+            self.periodic_validation_queue.update({uid for uid in working_miner_uids})
 
     def score_output(self, inputs: ImageGenerationInputs, response: ImageGenerationSynapse):
         validation_endpoint = select_endpoint(

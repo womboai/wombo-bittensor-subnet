@@ -33,6 +33,14 @@ from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 from validator.reward import select_endpoint, reward
 
+import nltk
+
+nltk.download('words')
+nltk.download('universal_tagset')
+
+from nltk.corpus import words
+from nltk import pos_tag
+
 TIME_CONSTRAINT = 30.0
 """
 The time constraint to test the RPS under,
@@ -46,6 +54,13 @@ The max percentage of failures acceptable before stopping
 """
 
 ValidatableResponse: TypeAlias = tuple[ImageGenerationSynapse, ImageGenerationInputs]
+
+WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ"]
+
+
+def generate_random_prompt():
+    words = cryptographic_sample(WORDS, k=min(len(WORDS), min(os.urandom(1)[0] % 32, 8)))
+    return ", ".join(words + ["tao"])
 
 
 class MinerMetrics(BaseModel):
@@ -229,11 +244,7 @@ class MinerMetricManager:
         await self.send_user_request_metric(uid)
 
 
-async def set_miner_metrics(
-    validator,
-    uid: int,
-    base_inputs: ImageGenerationInputs,
-):
+async def set_miner_metrics(validator, uid: int):
     blacklist = validator.config.blacklist
     axon = validator.metagraph.axons[uid]
 
@@ -252,13 +263,15 @@ async def set_miner_metrics(
         bt.logging.info(f"\tTesting {count} requests")
 
         def get_inputs():
-            seed = int.from_bytes(os.urandom(4), "little")
-
-            input_dict: dict[str, Any] = base_inputs.dict()
-
-            input_dict.pop("seed")
-
-            return ImageGenerationInputs(**input_dict, seed=seed)
+            return ImageGenerationInputs(
+                prompt=generate_random_prompt(),
+                negative_prompt="blurry, nude, (out of focus), JPEG artifacts",
+                width=1024,
+                height=1024,
+                steps=30,
+                controlnet_conditioning_scale=0.5,
+                seed=int.from_bytes(os.urandom(4), "little"),
+            )
 
         request_inputs = [
             get_inputs()
@@ -285,8 +298,8 @@ async def set_miner_metrics(
         )
 
         finished_responses.extend([
-            (response, request_inputs[index])
-            for index, response in enumerate(responses)
+            (response, inputs)
+            for response, inputs in zip(responses, request_inputs)
             if response.output
         ])
 
