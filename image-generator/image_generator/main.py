@@ -82,5 +82,6 @@ def main():
 
     uvicorn.run(app, host=os.getenv("BIND_IP", "127.0.0.1"), port=int(os.getenv("PORT", str(8001))))
 
+
 if __name__ == "__main__":
     main()
