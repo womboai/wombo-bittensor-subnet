@@ -166,6 +166,8 @@ class MinerMetricManager:
     def __init__(self, validator):
         self.validator = validator
 
+        self.miner_data = MinerData(validator)
+
         self.data_endpoint = select_endpoint(
             validator.config.data_endpoint,
             validator.config.subtensor.network,
