@@ -522,7 +522,7 @@ class Validator(BaseNeuron):
         torch.save(
             {
                 "step": self.step,
-                "miner_metrics": self.metric_manager,
+                "miner_data": self.metric_manager.miner_data,
                 "hotkeys": self.hotkeys,
                 "miner_heap": self.miner_heap,
             },
@@ -541,7 +541,7 @@ class Validator(BaseNeuron):
         # Load the state of the validator from file.
         state = torch.load(path)
         self.step = state["step"]
-        self.metric_manager = state.get("miner_metrics", self.metric_manager)
+        self.metric_manager.load_data(state.get("miner_data", self.metric_manager.miner_data))
         self.hotkeys = state["hotkeys"]
         self.miner_heap = state.get("miner_heap", self.miner_heap)
 

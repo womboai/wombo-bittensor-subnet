@@ -88,7 +88,7 @@ class MinerMetrics(BaseModel):
         )
 
 
-class MinerMetricManager:
+class MinerData:
     generation_counts: Tensor
     generation_times: Tensor
     similarity_scores: Tensor
@@ -100,20 +100,12 @@ class MinerMetricManager:
         metagraph = validator.metagraph
         device = validator.device
 
-        self.validator = validator
         self.generation_counts = torch.zeros_like(metagraph.S, dtype=torch.int16, device=device)
         self.generation_times = torch.zeros_like(metagraph.S, dtype=torch.float32, device=device)
         self.similarity_scores = torch.zeros_like(metagraph.S, dtype=torch.float16, device=device)
         self.error_rates = torch.zeros_like(metagraph.S, dtype=torch.float16, device=device)
         self.successful_user_requests = torch.zeros_like(metagraph.S, dtype=torch.int64, device=device)
         self.failed_user_requests = torch.zeros_like(metagraph.S, dtype=torch.int64, device=device)
-
-        self.data_endpoint = select_endpoint(
-            validator.config.data_endpoint,
-            validator.config.subtensor.network,
-            "https://dev-neuron-identifier.api.wombo.ai/api/data",
-            "https://neuron-identifier.api.wombo.ai/api/data",
-        )
 
     def __getitem__(self, uid: int):
         if not self.generation_counts[uid]:
@@ -142,24 +134,71 @@ class MinerMetricManager:
         self.successful_user_requests[uid] = 0
         self.failed_user_requests[uid] = 0
 
+    def successful_stress_test(
+        self,
+        uid: int,
+        generated_count: int,
+        generation_time: float,
+        similarity_score: float,
+        error_rate: float,
+    ):
+        self.generation_counts[uid] = generated_count
+        self.generation_times[uid] = generation_time
+        self.similarity_scores[uid] = similarity_score
+        self.error_rates[uid] = error_rate
+
+    def successful_user_request(self, uid: int, similarity_score: float):
+        self.successful_user_requests[uid] += 1
+        self.similarity_scores[uid] = min(self.similarity_scores[uid].item(), similarity_score)
+
+    def failed_user_request(self, uid: int, similarity_score: Optional[float]):
+        self.failed_user_requests[uid] += 1
+
+        if similarity_score:
+            self.similarity_scores[uid] = min(self.similarity_scores[uid].item(), similarity_score)
+        else:
+            self.similarity_scores[uid] = self.similarity_scores[uid] * 0.75
+
+
+class MinerMetricManager:
+    miner_data: MinerData
+
+    def __init__(self, validator):
+        self.validator = validator
+
+        self.data_endpoint = select_endpoint(
+            validator.config.data_endpoint,
+            validator.config.subtensor.network,
+            "https://dev-neuron-identifier.api.wombo.ai/api/data",
+            "https://neuron-identifier.api.wombo.ai/api/data",
+        )
+
+    def __getitem__(self, uid: int):
+        return self.miner_data[uid]
+
+    def failed_miner(self, uid: int):
+        self.miner_data.failed_miner(uid)
+
+    def reset(self, uid: int):
+        self.miner_data.reset(uid)
+
     def resize(self):
-        new_manager = MinerMetricManager(self.validator)
+        new_data = MinerData(self.validator)
+        existing_data = self.miner_data
 
         length = len(self.validator.hotkeys)
 
-        new_manager.generation_counts[:length] = self.generation_counts[:length]
-        new_manager.generation_times[:length] = self.generation_times[:length]
-        new_manager.similarity_scores[:length] = self.similarity_scores[:length]
-        new_manager.error_rates[:length] = self.error_rates[:length]
-        new_manager.successful_user_requests[:length] = self.successful_user_requests[:length]
-        new_manager.failed_user_requests[:length] = self.failed_user_requests[:length]
+        new_data.generation_counts[:length] = existing_data.generation_counts[:length]
+        new_data.generation_times[:length] = existing_data.generation_times[:length]
+        new_data.similarity_scores[:length] = existing_data.similarity_scores[:length]
+        new_data.error_rates[:length] = existing_data.error_rates[:length]
+        new_data.successful_user_requests[:length] = existing_data.successful_user_requests[:length]
+        new_data.failed_user_requests[:length] = existing_data.failed_user_requests[:length]
 
-        self.generation_counts = new_manager.generation_counts
-        self.generation_times = new_manager.generation_times
-        self.similarity_scores = new_manager.similarity_scores
-        self.error_rates = new_manager.error_rates
-        self.successful_user_requests = new_manager.successful_user_requests
-        self.failed_user_requests = new_manager.failed_user_requests
+        self.miner_data = new_data
+
+    def load_data(self, data: MinerData):
+        self.miner_data = data
 
     async def send_metrics(
         self,
@@ -192,9 +231,9 @@ class MinerMetricManager:
             "user_requests",
             {
                 "miner_uid": uid,
-                "successful": self.successful_user_requests[uid].item(),
-                "failed": self.failed_user_requests[uid].item(),
-                "similarity_score": self.similarity_scores[uid].item(),
+                "successful": self.miner_data.successful_user_requests[uid].item(),
+                "failed": self.miner_data.failed_user_requests[uid].item(),
+                "similarity_score": self.miner_data.similarity_scores[uid].item(),
             },
         )
 
@@ -206,10 +245,7 @@ class MinerMetricManager:
         similarity_score: float,
         error_rate: float,
     ):
-        self.generation_counts[uid] = generated_count
-        self.generation_times[uid] = generation_time
-        self.similarity_scores[uid] = similarity_score
-        self.error_rates[uid] = error_rate
+        self.miner_data.successful_stress_test(uid, generated_count, generation_time, similarity_score, error_rate)
 
         await self.send_metrics(
             self.validator.periodic_check_dendrite,
@@ -233,18 +269,12 @@ class MinerMetricManager:
         )
 
     async def successful_user_request(self, uid: int, similarity_score: float):
-        self.successful_user_requests[uid] += 1
-        self.similarity_scores[uid] = min(self.similarity_scores[uid].item(), similarity_score)
+        self.miner_data.successful_user_request(uid, similarity_score)
 
         await self.send_user_request_metric(uid)
 
     async def failed_user_request(self, uid: int, similarity_score: Optional[float]):
-        self.failed_user_requests[uid] += 1
-
-        if similarity_score:
-            self.similarity_scores[uid] = min(self.similarity_scores[uid].item(), similarity_score)
-        else:
-            self.similarity_scores[uid] = self.similarity_scores[uid] * 0.75
+        self.miner_data.failed_user_request(uid, similarity_score)
 
         await self.send_user_request_metric(uid)
 
