@@ -18,6 +18,7 @@
 import asyncio
 import os
 import traceback
+from random import shuffle
 from typing import Any, TypeAlias, Annotated, Optional
 
 import bittensor as bt
@@ -59,8 +60,10 @@ WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag
 
 
 def generate_random_prompt():
-    words = cryptographic_sample(WORDS, k=min(len(WORDS), min(os.urandom(1)[0] % 32, 8)))
-    return ", ".join(words + ["tao"])
+    words = cryptographic_sample(WORDS, k=min(len(WORDS), min(os.urandom(1)[0] % 32, 8))) + ["tao"]
+    shuffle(words)
+
+    return ", ".join(words)
 
 
 class MinerMetrics(BaseModel):
