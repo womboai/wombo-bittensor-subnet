@@ -15,6 +15,7 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+
 import asyncio
 import os
 import traceback
@@ -57,7 +58,7 @@ The max percentage of failures acceptable before stopping
 
 ValidatableResponse: TypeAlias = tuple[ImageGenerationSynapse, ImageGenerationInputs]
 
-WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ"]
+WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ" or tag == "NOUN"]
 
 
 def generate_random_prompt():
