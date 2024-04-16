@@ -273,7 +273,7 @@ async def set_miner_metrics(validator, uid: int):
                 negative_prompt="blurry, nude, (out of focus), JPEG artifacts",
                 width=1024,
                 height=1024,
-                steps=30,
+                num_inference_steps=30,
                 controlnet_conditioning_scale=0.5,
                 seed=int.from_bytes(os.urandom(4), "little"),
             )
