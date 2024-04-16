@@ -369,17 +369,17 @@ class Validator(BaseNeuron):
             while True:
                 bt.logging.info(f"step({self.step}) block({self.block})")
 
-                await sync_neuron_info(self, self.periodic_check_dendrite)
-
                 try:
+                    await sync_neuron_info(self, self.periodic_check_dendrite)
+
                     await self.check_next_miner()
+
+                    # Sync metagraph and potentially set weights.
+                    await self.sync()
+
+                    self.step += 1
                 except Exception as _:
                     bt.logging.error("Failed to forward to miners, ", traceback.format_exc())
-
-                # Sync metagraph and potentially set weights.
-                await self.sync()
-
-                self.step += 1
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
