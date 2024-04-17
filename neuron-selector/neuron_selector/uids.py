@@ -1,5 +1,5 @@
 import random
-from typing import Any
+from typing import Any, Callable
 
 import bittensor
 
@@ -50,23 +50,13 @@ async def sync_neuron_info(self, dendrite: bittensor.dendrite):
 
 
 def get_best_uids(
-        blacklist: Any,
-        metagraph: bittensor.metagraph,
-        neuron_info: dict[int, NeuronInfoSynapse],
-        validators: bool,
-        k: int = 3,
+    blacklist: Any,
+    metagraph: bittensor.metagraph,
+    neuron_info: dict[int, NeuronInfoSynapse],
+    rank: Tensor,
+    condition: Callable[[int, NeuronInfoSynapse], bool],
+    k: int = 3,
 ) -> Tensor:
-    if validators:
-        trust = metagraph.validator_trust
-
-        def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
-            return info.is_validator is True and metagraph.validator_permit[_uid].item()
-    else:
-        trust = metagraph.trust
-
-        def validator_condition(_uid: int, info: NeuronInfoSynapse) -> bool:
-            return info.is_validator is False
-
     available_uids = [
         uid
         for uid in range(metagraph.n.item())
@@ -90,7 +80,7 @@ def get_best_uids(
     available_uids = [
         uid
         for uid in available_uids
-        if validator_condition(uid, infos[uid])
+        if condition(uid, infos[uid])
     ]
 
     if not len(available_uids):
@@ -99,7 +89,7 @@ def get_best_uids(
     uids = torch.tensor(
         random.choices(
             available_uids,
-            weights=[trust[uid].item() for uid in available_uids],
+            weights=[rank[uid].item() for uid in available_uids],
             k=k,
         )
     )
