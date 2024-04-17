@@ -7,11 +7,12 @@ from typing import Annotated
 import torch
 import uvicorn
 from PIL import Image
+from diffusers import StableDiffusionXLControlNetPipeline
 from fastapi import FastAPI, Body
 from requests_toolbelt import MultipartEncoder
 from starlette.responses import Response
 
-from gpu_pipeline.pipeline import get_pipeline, SDXLPipelines, parse_input_parameters
+from gpu_pipeline.pipeline import get_pipeline, parse_input_parameters
 from gpu_pipeline.tensor import save_tensor
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 
@@ -26,7 +27,7 @@ def image_stream(image: Image.Image) -> BytesIO:
 
 async def generate(
     gpu_semaphore: Semaphore,
-    pipelines: SDXLPipelines,
+    pipeline: StableDiffusionXLControlNetPipeline,
     inputs: ImageGenerationInputs,
 ) -> tuple[bytes, list[BytesIO]]:
     frames = []
@@ -36,10 +37,10 @@ async def generate(
 
         return callback_kwargs
 
-    selected_pipeline, input_kwargs = parse_input_parameters(pipelines, inputs)
+    input_kwargs = parse_input_parameters(inputs)
 
     async with gpu_semaphore:
-        output = selected_pipeline(
+        output = pipeline(
             **input_kwargs,
             callback_on_step_end=save_frames,
         )
@@ -55,11 +56,11 @@ async def generate(
 def main():
     app = FastAPI()
 
-    gpu_semaphore, pipelines = get_pipeline()
+    gpu_semaphore, pipeline = get_pipeline()
 
     @app.post("/api/generate")
     async def generate_image(inputs: Annotated[ImageGenerationInputs, Body()]) -> Response:
-        frames_bytes, images = await generate(gpu_semaphore, pipelines, inputs)
+        frames_bytes, images = await generate(gpu_semaphore, pipeline, inputs)
 
         fields = {
             f"image_{index}": (None, image, "image/jpeg")

@@ -12,13 +12,13 @@ import cv2
 import numpy as np
 from diffusers import (
     StableDiffusionXLPipeline, StableDiffusionXLControlNetPipeline, ControlNetModel,
+    DPMSolverMultistepScheduler,
 )
 import torch
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 
 
-SDXLPipelines = namedtuple('SDXLPipelines', ['t2i_pipe', 'cn_pipe'])
 TAO_PATTERN = r'\b(?:' + '|'.join(re.escape(keyword) for keyword in sorted([
     "bittensor symbol", "bittensor logo",
     "tao symbol", "tao logo",
@@ -47,10 +47,7 @@ def replace_keywords_with_tau_symbol(input_string):
     return replaced_string
 
 
-def parse_input_parameters(
-    pipelines: SDXLPipelines,
-    inputs: ImageGenerationInputs,
-) -> tuple[StableDiffusionXLPipeline | StableDiffusionXLControlNetPipeline, dict[str, Any]]:
+def parse_input_parameters(inputs: ImageGenerationInputs) -> tuple[StableDiffusionXLControlNetPipeline, dict[str, Any]]:
     input_kwargs = inputs.dict()
     seed = input_kwargs.pop("seed")
 
@@ -60,14 +57,9 @@ def parse_input_parameters(
     input_kwargs["prompt"] = replace_keywords_with_tau_symbol(inputs.prompt)
     input_kwargs["output_type"] = "pil"
 
-    if inputs.controlnet_conditioning_scale > 0:
-        selected_pipeline = pipelines.cn_pipe
-        input_kwargs["image"] = get_tao_img(inputs.width, inputs.height)
-    else:
-        selected_pipeline = pipelines.t2i_pipe
-        input_kwargs.pop("controlnet_conditioning_scale")
+    input_kwargs["image"] = get_tao_img(inputs.width, inputs.height)
 
-    return selected_pipeline, input_kwargs
+    return input_kwargs
 
 
 def ensure_file_at_path(path: str, url: str) -> str:
@@ -99,7 +91,7 @@ def get_tao_lora_path() -> str:
     )
 
 
-def get_pipeline() -> tuple[Semaphore, SDXLPipelines]:
+def get_pipeline() -> tuple[Semaphore, StableDiffusionXLControlNetPipeline]:
     device = os.getenv("DEVICE", "cuda")
     concurrency = int(os.getenv("CONCURRENCY", str(1)))
 
@@ -111,6 +103,10 @@ def get_pipeline() -> tuple[Semaphore, SDXLPipelines]:
 
     pipeline.load_lora_weights(get_tao_lora_path())
     pipeline.fuse_lora()
+    pipeline.scheduler = DPMSolverMultistepScheduler(
+        use_karras_sigmas=True,
+        algorithm_type="sde-dpmsolver++",
+    )
 
     cn_pipeline = StableDiffusionXLControlNetPipeline(
         **pipeline.components,
@@ -121,4 +117,4 @@ def get_pipeline() -> tuple[Semaphore, SDXLPipelines]:
         ),
     ).to(device)
 
-    return Semaphore(concurrency), SDXLPipelines(t2i_pipe=pipeline, cn_pipe=cn_pipeline)
+    return Semaphore(concurrency), cn_pipeline

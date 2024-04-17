@@ -38,7 +38,7 @@ def get_hotkey(credentials: Annotated[HTTPBasicCredentials, Depends(security)]) 
 async def main():
     app = FastAPI()
 
-    gpu_semaphore, pipelines = get_pipeline()
+    gpu_semaphore, pipeline = get_pipeline()
 
     subtensor = bittensor.subtensor(network=NETWORK)
     metagraph: bittensor.metagraph = subtensor.metagraph(NETUID)
@@ -73,7 +73,7 @@ async def main():
         frames_bytes = await frames.read()
         return await validate_frames(
             gpu_semaphore,
-            pipelines,
+            pipeline,
             frames_bytes,
             input_parameters,
         )
