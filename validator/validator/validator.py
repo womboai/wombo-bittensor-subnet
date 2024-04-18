@@ -652,7 +652,7 @@ class Validator(BaseNeuron):
                 self.config.blacklist,
                 self.metagraph,
                 self.neuron_info,
-                (self.metric_manager.generation_counts / self.metric_manager.generation_times).nan_to_num(0.0),
+                (self.metric_manager.miner_data.generation_counts / self.metric_manager.miner_data.generation_times).nan_to_num(0.0),
                 lambda _, info: info.is_validator is False,
             )
             if synapse.miner_uid is None
