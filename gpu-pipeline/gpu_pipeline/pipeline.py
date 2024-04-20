@@ -89,8 +89,7 @@ def get_tao_lora_path() -> str:
     )
 
 
-def get_pipeline() -> tuple[Semaphore, StableDiffusionXLControlNetPipeline]:
-    device = os.getenv("DEVICE", "cuda")
+def get_pipeline(device: str | None) -> tuple[Semaphore, StableDiffusionXLControlNetPipeline]:
     concurrency = int(os.getenv("CONCURRENCY", str(1)))
 
     pipeline = (

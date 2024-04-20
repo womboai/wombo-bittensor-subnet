@@ -42,7 +42,10 @@ setup(
     author_email="hello@wombo.ai",
     license="MIT",
     python_requires=">=3.10",
-    install_requires=["wombo-bittensor-subnet-neuron"],
+    install_requires=[
+        "torch==2.2.0+cpu",
+        "wombo-bittensor-subnet-neuron",
+    ],
     depdendency_links=[
         Path(os.path.join(os.getcwd(), "../neuron")).as_uri(),
     ],

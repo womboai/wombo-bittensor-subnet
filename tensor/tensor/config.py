@@ -57,7 +57,7 @@ def check_config(config: bt.config, name: str):
         )
 
 
-def add_args(parser: argparse.ArgumentParser):
+def add_args(parser: argparse.ArgumentParser, default_device: str = "cpu"):
     """
     Adds relevant arguments to the parser for operation.
     """
@@ -68,7 +68,7 @@ def add_args(parser: argparse.ArgumentParser):
         "--neuron.device",
         type=str,
         help="Device to run on.",
-        default="cpu",
+        default=default_device,
     )
 
     parser.add_argument(

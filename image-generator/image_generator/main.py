@@ -56,7 +56,7 @@ async def generate(
 def main():
     app = FastAPI()
 
-    gpu_semaphore, pipeline = get_pipeline()
+    gpu_semaphore, pipeline = get_pipeline(os.getenv("DEVICE", "cuda"))
 
     @app.post("/api/generate")
     async def generate_image(inputs: Annotated[ImageGenerationInputs, Body()]) -> Response:

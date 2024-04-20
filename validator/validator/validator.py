@@ -31,6 +31,7 @@ from bittensor import AxonInfo, TerminalInfo
 from substrateinterface import Keypair
 from torch import tensor, Tensor
 
+from gpu_pipeline.pipeline import get_pipeline
 from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from neuron.neuron import BaseNeuron
@@ -134,6 +135,8 @@ class Validator(BaseNeuron):
         self.periodic_validation_queue_lock = Lock()
         self.periodic_validation_queue = set()
 
+        self.gpu_semaphore, self.pipeline = get_pipeline(self.device)
+
     @classmethod
     def check_config(cls, config: bt.config):
         check_config(config, "validator")
@@ -162,7 +165,7 @@ class Validator(BaseNeuron):
 
     @classmethod
     def add_args(cls, parser):
-        add_args(parser)
+        add_args(parser, "cuda")
 
         parser.add_argument(
             "--validation_endpoint",
@@ -627,21 +630,9 @@ class Validator(BaseNeuron):
             self.periodic_validation_queue.update({uid for uid in working_miner_uids})
 
     def score_output(self, inputs: ImageGenerationInputs, response: ImageGenerationSynapse):
-        validation_endpoint = select_endpoint(
-            self.config.validation_endpoint,
-            self.config.subtensor.network,
-            "https://dev-validate.api.wombo.ai/api/validate",
-            "https://validate.api.wombo.ai/api/validate",
-        )
-
-        keypair: Keypair = self.forward_dendrite.keypair
-        hotkey = keypair.ss58_address
-        signature = f"0x{keypair.sign(hotkey).hex()}"
-
         return reward(
-            validation_endpoint,
-            hotkey,
-            signature,
+            self.gpu_semaphore,
+            self.pipeline,
             inputs,
             response,
         )
