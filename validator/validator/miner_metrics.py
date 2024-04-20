@@ -59,6 +59,7 @@ The max percentage of failures acceptable before stopping
 ValidatableResponse: TypeAlias = tuple[ImageGenerationSynapse, ImageGenerationInputs]
 
 WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ" or tag == "NOUN"]
+REQUEST_INCENTIVE = 0.000976562
 
 
 def generate_random_prompt():
@@ -82,9 +83,9 @@ class MinerMetrics(BaseModel):
         success_factor = pow(1 - self.error_rate, 2)
 
         return (
-            concurrency_factor * similarity_factor * success_factor +
-            self.successful_user_requests / 1024 -
-            self.failed_user_requests / 512
+                concurrency_factor * similarity_factor * success_factor +
+                self.successful_user_requests * REQUEST_INCENTIVE -
+                (self.failed_user_requests * REQUEST_INCENTIVE * 16)
         )
 
 
