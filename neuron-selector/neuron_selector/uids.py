@@ -2,7 +2,7 @@ import random
 from bisect import bisect
 from itertools import accumulate
 from math import ceil
-from typing import Any, Callable, Generic, Sequence, TypeVar
+from typing import Any, Callable, Sequence, TypeVar
 
 import bittensor
 
