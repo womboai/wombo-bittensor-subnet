@@ -190,39 +190,6 @@ Then simply run the registered validator with
 
 The run script will keep your validator up to date, so as long as the .env file is correct, everything should run properly.
 
-### Validator Decentralization
-To increase decentralization, running validator-api locally is recommended.
-This requires a GPU.
-
-#### PM2
-Set the python packages up
-
-```bash
-cd validator-api
-./setup.sh
-```
-
-Run the validator API
-```bash
-NETWORK={network} NETUID={netuid} pm2 start run.sh --name wombo-validator-api --interpreter bash
-```
-
-#### Docker
-Create a .env file from example.env
-```bash
-cd validator-api
-# Copy the example environment file and edit it
-cp example.env .env
-$EDITOR .env
-```
-
-Run the validator API
-```bash
-./run_docker.sh
-```
-
-Then finally add `--validation_endpoint http://localhost:8001/api/validate` to the validator arguments, changing the port and host as necessary.
-
 ## Applications
 
 [Bottensor](https://discord.com/oauth2/authorize?client_id=1217542148451467304&permissions=377957156864&scope=applications.commands+bot) enables users to create images featuring the TAO symbol through the BitTensor network.
