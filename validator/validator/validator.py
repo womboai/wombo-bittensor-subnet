@@ -19,6 +19,7 @@
 import asyncio
 import copy
 import os
+import random
 import traceback
 from asyncio import Future, Lock
 from typing import AsyncGenerator, Tuple
@@ -33,7 +34,7 @@ from torch import tensor, Tensor
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from neuron.neuron import BaseNeuron
-from neuron_selector.uids import get_best_uids, sync_neuron_info, DEFAULT_NEURON_INFO, WeightedList, weighted_sample
+from neuron_selector.uids import get_best_uids, sync_neuron_info, DEFAULT_NEURON_INFO, weighted_sample
 from tensor.config import add_args, check_config
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse, \
     MinerGenerationOutput
@@ -41,9 +42,6 @@ from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_A
 from validator.miner_metrics import MinerMetricManager, set_miner_metrics
 from validator.reward import select_endpoint, reward
 from validator.watermark import add_watermarks
-
-import random
-
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
 
