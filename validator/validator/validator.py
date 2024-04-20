@@ -19,6 +19,7 @@
 import asyncio
 import copy
 import os
+import random
 import traceback
 from asyncio import Future, Lock
 from typing import AsyncGenerator, Tuple
@@ -32,10 +33,9 @@ from substrateinterface import Keypair
 from torch import tensor, Tensor
 
 from gpu_pipeline.pipeline import get_pipeline
-from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from neuron.neuron import BaseNeuron
-from neuron_selector.uids import get_best_uids, sync_neuron_info, DEFAULT_NEURON_INFO
+from neuron_selector.uids import get_best_uids, sync_neuron_info, DEFAULT_NEURON_INFO, weighted_sample
 from tensor.config import add_args, check_config
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse, \
     MinerGenerationOutput
@@ -43,9 +43,6 @@ from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_A
 from validator.miner_metrics import MinerMetricManager, set_miner_metrics
 from validator.reward import select_endpoint, reward
 from validator.watermark import add_watermarks
-
-import random
-
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
 
@@ -289,13 +286,10 @@ class Validator(BaseNeuron):
 
         last_block = max(self.miner_heap.values())
 
-        random_choice_weights = [last_block - block for block in self.miner_heap.values()]
+        weighted_choices = [(last_block - block, hotkey) for hotkey, block in self.miner_heap.items()]
 
-        if sum(random_choice_weights) > 0:
-            hotkey = random.choices(
-                list(self.miner_heap.keys()),
-                weights=random_choice_weights,
-            )[0]
+        if sum([block for block, _ in weighted_choices]) > 0:
+            hotkey = weighted_sample(weighted_choices, k=1)[0]
         else:
             hotkey = random.choice(list(self.miner_heap.keys()))
 
