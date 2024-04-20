@@ -19,7 +19,6 @@
 import asyncio
 import copy
 import os
-import random
 import traceback
 from asyncio import Future, Lock
 from typing import AsyncGenerator, Tuple
@@ -27,14 +26,13 @@ from typing import AsyncGenerator, Tuple
 import bittensor as bt
 import heapdict
 import torch
-from PIL.Image import Image
 from aiohttp import ClientSession
 from bittensor import AxonInfo, TerminalInfo
-from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
+from substrateinterface import Keypair
 from torch import tensor, Tensor
-from transformers import CLIPConfig, CLIPImageProcessor
 
 from gpu_pipeline.pipeline import get_pipeline
+from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from neuron.neuron import BaseNeuron
 from neuron_selector.uids import get_best_uids, sync_neuron_info, DEFAULT_NEURON_INFO
@@ -45,6 +43,9 @@ from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_A
 from validator.miner_metrics import MinerMetricManager, set_miner_metrics
 from validator.reward import select_endpoint, reward
 from validator.watermark import add_watermarks
+
+import random
+
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
 
@@ -63,19 +64,10 @@ class NoMinersAvailableException(Exception):
 
 class GetMinerResponseException(Exception):
     def __init__(self, dendrites: list[TerminalInfo], axons: list[TerminalInfo]):
-        super().__init__(f"Failed to query miners, axons: {axons}")
+        super().__init__(f"Failed to query miners, dendrites: {dendrites}")
 
         self.dendrites = dendrites
         self.axons = axons
-
-
-class BadImagesDetected(Exception):
-    def __init__(self, inputs: ImageGenerationInputs, dendrite: TerminalInfo, axon: TerminalInfo):
-        super().__init__(f"Bad/NSFW images have been detected for inputs: {inputs} with dendrite: {dendrite}")
-
-        self.inputs = inputs
-        self.dendrite = dendrite
-        self.axon = axon
 
 
 class Validator(BaseNeuron):
@@ -87,7 +79,7 @@ class Validator(BaseNeuron):
     This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
     """
 
-    spec_version: int = 15
+    spec_version: int = 14
     neuron_info: dict[int, NeuronInfoSynapse]
 
     pending_requests_lock: Lock
@@ -144,8 +136,6 @@ class Validator(BaseNeuron):
         self.periodic_validation_queue = set()
 
         self.gpu_semaphore, self.pipeline = get_pipeline(self.device)
-        self.image_processor = self.pipeline.feature_extractor or CLIPImageProcessor()
-        self.safety_checker = StableDiffusionSafetyChecker(CLIPConfig()).to(self.device)
 
     @classmethod
     def check_config(cls, config: bt.config):
@@ -623,14 +613,14 @@ class Validator(BaseNeuron):
 
             bt.logging.error(f"Failed to query some miners with {inputs} for axons {bad_axons}, {bad_dendrites}")
 
-        async def rank_response(uid: int, uid_response: ImageGenerationSynapse):
-            score = await self.score_output(inputs, uid_response)
+        async def rank_response(uid: int):
+            score = await self.score_output(inputs, response)
             await self.metric_manager.successful_user_request(uid, score)
 
         # Some failed to response, punish them
         await asyncio.gather(*[
-            rank_response(uid, response)
-            for response, uid in zip(finished_responses, working_miner_uids)
+            rank_response(uid)
+            for uid in working_miner_uids
         ])
 
         if (os.urandom(1)[0] / 255) >= RANDOM_VALIDATION_CHANCE:
@@ -646,16 +636,6 @@ class Validator(BaseNeuron):
             inputs,
             response,
         )
-
-    def is_unsafe_image(self, image: Image) -> bool:
-        safety_checker_input = self.image_processor(image, return_tensors="pt").to(self.device)
-
-        _, has_nsfw_concept = self.safety_checker(
-            images=[image],
-            clip_input=safety_checker_input.pixel_values.to(torch.float16),
-        )
-
-        return has_nsfw_concept[0]
 
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uids = (
@@ -705,13 +685,8 @@ class Validator(BaseNeuron):
                 miner_hotkey=response.axon.hotkey,
             )
 
-            images = synapse.deserialize()
-
-            if any([self.is_unsafe_image(image) for image in images]):
-                raise BadImagesDetected(synapse.inputs, response.dendrite, response.axon)
-
             if synapse.watermark:
-                synapse.output.images = add_watermarks(images)
+                synapse.output.images = add_watermarks(synapse.deserialize())
 
             validation_coroutine = self.validate_user_request_responses(
                 synapse.inputs,
