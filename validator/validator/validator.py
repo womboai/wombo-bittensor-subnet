@@ -135,7 +135,7 @@ class Validator(BaseNeuron):
         self.periodic_validation_queue_lock = Lock()
         self.periodic_validation_queue = set()
 
-        self.gpu_semaphore, self.pipeline = get_pipeline()
+        self.gpu_semaphore, self.pipeline = get_pipeline(self.device)
 
     @classmethod
     def check_config(cls, config: bt.config):
@@ -165,7 +165,7 @@ class Validator(BaseNeuron):
 
     @classmethod
     def add_args(cls, parser):
-        add_args(parser)
+        add_args(parser, "cuda")
 
         parser.add_argument(
             "--validation_endpoint",
