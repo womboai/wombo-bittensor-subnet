@@ -17,9 +17,11 @@
 #  DEALINGS IN THE SOFTWARE.
 
 import os
+from bisect import bisect
 from functools import reduce
+from itertools import accumulate
 from math import ceil, log
-from typing import TypeVar, Sequence
+from typing import TypeVar, Sequence, Generic
 
 T = TypeVar("T")
 
@@ -40,7 +42,7 @@ def __rand_below(n: int):
     return r
 
 
-def cryptographic_sample(population: Sequence[T], k: int):
+def cryptographic_sample(population: Sequence[T], k: int = 1):
     """
     Version of `random.sample` that uses os.urandom for random number generation
     """
@@ -76,3 +78,21 @@ def cryptographic_sample(population: Sequence[T], k: int):
             result[i] = population[j]
 
     return result
+
+
+class WeightedList(Generic[T], Sequence[T]):
+    _population: list[T]
+    _cumulative_weights: list[float]
+
+    def __init__(self, weighted_items: Sequence[tuple[float, T]]):
+        self._population = list([item for _, item in weighted_items])
+        self._cumulative_weights = list(accumulate([weight for weight, _ in weighted_items]))
+
+    def __len__(self):
+        return int(self._cumulative_weights[-1])
+
+    def __getitem__(self, index: int):
+        if not 0 <= index < len(self):
+            raise IndexError(index)
+
+        return self._population[bisect(self._cumulative_weights, index, 0, len(self._population) - 1)]
