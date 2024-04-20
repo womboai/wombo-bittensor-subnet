@@ -1,24 +1,21 @@
-from asyncio import Semaphore
-from collections import namedtuple
 import os
+import re
+from asyncio import Semaphore
 from pathlib import Path
 from typing import Any
 
-from PIL import Image
-import re
-import requests
-
 import cv2
 import numpy as np
+import requests
+import torch
+from PIL import Image
 from diffusers import (
     StableDiffusionXLPipeline,
     StableDiffusionXLControlNetPipeline,
-    ControlNetModel,
+    ControlNetModel, DPMSolverMultistepScheduler,
 )
-import torch
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
-
 
 TAO_PATTERN = r'\b(?:' + '|'.join(re.escape(keyword) for keyword in sorted([
     "bittensor symbol", "bittensor logo",
@@ -104,6 +101,15 @@ def get_pipeline() -> tuple[Semaphore, StableDiffusionXLControlNetPipeline]:
 
     pipeline.load_lora_weights(get_tao_lora_path())
     pipeline.fuse_lora()
+
+    pipeline.scheduler = DPMSolverMultistepScheduler(
+        beta_start=0.00085,
+        beta_end=0.012,
+        beta_schedule="scaled_linear",
+        num_train_timesteps=1000,
+        use_karras_sigmas=True,
+        algorithm_type="sde-dpmsolver++",
+    )
 
     cn_pipeline = StableDiffusionXLControlNetPipeline(
         **pipeline.components,
