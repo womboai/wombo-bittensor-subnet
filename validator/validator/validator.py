@@ -145,7 +145,7 @@ class Validator(BaseNeuron):
 
         self.gpu_semaphore, self.pipeline = get_pipeline(self.device)
         self.image_processor = self.pipeline.feature_extractor or CLIPImageProcessor()
-        self.safety_checker = StableDiffusionSafetyChecker(CLIPConfig())
+        self.safety_checker = StableDiffusionSafetyChecker(CLIPConfig()).to(self.device)
 
     @classmethod
     def check_config(cls, config: bt.config):
