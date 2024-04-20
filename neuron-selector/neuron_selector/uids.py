@@ -119,10 +119,10 @@ def get_best_uids(
         return torch.tensor([], dtype=torch.int64)
 
     uids = torch.tensor(
-        random.sample(
-            weighted_sample([(rank[uid].item(), uid) for uid in available_uids]),
-            k=min(k, len(available_uids)),
-        )
+        weighted_sample(
+            [(rank[uid].item(), uid) for uid in available_uids],
+            k=min(k, len(available_uids))
+        ),
     )
 
     return uids
