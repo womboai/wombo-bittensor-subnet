@@ -652,7 +652,7 @@ class Validator(BaseNeuron):
 
         _, has_nsfw_concept = self.safety_checker(
             images=[image],
-            clip_input=safety_checker_input.pixel_values.to(torch.float32),
+            clip_input=safety_checker_input.pixel_values.to(torch.float16),
         )
 
         return has_nsfw_concept[0]
