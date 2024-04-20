@@ -17,12 +17,14 @@
 #  DEALINGS IN THE SOFTWARE.
 
 import base64
+from asyncio import Semaphore
 from typing import cast
 
-from aiohttp import ClientSession, FormData, BasicAuth
+from diffusers import StableDiffusionXLControlNetPipeline
 
 from image_generation_protocol.io_protocol import ImageGenerationOutput, ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse
+from validator.similarity_score_pipeline import score_similarity
 
 
 def select_endpoint(config: str, network: str, dev: str, prod: str) -> str:
@@ -34,13 +36,12 @@ def select_endpoint(config: str, network: str, dev: str, prod: str) -> str:
         return prod
 
 
-async def reward(
-    validation_endpoint: str,
-    hotkey: str,
-    signature: str,
+def reward(
+    semaphore: Semaphore,
+    pipeline: StableDiffusionXLControlNetPipeline,
     query: ImageGenerationInputs,
     synapse: ImageGenerationSynapse,
-) -> float:
+):
     """
     Reward the miner response to the generation request. This method returns a reward
     value for the miner, which is used to update the miner's score.
@@ -54,28 +55,4 @@ async def reward(
     if not frames:
         return 0.0
 
-    async with ClientSession() as session:
-        data = FormData()
-
-        data.add_field(
-            "input_parameters",
-            query.json(),
-            content_type="application/json",
-        )
-
-        data.add_field(
-            "frames",
-            base64.b64decode(frames),
-            content_type="application/octet-stream",
-        )
-
-        async with session.post(
-            validation_endpoint,
-            auth=BasicAuth(hotkey, signature),
-            data=data,
-        ) as response:
-            response.raise_for_status()
-
-            score = await response.json()
-
-    return score
+    return score_similarity(semaphore, pipeline, base64.b64decode(frames), query)

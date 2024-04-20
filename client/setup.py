@@ -41,6 +41,7 @@ setup(
     license="MIT",
     python_requires=">=3.10",
     install_requires=[
+        "torch==2.2.0+cpu",
         "wombo-bittensor-subnet-neuron-selector",
     ],
     classifiers=[

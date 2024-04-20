@@ -366,24 +366,12 @@ async def set_miner_metrics(validator, uid: int):
 
         count *= 2
 
-    validation_endpoint = select_endpoint(
-        validator.config.validation_endpoint,
-        validator.config.subtensor.network,
-        "https://dev-validate.api.wombo.ai/api/validate",
-        "https://validate.api.wombo.ai/api/validate",
-    )
-
-    keypair: Keypair = validator.periodic_check_dendrite.keypair
-    hotkey = keypair.ss58_address
-    signature = f"0x{keypair.sign(hotkey).hex()}"
-
     check_count = max(1, int(len(finished_responses) * 0.125))
 
     scores = await asyncio.gather(*[
         reward(
-            validation_endpoint,
-            hotkey,
-            signature,
+            validator.gpu_semaphore,
+            validator.pipeline,
             inputs,
             response,
         )

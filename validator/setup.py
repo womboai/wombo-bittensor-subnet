@@ -45,6 +45,7 @@ setup(
     install_requires=[
         "wombo-bittensor-subnet-neuron",
         "wombo-bittensor-subnet-neuron-selector",
+        "wombo-bittensor-subnet-gpu-pipeline",
         "pillow==10.2.0",
         "nltk==3.8.1"
     ],
