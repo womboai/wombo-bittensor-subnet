@@ -59,7 +59,7 @@ The max percentage of failures acceptable before stopping
 ValidatableResponse: TypeAlias = tuple[ImageGenerationSynapse, ImageGenerationInputs]
 
 WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ" or tag == "NOUN"]
-REQUEST_INCENTIVE = 0.000976562
+REQUEST_INCENTIVE = 0.0001
 
 
 def generate_random_prompt():
