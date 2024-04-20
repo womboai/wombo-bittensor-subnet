@@ -619,7 +619,7 @@ class Validator(BaseNeuron):
 
         # Some failed to response, punish them
         await asyncio.gather(*[
-            rank_response(response, uid)
+            rank_response(uid, response)
             for response, uid in zip(finished_responses, working_miner_uids)
         ])
 
