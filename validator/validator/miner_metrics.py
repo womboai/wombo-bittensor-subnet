@@ -85,7 +85,7 @@ class MinerMetrics(BaseModel):
         return (
                 concurrency_factor * similarity_factor * success_factor +
                 self.successful_user_requests * REQUEST_INCENTIVE -
-                (self.failed_user_requests * REQUEST_INCENTIVE * 16)
+                (self.failed_user_requests * REQUEST_INCENTIVE * 8)
         )
 
 
