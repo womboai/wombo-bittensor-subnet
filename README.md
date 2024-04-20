@@ -151,9 +151,7 @@ The responsibility of keeping the miner/repo up-to-date falls on you, hence you 
 Running a validator is similar to running a miner, with either PM2 or Docker:
 
 #### Requirements
-- **Minimum:** CPU only, Subnet 30 provides a diffusion similarity scoring API that handles the GPU-intensive portion of validation
-- **Recommended:** Running an instance of the similarity scoring API as it increases decentralization of the validation process
-
+- Recommended: GPU with at least 24GB of VRAM
 
 #### PM2
 Set the python packages up
