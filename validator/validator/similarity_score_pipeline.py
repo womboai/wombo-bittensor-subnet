@@ -479,7 +479,7 @@ def __validate_internal_cn(
     return __similarity(cast(torch.Tensor, latents), expected_next_latents)
 
 
-async def validate_frames(
+async def score_similarity(
     gpu_semaphore: Semaphore,
     pipeline: StableDiffusionXLControlNetPipeline,
     frames: bytes,

@@ -59,6 +59,7 @@ The max percentage of failures acceptable before stopping
 ValidatableResponse: TypeAlias = tuple[ImageGenerationSynapse, ImageGenerationInputs]
 
 WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ" or tag == "NOUN"]
+REQUEST_INCENTIVE = 0.0001
 
 
 def generate_random_prompt():
@@ -82,9 +83,9 @@ class MinerMetrics(BaseModel):
         success_factor = pow(1 - self.error_rate, 2)
 
         return (
-            concurrency_factor * similarity_factor * success_factor +
-            self.successful_user_requests / 1024 -
-            self.failed_user_requests / 512
+                concurrency_factor * similarity_factor * success_factor +
+                self.successful_user_requests * REQUEST_INCENTIVE -
+                (self.failed_user_requests * REQUEST_INCENTIVE * 8)
         )
 
 
@@ -366,24 +367,12 @@ async def set_miner_metrics(validator, uid: int):
 
         count *= 2
 
-    validation_endpoint = select_endpoint(
-        validator.config.validation_endpoint,
-        validator.config.subtensor.network,
-        "https://dev-validate.api.wombo.ai/api/validate",
-        "https://validate.api.wombo.ai/api/validate",
-    )
-
-    keypair: Keypair = validator.periodic_check_dendrite.keypair
-    hotkey = keypair.ss58_address
-    signature = f"0x{keypair.sign(hotkey).hex()}"
-
     check_count = max(1, int(len(finished_responses) * 0.125))
 
     scores = await asyncio.gather(*[
         reward(
-            validation_endpoint,
-            hotkey,
-            signature,
+            validator.gpu_semaphore,
+            validator.pipeline,
             inputs,
             response,
         )
