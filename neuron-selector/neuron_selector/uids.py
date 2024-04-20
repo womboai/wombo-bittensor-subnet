@@ -1,5 +1,8 @@
 import random
-from typing import Any, Callable
+from bisect import bisect
+from itertools import accumulate
+from math import ceil
+from typing import Any, Callable, Generic, Sequence, TypeVar
 
 import bittensor
 
@@ -10,6 +13,35 @@ from torch import Tensor
 from tensor.protocol import NeuronInfoSynapse
 
 DEFAULT_NEURON_INFO = NeuronInfoSynapse()
+
+T = TypeVar("T")
+
+
+def weighted_sample(weighted_items: Sequence[tuple[float, T]], k=1):
+    k = min(k, len(weighted_items))
+
+    population: list[T] = list([item for _, item in weighted_items])
+    cumulative_weights: list[float] = list(accumulate([len(weighted_items) * weight for weight, _ in weighted_items]))
+    population_size = ceil(cumulative_weights[-1])
+
+    bias_population = [
+        (index, population[bisect(cumulative_weights, index, 0, len(population) - 1)])
+        for index in range(population_size)
+    ]
+
+    result: list[T] = []
+
+    while len(result) < k:
+        index, item = random.choice(bias_population)
+
+        bias_population.remove((index, item))
+
+        if item in result:
+            continue
+
+        result.append(item)
+
+    return result
 
 
 async def sync_neuron_info(self, dendrite: bittensor.dendrite):
@@ -61,12 +93,12 @@ def get_best_uids(
         uid
         for uid in range(metagraph.n.item())
         if (
-                metagraph.axons[uid].is_serving and
-                (not blacklist or
-                 (
-                         metagraph.axons[uid].hotkey not in blacklist.hotkeys and
-                         metagraph.axons[uid].coldkey not in blacklist.coldkeys
-                 ))
+            metagraph.axons[uid].is_serving and
+            (not blacklist or
+             (
+                 metagraph.axons[uid].hotkey not in blacklist.hotkeys and
+                 metagraph.axons[uid].coldkey not in blacklist.coldkeys
+             ))
         )
     ]
 
@@ -88,9 +120,8 @@ def get_best_uids(
 
     uids = torch.tensor(
         random.sample(
-            available_uids,
-            weights=[rank[uid].item() for uid in available_uids],
-            k=k,
+            weighted_sample([(rank[uid].item(), uid) for uid in available_uids]),
+            k=min(k, len(available_uids)),
         )
     )
 

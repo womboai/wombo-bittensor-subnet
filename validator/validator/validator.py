@@ -31,10 +31,9 @@ from bittensor import AxonInfo, TerminalInfo
 from substrateinterface import Keypair
 from torch import tensor, Tensor
 
-from image_generation_protocol.cryptographic_sample import cryptographic_sample, WeightedList
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from neuron.neuron import BaseNeuron
-from neuron_selector.uids import get_best_uids, sync_neuron_info, DEFAULT_NEURON_INFO
+from neuron_selector.uids import get_best_uids, sync_neuron_info, DEFAULT_NEURON_INFO, WeightedList, weighted_sample
 from tensor.config import add_args, check_config
 from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse, \
     MinerGenerationOutput
@@ -289,7 +288,7 @@ class Validator(BaseNeuron):
         weighted_choices = [(last_block - block, hotkey) for hotkey, block in self.miner_heap.items()]
 
         if sum([block for block, _ in weighted_choices]) > 0:
-            hotkey = cryptographic_sample(WeightedList(weighted_choices))[0]
+            hotkey = weighted_sample(weighted_choices, k=1)[0]
         else:
             hotkey = random.choice(list(self.miner_heap.keys()))
 
