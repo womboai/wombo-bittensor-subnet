@@ -26,7 +26,7 @@ TAO_PATTERN = r'\b(?:' + '|'.join(re.escape(keyword) for keyword in sorted([
 
 
 def get_tao_img(width: int, height: int):
-    tao_img = Image.open("tao.jpg")
+    tao_img = Image.open(Path(__file__).parent / "tao.jpg")
     scale_factor = min(width / tao_img.width, height / tao_img.height)
     tao_img = tao_img.resize((int(tao_img.width * scale_factor), int(tao_img.height * scale_factor)))
     new_img = Image.new("RGB", (width, height), (255, 255, 255))
