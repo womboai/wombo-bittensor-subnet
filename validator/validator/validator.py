@@ -623,14 +623,14 @@ class Validator(BaseNeuron):
 
             bt.logging.error(f"Failed to query some miners with {inputs} for axons {bad_axons}, {bad_dendrites}")
 
-        async def rank_response(uid: int):
-            score = await self.score_output(inputs, response)
+        async def rank_response(uid: int, uid_response: ImageGenerationSynapse):
+            score = await self.score_output(inputs, uid_response)
             await self.metric_manager.successful_user_request(uid, score)
 
         # Some failed to response, punish them
         await asyncio.gather(*[
-            rank_response(uid)
-            for uid in working_miner_uids
+            rank_response(response, uid)
+            for response, uid in zip(finished_responses, working_miner_uids)
         ])
 
         if (os.urandom(1)[0] / 255) >= RANDOM_VALIDATION_CHANCE:
