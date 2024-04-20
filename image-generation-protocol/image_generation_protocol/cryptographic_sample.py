@@ -17,11 +17,9 @@
 #  DEALINGS IN THE SOFTWARE.
 
 import os
-from bisect import bisect
 from functools import reduce
-from itertools import accumulate
 from math import ceil, log
-from typing import TypeVar, Sequence, Generic
+from typing import TypeVar, Sequence
 
 T = TypeVar("T")
 
