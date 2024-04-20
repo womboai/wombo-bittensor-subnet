@@ -22,7 +22,7 @@ def weighted_sample(weighted_items: Sequence[tuple[float, T]], k=1):
 
     population: list[T] = list([item for _, item in weighted_items])
     cumulative_weights: list[float] = list(accumulate([len(weighted_items) * weight for weight, _ in weighted_items]))
-    population_size = ceil(cumulative_weights[-1])
+    population_size = max(ceil(cumulative_weights[-1]), len(weighted_items))
 
     bias_population = [
         (index, population[bisect(cumulative_weights, index, 0, len(population) - 1)])
@@ -121,7 +121,7 @@ def get_best_uids(
     uids = torch.tensor(
         weighted_sample(
             [(rank[uid].item(), uid) for uid in available_uids],
-            k=min(k, len(available_uids))
+            k=k,
         ),
     )
 
