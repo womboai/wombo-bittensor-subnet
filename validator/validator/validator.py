@@ -87,7 +87,7 @@ class Validator(BaseNeuron):
     This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
     """
 
-    spec_version: int = 14
+    spec_version: int = 15
     neuron_info: dict[int, NeuronInfoSynapse]
 
     pending_requests_lock: Lock
