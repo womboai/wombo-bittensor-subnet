@@ -1,11 +1,9 @@
 import random
 from bisect import bisect
 from itertools import accumulate
-from math import ceil
 from typing import Any, Callable, Sequence, TypeVar
 
 import bittensor
-
 import torch
 from bittensor import AxonInfo
 from torch import Tensor
@@ -20,21 +18,20 @@ T = TypeVar("T")
 def weighted_sample(weighted_items: Sequence[tuple[float, T]], k=1):
     k = min(k, len(weighted_items))
 
-    population: list[T] = list([item for _, item in weighted_items])
-    cumulative_weights: list[float] = list(accumulate([len(weighted_items) * weight for weight, _ in weighted_items]))
-    population_size = max(ceil(cumulative_weights[-1]), len(weighted_items))
-
-    bias_population = [
-        (index, population[bisect(cumulative_weights, index, 0, len(population) - 1)])
-        for index in range(population_size)
-    ]
+    enumerated_population: list[tuple[int, T]] = list([(index, item) for index, (_, item) in enumerate(weighted_items)])
+    cumulative_weights: list[float] = list(accumulate([weight for weight, _ in weighted_items]))
+    population_size = len(enumerated_population)
+    total = cumulative_weights[-1]
 
     result: list[T] = []
 
     while len(result) < k:
-        index, item = random.choice(bias_population)
-
-        bias_population.remove((index, item))
+        index, item = enumerated_population[bisect(
+            cumulative_weights,
+            random.random() * total,
+            0,
+            population_size - 1,
+        )]
 
         if item in result:
             continue
