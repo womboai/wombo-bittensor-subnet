@@ -12,7 +12,7 @@ echo "PID $PID"
 
 function handle_exit() {
   kill "-$EXIT_SIGNAL" $PID
-  exit $?
+  exit
 }
 
 SIGHUP=1
