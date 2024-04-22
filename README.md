@@ -65,11 +65,6 @@ Successful generation for real user requests grants a bonus to miners, while fai
 
 ## Running Miners and Validators
 
-### Running a miner
-
-#### Requirements
-- Recommended: GPU with at least 24GB of VRAM
-
 #### Setup
 
 To start, clone the repository and `cd` to it:
@@ -77,6 +72,11 @@ To start, clone the repository and `cd` to it:
 git clone https://github.com/womboai/wombo-bittensor-subnet
 cd wombo-bittensor-subnet
 ```
+
+### Running a miner
+
+#### Requirements
+- Recommended: GPU with at least 24GB of VRAM
 
 ### The image generator API
 Miners by default use an API for image generation, this can be set up as follows with PM2:
@@ -124,15 +124,7 @@ Running a validator with PM2 is similar to running a miner:
 #### Requirements
 - Recommended: GPU with at least 24GB of VRAM
 
-#### PM2
-Set the python packages up
-
-```bash
-cd validator
-./setup.sh
-```
-
-Then run with PM2, replacing the arguments 
+To run with PM2, do the following, replacing the arguments 
 ```bash
 pm2 start run_autoupdate.sh --name wombo-validator --interpreter bash -- \
     --netuid {netuid} \
