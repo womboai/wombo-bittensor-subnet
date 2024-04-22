@@ -194,7 +194,7 @@ class WomboSubnetAPI(SubnetsAPI):
                 self.config.blacklist,
                 self.metagraph,
                 self.neuron_info,
-                self.metagraph.stake,
+                self.metagraph.total_stake,
                 lambda uid, info: info.is_validator is True and self.metagraph.validator_permit[uid].item()
             )
             if input_parameters.validator_uid is None
