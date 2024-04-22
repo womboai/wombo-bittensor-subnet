@@ -36,7 +36,7 @@ while true; do
   new_head=$(git rev-parse HEAD)
 
   # Check if the new HEAD is different from the current HEAD
-  if [ "$current_head" == "$new_head" ]; then
+  if [ "$current_head" = "$new_head" ]; then
     continue
   fi
 
