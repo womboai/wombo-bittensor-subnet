@@ -113,12 +113,12 @@ class MinerData:
             return None
 
         return MinerMetrics(
-            generated_count=self.generation_counts[uid],
-            generation_time=self.generation_times[uid],
-            similarity_score=self.similarity_scores[uid],
-            error_rate=self.error_rates[uid],
-            successful_user_requests=self.successful_user_requests[uid],
-            failed_user_requests=self.failed_user_requests[uid],
+            generated_count=max(0, self.generation_counts[uid].item()),
+            generation_time=max(0.0, self.generation_times[uid].item()),
+            similarity_score=max(0.0, min(1.0, self.similarity_scores[uid].item())),
+            error_rate=max(0.0, min(1.0, self.error_rates[uid].item())),
+            successful_user_requests=max(0, self.successful_user_requests[uid].item()),
+            failed_user_requests=max(0, self.failed_user_requests[uid].item()),
         )
 
     def failed_miner(self, uid: int):
