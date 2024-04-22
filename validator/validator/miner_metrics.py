@@ -83,9 +83,9 @@ class MinerMetrics(BaseModel):
         success_factor = pow(1 - self.error_rate, 2)
 
         return (
-                concurrency_factor * similarity_factor * success_factor +
-                self.successful_user_requests * REQUEST_INCENTIVE -
-                (self.failed_user_requests * REQUEST_INCENTIVE * 8)
+            concurrency_factor * similarity_factor * success_factor +
+            self.successful_user_requests * REQUEST_INCENTIVE -
+            (self.failed_user_requests * REQUEST_INCENTIVE * 8)
         )
 
 

@@ -514,4 +514,4 @@ async def score_similarity(
             for i in random_indices
         ])
 
-    return similarities.min().item() * 0.5 + 0.5
+    return max(similarities.min().item() * 0.5 + 0.5, 0.0)
