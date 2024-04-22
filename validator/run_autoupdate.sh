@@ -32,6 +32,8 @@ while true; do
   # Save the current HEAD hash
   current_head=$(git rev-parse HEAD)
 
+  git pull
+
   # Get the new HEAD hash
   new_head=$(git rev-parse HEAD)
 
