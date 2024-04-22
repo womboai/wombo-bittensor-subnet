@@ -32,13 +32,11 @@ while true; do
   # Save the current HEAD hash
   current_head=$(git rev-parse HEAD)
 
-  CHANGED=$(git pull | grep "validator/")
-
   # Get the new HEAD hash
   new_head=$(git rev-parse HEAD)
 
   # Check if the new HEAD is different from the current HEAD
-  if [ "$current_head" == "$new_head" ] -a [ ! -z "$CHANGED" ]; then
+  if [ "$current_head" == "$new_head" ]; then
     continue
   fi
 
