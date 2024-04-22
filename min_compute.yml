@@ -22,6 +22,7 @@ compute_spec:
 
     memory:
       min_ram: 8           # Minimum RAM (GB)
+      recommended_ram: 16  # Recommended RAM (GB)
       min_swap: 2          # Minimum swap space (GB)
       recommended_swap: 4  # Recommended swap space (GB)
       ram_type: "DDR4"     # RAM type (e.g., DDR4, DDR3, etc.)
@@ -56,7 +57,8 @@ compute_spec:
       recommended_gpu: "NVIDIA A100"       # provide a recommended GPU to purchase/rent
 
     memory:
-      min_ram: 8           # Minimum RAM (GB)
+      min_ram: 16          # Minimum RAM (GB)
+      recommended_ram: 32  # Recommended RAM (GB)
       min_swap: 2          # Minimum swap space (GB)
       recommended_swap: 4  # Recommended swap space (GB)
       ram_type: "DDR4"     # RAM type (e.g., DDR4, DDR3, etc.)
