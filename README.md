@@ -79,76 +79,47 @@ cd wombo-bittensor-subnet
 ```
 
 ### The image generator API
-Miners by default use an API for image generation, this can be set up as follows, with either PM2 or docker:
+Miners by default use an API for image generation, this can be set up as follows with PM2:
 
-#### PM2
-Set the python packages up
+- Set the python packages up
 
-```bash
-cd image-generator
-./setup.sh
-```
+  ```bash
+  cd image-generator
+  ./setup.sh
+  ```
 
-Then run with PM2
-```bash
-pm2 start run.sh --name wombo-image-generator --interpreter bash
-```
+- Then run with PM2
+  ```bash
+  pm2 start run.sh --name wombo-image-generator --interpreter bash
+  ```
 
-#### Docker
-Create a .env file from example.env
-
-```bash
-cd image-generator
-# Copy the example environment file
-cp example.env .env
-```
-
-Then simply run the image generator.
-```bash
-./run_docker.sh
-```
+Note that running one image-generator with one GPU is likely to be ineffective, running multiple image generators with a load balancer is likely to get better rewards.
 
 ### Running the miner neuron
 
 To set the miner neuron up,
 
-#### PM2
-Set the python packages up
+- Set the python packages up
+  ```bash
+  cd miner
+  ./setup.sh
+  ```
 
-```bash
-cd miner
-./setup.sh
-```
-
-Then run with PM2, replacing the arguments 
-```bash
-pm2 start run.sh --name wombo-miner --interpreter bash -- \
+- Then run with PM2, replacing the arguments 
+  ```bash
+  pm2 start run.sh --name wombo-miner --interpreter bash -- \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey} \
     --generation_endpoint http://localhost:8001/api/generate \
     --blacklist.force_validator_permit
-```
-
-#### Docker
-Create a .env file from example.env
-```bash
-cd miner
-# Copy the example environment file and edit it
-cp example.env .env
-$EDITOR .env
-```
-
-Then simply run the registered miner
-```bash
-./run_docker.sh
-```
+  ```
 
 The miner will then run on your network provided the port `8091` is open.
 The responsibility of keeping the miner/repo up-to-date falls on you, hence you should `git pull` every once in a while.
 
 ### Running a validator
-Running a validator is similar to running a miner, with either PM2 or Docker:
+Running a validator with PM2 is similar to running a miner:
 
 #### Requirements
 - Recommended: GPU with at least 24GB of VRAM
@@ -163,30 +134,13 @@ cd validator
 
 Then run with PM2, replacing the arguments 
 ```bash
-run_pm2.sh wombo-validator \
+pm2 start run_autoupdate.sh --name wombo-validator --interpreter bash -- \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey}
 ```
 
-(wombo-validator is the PM2 process name)
-
-#### Docker
-Create a .env file from example.env
-
-```bash
-cd validator
-# Copy the example environment file and edit it
-cp example.env .env
-$EDITOR .env
-```
-
-Then simply run the registered validator with
-```bash
-./run_docker.sh
-```
-
-The run script will keep your validator up to date, so as long as the .env file is correct, everything should run properly.
+The run script will keep your validator up to date, so as everything is properly configured, everything should run properly.
 
 ## Applications
 
@@ -235,12 +189,3 @@ The WOMBO Bittensor subnet is released under the [MIT License](./LICENSE).
     <img src="https://content.wombo.ai/bittensor/instagram.png" alt="Instagram" width="20"/>
   </a>
 </div>
-
-
-
-
-
-
-
- 
-

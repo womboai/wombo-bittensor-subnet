@@ -2,14 +2,20 @@
 
 set -e
 
-NAME=$1
-VALIDATOR_ARGS=${@:2:$(($# - 1))}
-
-pm2 stop wombo-validator || true
-
 ./setup.sh
 
-pm2 start venv/bin/python --name $NAME -- -m validator.main $VALIDATOR_ARGS
+venv/bin/python -m validator.main $@ &
+
+PID=$!
+
+echo "PID $PID"
+
+function handle_exit() {
+  kill "-$EXIT_SIGNAL" $PID
+  exit $?
+}
+
+trap "EXIT_SIGNAL=$signal; handle_exit" $signal
 
 while true; do
   sleep 1800
@@ -17,22 +23,26 @@ while true; do
   # Save the current HEAD hash
   current_head=$(git rev-parse HEAD)
 
-  git pull
+  CHANGED=$(git pull | grep "validator/")
 
   # Get the new HEAD hash
   new_head=$(git rev-parse HEAD)
 
   # Check if the new HEAD is different from the current HEAD
-  if [ "$current_head" == "$new_head" ]; then
+  if [ "$current_head" == "$new_head" ] -a [ ! -z "$CHANGED" ]; then
     continue
   fi
 
   # The HEAD has changed, meaning there's a new version
   echo "Validator has received an update, restarting"
 
-  pm2 stop $NAME
+  kill $PID
 
   ./setup.sh
 
-  pm2 restart $NAME
+  venv/bin/python -m validator.main $@ &
+
+  PID=$!
+
+  echo "PID $PID"
 done
