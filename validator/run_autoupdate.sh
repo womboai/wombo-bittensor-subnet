@@ -15,7 +15,16 @@ function handle_exit() {
   exit $?
 }
 
-trap "EXIT_SIGNAL=$signal; handle_exit" $signal
+SIGHUP=1
+SIGINT=2
+SIGQUIT=3
+SIGABRT=6
+SIGALRM=14
+SIGTERM=15
+
+for signal in $SIGHUP $SIGINT $SIGQUIT $SIGABRT $SIGALRM $SIGTERM; do
+  trap "EXIT_SIGNAL=$signal; handle_exit" $signal
+done
 
 while true; do
   sleep 1800
