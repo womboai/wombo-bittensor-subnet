@@ -65,7 +65,7 @@ Successful generation for real user requests grants a bonus to miners, while fai
 
 ## Running Miners and Validators
 
-#### Setup
+### Setup
 
 To start, clone the repository and `cd` to it:
 ```bash
@@ -78,7 +78,7 @@ cd wombo-bittensor-subnet
 #### Requirements
 - Recommended: GPU with at least 24GB of VRAM
 
-### The image generator API
+#### The image generator API
 Miners by default use an API for image generation, this can be set up as follows with PM2:
 
 - Set the python packages up
@@ -95,7 +95,7 @@ Miners by default use an API for image generation, this can be set up as follows
 
 Note that running one image-generator with one GPU is likely to be ineffective, running multiple image generators with a load balancer is likely to get better rewards.
 
-### Running the miner neuron
+#### Running the miner neuron
 
 To set the miner neuron up,
 
