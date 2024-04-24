@@ -96,8 +96,7 @@ class BaseNeuron(ABC):
         axon = self.metagraph.axons[uid]
 
         message = f"{hotkey}:{axon.ip}:{axon.port}:{uid}"
-        signature = self.wallet.hotkey.sign(message)
-        verification_code = f"{hotkey}:0x{signature.hex()}"
+        signature = self.wallet.hotkey.sign(message).hex()
 
         if self.subtensor.network == "test":
             grafana_link = "https://test-bittensor.w.ai/d/bdi11ys29q5moe/miner-stats"
@@ -106,7 +105,7 @@ class BaseNeuron(ABC):
 
         bt.logging.info(
             f"You can view your stats and metrics on the dashboard at {grafana_link}, "
-            f"using the verification code {verification_code}"
+            f"using the signature {signature}"
         )
 
     @abstractmethod
