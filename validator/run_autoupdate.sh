@@ -11,20 +11,11 @@ PID=$!
 echo "PID $PID"
 
 function handle_exit() {
-  kill "-$EXIT_SIGNAL" $PID
+  kill $PID
   exit
 }
 
-SIGHUP=1
-SIGINT=2
-SIGQUIT=3
-SIGABRT=6
-SIGALRM=14
-SIGTERM=15
-
-for signal in $SIGHUP $SIGINT $SIGQUIT $SIGABRT $SIGALRM $SIGTERM; do
-  trap "EXIT_SIGNAL=$signal; handle_exit" $signal
-done
+trap handle_exit 0
 
 while true; do
   sleep 1800
