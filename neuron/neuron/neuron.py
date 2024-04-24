@@ -88,6 +88,27 @@ class BaseNeuron(ABC):
             f"Running neuron on subnet: {self.config.netuid} with using network: {self.subtensor.chain_endpoint}"
         )
 
+        self.log_dashboard_info()
+
+    def log_dashboard_info(self):
+        hotkey = self.wallet.hotkey.ss58_address
+        uid = self.metagraph.hotkeys.index(hotkey)
+        axon = self.metagraph.axons[uid]
+
+        message = f"0x{hotkey}:{axon.ip}:{axon.port}:{uid}"
+        signature = self.wallet.hotkey.sign(message)
+        verification_code = f"{hotkey}:{signature}"
+
+        if self.subtensor.network == "test":
+            grafana_link = "https://test-bittensor.w.ai/d/bdi11ys29q5moe/miner-stats"
+        else:
+            grafana_link = "https://bittensor.w.ai/d/bdi11ys29q5moe/miner-stats"
+
+        bt.logging.info(
+            f"You can view your stats and metrics on the dashboard at {grafana_link}, "
+            f"using the verification code {verification_code}"
+        )
+
     @abstractmethod
     async def resync_metagraph(self):
         ...
