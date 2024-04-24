@@ -95,9 +95,9 @@ class BaseNeuron(ABC):
         uid = self.metagraph.hotkeys.index(hotkey)
         axon = self.metagraph.axons[uid]
 
-        message = f"0x{hotkey}:{axon.ip}:{axon.port}:{uid}"
+        message = f"{hotkey}:{axon.ip}:{axon.port}:{uid}"
         signature = self.wallet.hotkey.sign(message)
-        verification_code = f"{hotkey}:{signature}"
+        verification_code = f"{hotkey}:0x{signature.hex()}"
 
         if self.subtensor.network == "test":
             grafana_link = "https://test-bittensor.w.ai/d/bdi11ys29q5moe/miner-stats"
