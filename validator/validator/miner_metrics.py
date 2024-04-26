@@ -15,6 +15,8 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
 
 import asyncio
 import os
@@ -23,6 +25,7 @@ from random import shuffle
 from typing import Any, TypeAlias, Annotated, Optional
 
 import bittensor as bt
+import nltk
 import torch
 from aiohttp import ClientSession, BasicAuth
 from pydantic import BaseModel, Field
@@ -34,8 +37,6 @@ from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 from validator.reward import select_endpoint, reward
-
-import nltk
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -205,6 +206,7 @@ class MinerMetricManager:
 
     async def send_metrics(
         self,
+        session: ClientSession,
         dendrite: bt.dendrite,
         endpoint: str,
         data: Any,
@@ -219,18 +221,22 @@ class MinerMetricManager:
         bt.logging.info(f"Sending {endpoint} metrics {data}")
 
         try:
-            async with ClientSession() as session:
-                await session.post(
-                    f"{self.data_endpoint}/{endpoint}",
-                    auth=BasicAuth(hotkey, signature),
-                    json=data,
-                )
+            async with session.post(
+                f"{self.data_endpoint}/{endpoint}",
+                auth=BasicAuth(hotkey, signature),
+                json=data,
+            ):
+                pass
         except Exception as _:
             bt.logging.warning("Failed to export metrics, ", traceback.format_exc())
 
     def send_user_request_metric(self, uid: int):
+        if not self.validator.user_request_session:
+            self.validator.user_request_session = ClientSession()
+
         return self.send_metrics(
-            self.validator.periodic_check_dendrite,
+            self.validator.user_request_session,
+            self.validator.forward_dendrite,
             "user_requests",
             {
                 "miner_uid": uid,
@@ -251,6 +257,7 @@ class MinerMetricManager:
         self.miner_data.successful_stress_test(uid, generated_count, generation_time, similarity_score, error_rate)
 
         await self.send_metrics(
+            self.validator.stress_test_session,
             self.validator.periodic_check_dendrite,
             "success",
             {
@@ -266,6 +273,7 @@ class MinerMetricManager:
         self.failed_miner(uid)
 
         await self.send_metrics(
+            self.validator.stress_test_session,
             self.validator.periodic_check_dendrite,
             "failure",
             uid,
@@ -316,15 +324,19 @@ async def set_miner_metrics(validator, uid: int):
             for _ in range(count)
         ]
 
-        responses: list[ImageGenerationSynapse] = list(await asyncio.gather(*[
-            validator.periodic_check_dendrite(
-                axons=axon,
-                synapse=ImageGenerationSynapse(inputs=inputs),
-                deserialize=False,
-                timeout=CLIENT_REQUEST_TIMEOUT,
+        responses: list[ImageGenerationSynapse] = list(
+            await asyncio.gather(
+                *[
+                    validator.periodic_check_dendrite(
+                        axons=axon,
+                        synapse=ImageGenerationSynapse(inputs=inputs),
+                        deserialize=False,
+                        timeout=CLIENT_REQUEST_TIMEOUT,
+                    )
+                    for inputs in request_inputs
+                ]
             )
-            for inputs in request_inputs
-        ]))
+        )
 
         slowest_response = max(
             responses,
@@ -335,11 +347,13 @@ async def set_miner_metrics(validator, uid: int):
             ),
         )
 
-        finished_responses.extend([
-            (response, inputs)
-            for response, inputs in zip(responses, request_inputs)
-            if response.output
-        ])
+        finished_responses.extend(
+            [
+                (response, inputs)
+                for response, inputs in zip(responses, request_inputs)
+                if response.output
+            ]
+        )
 
         error_count = [bool(response.output) for response in responses].count(False)
 
@@ -369,15 +383,17 @@ async def set_miner_metrics(validator, uid: int):
 
     check_count = max(1, int(len(finished_responses) * 0.125))
 
-    scores = await asyncio.gather(*[
-        reward(
+    scores = []
+
+    for response, inputs in cryptographic_sample(finished_responses, check_count):
+        score = reward(
             validator.gpu_semaphore,
             validator.pipeline,
             inputs,
             response,
         )
-        for response, inputs in cryptographic_sample(finished_responses, check_count)
-    ])
+
+        scores.append(score)
 
     if len(scores):
         score = torch.tensor(scores).mean().item()

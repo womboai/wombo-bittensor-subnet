@@ -15,6 +15,8 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
 
 import asyncio
 import copy
@@ -22,6 +24,7 @@ import os
 import random
 import traceback
 from asyncio import Future, Lock
+from threading import Semaphore
 from typing import AsyncGenerator, Tuple
 
 import bittensor as bt
@@ -39,8 +42,10 @@ from image_generation_protocol.io_protocol import ImageGenerationInputs
 from neuron.neuron import BaseNeuron
 from neuron_selector.uids import get_best_uids, sync_neuron_info, DEFAULT_NEURON_INFO, weighted_sample
 from tensor.config import add_args, check_config
-from tensor.protocol import ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse, \
-    MinerGenerationOutput
+from tensor.protocol import (
+    ImageGenerationSynapse, ImageGenerationClientSynapse, NeuronInfoSynapse,
+    MinerGenerationOutput,
+)
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
 from validator.miner_metrics import MinerMetricManager, set_miner_metrics
 from validator.reward import select_endpoint, reward
@@ -61,9 +66,24 @@ class NoMinersAvailableException(Exception):
         self.dendrite = dendrite
 
 
+def query_failure_error_message(
+    inputs: ImageGenerationInputs,
+    bad_axons: list[TerminalInfo],
+    bad_dendrites: list[TerminalInfo],
+):
+    axon_text = "\n".join([repr(axon) for axon in bad_axons])
+    dendrite_text = "\n".join([repr(dendrite) for dendrite in bad_dendrites])
+
+    return (
+        f"Failed to query some miners with {repr(inputs)} for:\n"
+        f"\taxons: {axon_text}\n"
+        f"\tdendrites: {dendrite_text}"
+    )
+
+
 class GetMinerResponseException(Exception):
-    def __init__(self, dendrites: list[TerminalInfo], axons: list[TerminalInfo]):
-        super().__init__(f"Failed to query miners, axons: {axons}")
+    def __init__(self, inputs: ImageGenerationInputs, dendrites: list[TerminalInfo], axons: list[TerminalInfo]):
+        super().__init__(query_failure_error_message(inputs, axons, dendrites))
 
         self.dendrites = dendrites
         self.axons = axons
@@ -107,6 +127,9 @@ class Validator(BaseNeuron):
         self.forward_dendrite = bt.dendrite(wallet=self.wallet)
         bt.logging.info(f"Dendrite: {self.periodic_check_dendrite}")
 
+        self.stress_test_session = ClientSession()
+        self.user_request_session = None
+
         # Set up initial scoring weights for validation
         bt.logging.info("Building validation weights.")
         self.metric_manager = MinerMetricManager(self)
@@ -134,6 +157,9 @@ class Validator(BaseNeuron):
 
         self.neuron_info = {}
 
+        self.last_neuron_info_block = self.block
+        self.last_miner_check = self.block
+
         bt.logging.info("load_state()")
         self.load_state()
 
@@ -143,7 +169,9 @@ class Validator(BaseNeuron):
         self.periodic_validation_queue_lock = Lock()
         self.periodic_validation_queue = set()
 
-        self.gpu_semaphore, self.pipeline = get_pipeline(self.device)
+        concurrency, self.pipeline = get_pipeline(self.device)
+        self.gpu_semaphore = Semaphore(concurrency)
+
         self.image_processor = self.pipeline.feature_extractor or CLIPImageProcessor()
         self.safety_checker = StableDiffusionSafetyChecker(CLIPConfig()).to(self.device)
 
@@ -234,6 +262,11 @@ class Validator(BaseNeuron):
             default=0.5,
         )
 
+    async def sync_neuron_info(self):
+        await sync_neuron_info(self, self.periodic_check_dendrite)
+
+        self.last_neuron_info_block = self.block
+
     async def sync(self):
         await super().sync()
 
@@ -284,9 +317,14 @@ class Validator(BaseNeuron):
             miners.pop(hotkey)
 
         for hotkey in miners.keys():
-            # Push new miners to the start of the queue to give them a base score
-            if hotkey not in self.miner_heap:
-                self.miner_heap[hotkey] = 0
+            if hotkey in self.miner_heap:
+                continue
+
+            # Push new miners to be near the start of the queue to give them a base score
+            value = random.random()
+
+            block_count = max(self.miner_heap.values()) - min(self.miner_heap.values())
+            self.miner_heap[hotkey] = int(block_count * value * value * 0.25)
 
         disconnected_miner_list = [
             hotkey
@@ -364,7 +402,7 @@ class Validator(BaseNeuron):
             Exception: For unforeseen errors during the miner's operation, which are logged for diagnosis.
         """
 
-        await sync_neuron_info(self, self.periodic_check_dendrite)
+        await self.sync_neuron_info()
 
         self.axon.start()
 
@@ -380,12 +418,30 @@ class Validator(BaseNeuron):
                 bt.logging.info(f"step({self.step}) block({self.block})")
 
                 try:
-                    await sync_neuron_info(self, self.periodic_check_dendrite)
+                    neuron_refresh_blocks = 25
+                    check_blocks = 5
 
-                    await self.check_next_miner()
+                    blocks_since_neuron_refresh = self.block - self.last_neuron_info_block
+                    blocks_since_check = self.block - self.last_miner_check
+
+                    sleep = True
+
+                    if blocks_since_neuron_refresh > neuron_refresh_blocks:
+                        await self.sync_neuron_info()
+                        sleep = False
+
+                    if blocks_since_check > check_blocks:
+                        await self.check_next_miner()
+                        sleep = False
 
                     # Sync metagraph and potentially set weights.
                     await self.sync()
+
+                    if sleep:
+                        neuron_refresh_in = neuron_refresh_blocks - blocks_since_neuron_refresh
+                        check_in = check_blocks - blocks_since_check
+
+                        await asyncio.sleep(max(min(neuron_refresh_in, check_in), 0) * 12)
 
                     self.step += 1
                 except Exception as _:
@@ -411,10 +467,12 @@ class Validator(BaseNeuron):
 
         metrics = [self.metric_manager[uid] for uid in range(self.metagraph.n.item())]
 
-        scores = tensor([
-            miner_metrics.get_weight() if miner_metrics else 0.0
-            for miner_metrics in metrics
-        ])
+        scores = tensor(
+            [
+                miner_metrics.get_weight() if miner_metrics else 0.0
+                for miner_metrics in metrics
+            ]
+        )
 
         # Check if self.scores contains any NaN values and log a warning if it does.
         if torch.isnan(scores).any():
@@ -521,7 +579,7 @@ class Validator(BaseNeuron):
 
         # Define appropriate logic for when set weights.
         return (
-                self.block - self.metagraph.last_update[self.uid]
+            self.block - self.metagraph.last_update[self.uid]
         ) > self.config.neuron.epoch_length
 
     def save_state(self):
@@ -560,15 +618,17 @@ class Validator(BaseNeuron):
         axons: list[AxonInfo],
         synapse: ImageGenerationSynapse,
     ) -> AsyncGenerator[ImageGenerationSynapse, None]:
-        responses = asyncio.as_completed([
-            self.forward_dendrite(
-                axons=axon,
-                synapse=synapse,
-                deserialize=False,
-                timeout=CLIENT_REQUEST_TIMEOUT,
-            )
-            for axon in axons
-        ])
+        responses = asyncio.as_completed(
+            [
+                self.forward_dendrite(
+                    axons=axon,
+                    synapse=synapse,
+                    deserialize=False,
+                    timeout=CLIENT_REQUEST_TIMEOUT,
+                )
+                for axon in axons
+            ]
+        )
 
         for response in responses:
             yield await response
@@ -595,7 +655,7 @@ class Validator(BaseNeuron):
                 bad_responses.append((response, None))
                 continue
 
-            similarity_score = await self.score_output(inputs, response)
+            similarity_score = self.score_output(inputs, response)
 
             if similarity_score < 0.85:
                 bad_responses.append((response, similarity_score))
@@ -610,25 +670,35 @@ class Validator(BaseNeuron):
             bad_miner_uids = [(axon_uids[axon.hotkey], similarity_score) for axon, similarity_score in bad_axons]
 
             # Some failed to response, punish them
-            await asyncio.gather(*[
-                self.metric_manager.failed_user_request(uid, similarity_score)
-                for uid, similarity_score in bad_miner_uids
-            ])
+            await asyncio.gather(
+                *[
+                    self.metric_manager.failed_user_request(uid, similarity_score)
+                    for uid, similarity_score in bad_miner_uids
+                ]
+            )
 
             async with self.periodic_validation_queue_lock:
                 self.periodic_validation_queue.update({uid for uid, _ in bad_miner_uids})
 
-            bt.logging.error(f"Failed to query some miners with {inputs} for axons {bad_axons}, {bad_dendrites}")
+            bt.logging.info(
+                query_failure_error_message(
+                    inputs,
+                    [axon for axon, _ in bad_axons],
+                    bad_dendrites,
+                )
+            )
 
         async def rank_response(uid: int, uid_response: ImageGenerationSynapse):
-            score = await self.score_output(inputs, uid_response)
+            score = self.score_output(inputs, uid_response)
             await self.metric_manager.successful_user_request(uid, score)
 
         # Some failed to response, punish them
-        await asyncio.gather(*[
-            rank_response(uid, response)
-            for response, uid in zip(finished_responses, working_miner_uids)
-        ])
+        await asyncio.gather(
+            *[
+                rank_response(uid, response)
+                for response, uid in zip(finished_responses, working_miner_uids)
+            ]
+        )
 
         if (os.urandom(1)[0] / 255) >= RANDOM_VALIDATION_CHANCE:
             return
@@ -660,7 +730,10 @@ class Validator(BaseNeuron):
                 self.config.blacklist,
                 self.metagraph,
                 self.neuron_info,
-                (self.metric_manager.miner_data.generation_counts / self.metric_manager.miner_data.generation_times).nan_to_num(0.0),
+                (
+                    self.metric_manager.miner_data.generation_counts / self.metric_manager.miner_data.generation_times).nan_to_num(
+                    0.0
+                ),
                 lambda _, info: info.is_validator is False,
             )
             if synapse.miner_uid is None
@@ -689,7 +762,7 @@ class Validator(BaseNeuron):
                 bad_responses.append((response, None))
                 continue
 
-            similarity_score = await self.score_output(synapse.inputs, response)
+            similarity_score = self.score_output(synapse.inputs, response)
 
             if similarity_score < 0.85:
                 bad_responses.append((response, similarity_score))
@@ -729,12 +802,14 @@ class Validator(BaseNeuron):
         bad_miner_uids = [(axon_uids[axon.hotkey], similarity_score) for axon, similarity_score in bad_axons]
 
         # All failed to response, punish them
-        await asyncio.gather(*[
-            self.metric_manager.failed_user_request(uid, similarity_score)
-            for uid, similarity_score in bad_miner_uids
-        ])
+        await asyncio.gather(
+            *[
+                self.metric_manager.failed_user_request(uid, similarity_score)
+                for uid, similarity_score in bad_miner_uids
+            ]
+        )
 
-        raise GetMinerResponseException(bad_dendrites, [axon for axon, _ in bad_axons])
+        raise GetMinerResponseException(synapse.inputs, bad_dendrites, [axon for axon, _ in bad_axons])
 
     async def blacklist_image(self, synapse: ImageGenerationClientSynapse) -> Tuple[bool, str]:
         is_hotkey_allowed_endpoint = select_endpoint(
@@ -744,12 +819,13 @@ class Validator(BaseNeuron):
             "https://neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
         )
 
-        async with ClientSession() as session:
-            response = await session.get(
-                f"{is_hotkey_allowed_endpoint}?hotkey={synapse.dendrite.hotkey}",
-                headers={"Content-Type": "application/json"},
-            )
+        if not self.user_request_session:
+            self.user_request_session = ClientSession()
 
+        async with self.user_request_session.get(
+            f"{is_hotkey_allowed_endpoint}?hotkey={synapse.dendrite.hotkey}",
+            headers={"Content-Type": "application/json"},
+        ) as response:
             response.raise_for_status()
 
             is_hotkey_allowed = await response.json()
