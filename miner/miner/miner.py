@@ -17,6 +17,7 @@
 #  DEALINGS IN THE SOFTWARE.
 #
 #
+
 import asyncio
 import base64
 import traceback
@@ -53,6 +54,7 @@ class Miner(BaseNeuron):
             bt.logging.warning(
                 "You are allowing non-validators to send requests to your miner. This is a security risk."
             )
+
         if self.config.blacklist.allow_non_registered:
             bt.logging.warning(
                 "You are allowing non-registered entities to send requests to your miner. This is a security risk."
@@ -112,6 +114,13 @@ class Miner(BaseNeuron):
             action="store_true",
             help="If set, miners will accept queries from non registered entities. (Dangerous!)",
             default=False,
+        )
+
+        parser.add_argument(
+            "--blacklist.validator_minimum_tao",
+            type=int,
+            help="The minimum number of TAO needed for a validator's queries to be accepted.",
+            default=4096,
         )
 
     async def run(self):
@@ -209,12 +218,28 @@ class Miner(BaseNeuron):
         return synapse
 
     async def blacklist_image(self, synapse: ImageGenerationSynapse) -> Tuple[bool, str]:
-        if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
-            # Ignore requests from unrecognized entities.
-            bt.logging.trace(
-                f"Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}"
-            )
-            return True, "Unrecognized hotkey"
+        if not self.config.blacklist.allow_non_registered:
+            if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
+                # Ignore requests from unrecognized entities.
+                bt.logging.trace(
+                    f"Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}"
+                )
+                return True, "Unrecognized hotkey"
+
+            uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
+
+            if self.config.blacklist.force_validator_permit and not self.metagraph.validator_permit[uid]:
+                bt.logging.trace(
+                    f"No validator permit for hotkey {synapse.dendrite.hotkey}"
+                )
+                return True, "No validator permit"
+
+            if self.metagraph.total_stake[uid] < self.config.blacklist.validator_minimum_tao:
+                # Ignore requests from unrecognized entities.
+                bt.logging.trace(
+                    f"Not enough stake for hotkey {synapse.dendrite.hotkey}"
+                )
+                return True, "Insufficient stake"
 
         bt.logging.trace(
             f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}"
