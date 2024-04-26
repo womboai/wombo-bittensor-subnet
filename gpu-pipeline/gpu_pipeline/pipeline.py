@@ -1,6 +1,25 @@
+#  The MIT License (MIT)
+#  Copyright © 2023 Yuma Rao
+#  Copyright © 2024 WOMBO
+#
+#  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+#  documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+#  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+#  and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+#
+#  The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+#  the Software.
+#
+#  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+#  THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+#  DEALINGS IN THE SOFTWARE.
+#
+#
+
 import os
 import re
-from asyncio import Semaphore
 from pathlib import Path
 from typing import Any
 
@@ -17,12 +36,16 @@ from diffusers import (
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 
-TAO_PATTERN = r'\b(?:' + '|'.join(re.escape(keyword) for keyword in sorted([
-    "bittensor symbol", "bittensor logo",
-    "tao symbol", "tao logo",
-    "tau symbol", "tau logo",
-    "bittensor", "tao", "tau",
-], key=len, reverse=True)) + r')\b'
+TAO_PATTERN = r'\b(?:' + '|'.join(
+    re.escape(keyword) for keyword in sorted(
+        [
+            "bittensor symbol", "bittensor logo",
+            "tao symbol", "tao logo",
+            "tau symbol", "tau logo",
+            "bittensor", "tao", "tau",
+        ], key=len, reverse=True
+    )
+    ) + r')\b'
 
 
 def get_tao_img(width: int, height: int):
@@ -89,7 +112,7 @@ def get_tao_lora_path() -> str:
     )
 
 
-def get_pipeline(device: str | None) -> tuple[Semaphore, StableDiffusionXLControlNetPipeline]:
+def get_pipeline(device: str | None) -> tuple[int, StableDiffusionXLControlNetPipeline]:
     concurrency = int(os.getenv("CONCURRENCY", str(1)))
 
     pipeline = (
@@ -119,4 +142,4 @@ def get_pipeline(device: str | None) -> tuple[Semaphore, StableDiffusionXLContro
         ),
     ).to(device)
 
-    return Semaphore(concurrency), cn_pipeline
+    return concurrency, cn_pipeline

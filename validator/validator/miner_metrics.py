@@ -15,6 +15,26 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
+
+#  The MIT License (MIT)
+#  Copyright © 2023 Yuma Rao
+#  Copyright © 2024 WOMBO
+#
+#  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+#  documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+#  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+#  and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+#
+#  The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+#  the Software.
+#
+#  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+#  THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+#  DEALINGS IN THE SOFTWARE.
 
 import asyncio
 import os
@@ -23,6 +43,7 @@ from random import shuffle
 from typing import Any, TypeAlias, Annotated, Optional
 
 import bittensor as bt
+import nltk
 import torch
 from aiohttp import ClientSession, BasicAuth
 from pydantic import BaseModel, Field
@@ -34,8 +55,6 @@ from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 from validator.reward import select_endpoint, reward
-
-import nltk
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -316,15 +335,19 @@ async def set_miner_metrics(validator, uid: int):
             for _ in range(count)
         ]
 
-        responses: list[ImageGenerationSynapse] = list(await asyncio.gather(*[
-            validator.periodic_check_dendrite(
-                axons=axon,
-                synapse=ImageGenerationSynapse(inputs=inputs),
-                deserialize=False,
-                timeout=CLIENT_REQUEST_TIMEOUT,
+        responses: list[ImageGenerationSynapse] = list(
+            await asyncio.gather(
+                *[
+                    validator.periodic_check_dendrite(
+                        axons=axon,
+                        synapse=ImageGenerationSynapse(inputs=inputs),
+                        deserialize=False,
+                        timeout=CLIENT_REQUEST_TIMEOUT,
+                    )
+                    for inputs in request_inputs
+                ]
+                )
             )
-            for inputs in request_inputs
-        ]))
 
         slowest_response = max(
             responses,
@@ -335,11 +358,13 @@ async def set_miner_metrics(validator, uid: int):
             ),
         )
 
-        finished_responses.extend([
-            (response, inputs)
-            for response, inputs in zip(responses, request_inputs)
-            if response.output
-        ])
+        finished_responses.extend(
+            [
+                (response, inputs)
+                for response, inputs in zip(responses, request_inputs)
+                if response.output
+            ]
+        )
 
         error_count = [bool(response.output) for response in responses].count(False)
 
@@ -369,15 +394,17 @@ async def set_miner_metrics(validator, uid: int):
 
     check_count = max(1, int(len(finished_responses) * 0.125))
 
-    scores = await asyncio.gather(*[
-        reward(
+    scores = []
+
+    for response, inputs in cryptographic_sample(finished_responses, check_count):
+        score = reward(
             validator.gpu_semaphore,
             validator.pipeline,
             inputs,
             response,
         )
-        for response, inputs in cryptographic_sample(finished_responses, check_count)
-    ])
+
+        scores.append(score)
 
     if len(scores):
         score = torch.tensor(scores).mean().item()
