@@ -231,6 +231,9 @@ class MinerMetricManager:
             bt.logging.warning("Failed to export metrics, ", traceback.format_exc())
 
     def send_user_request_metric(self, uid: int):
+        if not self.validator.user_request_session:
+            self.validator.user_request_session = ClientSession()
+
         return self.send_metrics(
             self.validator.user_request_session,
             self.validator.forward_dendrite,

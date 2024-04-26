@@ -128,7 +128,7 @@ class Validator(BaseNeuron):
         bt.logging.info(f"Dendrite: {self.periodic_check_dendrite}")
 
         self.stress_test_session = ClientSession()
-        self.user_request_session = ClientSession()
+        self.user_request_session = None
 
         # Set up initial scoring weights for validation
         bt.logging.info("Building validation weights.")
@@ -818,6 +818,9 @@ class Validator(BaseNeuron):
             "https://dev-neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
             "https://neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
         )
+
+        if not self.user_request_session:
+            self.user_request_session = ClientSession()
 
         async with self.user_request_session.get(
             f"{is_hotkey_allowed_endpoint}?hotkey={synapse.dendrite.hotkey}",
