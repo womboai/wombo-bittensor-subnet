@@ -15,6 +15,8 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
 
 import asyncio
 import base64
@@ -52,6 +54,7 @@ class Miner(BaseNeuron):
             bt.logging.warning(
                 "You are allowing non-validators to send requests to your miner. This is a security risk."
             )
+
         if self.config.blacklist.allow_non_registered:
             bt.logging.warning(
                 "You are allowing non-registered entities to send requests to your miner. This is a security risk."
@@ -82,6 +85,8 @@ class Miner(BaseNeuron):
 
         self.last_metagraph_sync = self.block
 
+        self.image_generator_session = ClientSession()
+
     @classmethod
     def check_config(cls, config: bt.config):
         check_config(config, "miner")
@@ -111,6 +116,13 @@ class Miner(BaseNeuron):
             default=False,
         )
 
+        parser.add_argument(
+            "--blacklist.validator_minimum_tao",
+            type=int,
+            help="The minimum number of TAO needed for a validator's queries to be accepted.",
+            default=4096,
+        )
+
     async def run(self):
         # Check that miner is registered on the network.
         await self.sync()
@@ -130,9 +142,11 @@ class Miner(BaseNeuron):
         # This loop maintains the miner's operations until intentionally stopped.
         try:
             while True:
-                while not self.should_sync_metagraph():
-                    # Wait before checking again.
-                    await asyncio.sleep(1)
+                block = self.block
+
+                if block - self.last_metagraph_sync <= self.config.neuron.epoch_length:
+                    await asyncio.sleep(max(self.config.neuron.epoch_length - block + self.last_metagraph_sync, 0) * 12)
+                    continue
 
                 # Sync metagraph and potentially set weights.
                 await self.sync()
@@ -157,60 +171,75 @@ class Miner(BaseNeuron):
         self.last_metagraph_sync = self.block
 
     def should_sync_metagraph(self):
-        return self.block - self.last_metagraph_sync > self.config.neuron.epoch_length
+        return True
 
     async def forward_image(
         self,
         synapse: ImageGenerationSynapse,
     ) -> ImageGenerationSynapse:
-        async with ClientSession() as session:
-            async with session.post(
-                self.config.generation_endpoint,
-                json=synapse.inputs.dict(),
-            ) as response:
-                response.raise_for_status()
+        async with self.image_generator_session.post(
+            self.config.generation_endpoint,
+            json=synapse.inputs.dict(),
+        ) as response:
+            response.raise_for_status()
 
-                reader = MultipartReader.from_response(response)
+            reader = MultipartReader.from_response(response)
 
-                frames_tensor: bytes | None = None
-                images: list[bytes] = []
+            frames_tensor: bytes | None = None
+            images: list[bytes] = []
 
-                while True:
-                    part = cast(BodyPartReader, await reader.next())
+            while True:
+                part = cast(BodyPartReader, await reader.next())
 
-                    if part is None:
-                        break
+                if part is None:
+                    break
 
-                    name = part.name
+                name = part.name
 
-                    if not name:
-                        continue
+                if not name:
+                    continue
 
-                    if name == "frames":
-                        frames_tensor = await part.read(decode=True)
-                    elif name.startswith("image_"):
-                        index = int(name[len("image_"):])
+                if name == "frames":
+                    frames_tensor = await part.read(decode=True)
+                elif name.startswith("image_"):
+                    index = int(name[len("image_"):])
 
-                        while len(images) <= index:
-                            # This is assuming that it will be overridden when the actual index is found
-                            images.append(b"")
+                    while len(images) <= index:
+                        # This is assuming that it will be overridden when the actual index is found
+                        images.append(b"")
 
-                        images[index] = base64.b64encode(await part.read(decode=True))
+                    images[index] = base64.b64encode(await part.read(decode=True))
 
-            synapse.output = ImageGenerationOutput(
-                frames=base64.b64encode(frames_tensor) if frames_tensor else None,
-                images=images,
-            )
+        synapse.output = ImageGenerationOutput(
+            frames=base64.b64encode(frames_tensor) if frames_tensor else None,
+            images=images,
+        )
 
         return synapse
 
     async def blacklist_image(self, synapse: ImageGenerationSynapse) -> Tuple[bool, str]:
-        if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
-            # Ignore requests from unrecognized entities.
-            bt.logging.trace(
-                f"Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}"
-            )
-            return True, "Unrecognized hotkey"
+        if not self.config.blacklist.allow_non_registered:
+            if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
+                # Ignore requests from unrecognized entities.
+                bt.logging.trace(
+                    f"Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}"
+                )
+                return True, "Unrecognized hotkey"
+
+            uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
+
+            if self.config.blacklist.force_validator_permit and not self.metagraph.validator_permit[uid]:
+                bt.logging.trace(
+                    f"No validator permit for hotkey {synapse.dendrite.hotkey}"
+                )
+                return True, "No validator permit"
+
+            if self.metagraph.total_stake[uid] < self.config.blacklist.validator_minimum_tao:
+                # Ignore requests from unrecognized entities.
+                bt.logging.trace(
+                    f"Not enough stake for hotkey {synapse.dendrite.hotkey}"
+                )
+                return True, "Insufficient stake"
 
         bt.logging.trace(
             f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}"
