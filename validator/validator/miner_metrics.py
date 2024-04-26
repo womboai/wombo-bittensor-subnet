@@ -206,6 +206,7 @@ class MinerMetricManager:
 
     async def send_metrics(
         self,
+        session: ClientSession,
         dendrite: bt.dendrite,
         endpoint: str,
         data: Any,
@@ -220,18 +221,19 @@ class MinerMetricManager:
         bt.logging.info(f"Sending {endpoint} metrics {data}")
 
         try:
-            async with ClientSession() as session:
-                await session.post(
-                    f"{self.data_endpoint}/{endpoint}",
-                    auth=BasicAuth(hotkey, signature),
-                    json=data,
-                )
+            async with session.post(
+                f"{self.data_endpoint}/{endpoint}",
+                auth=BasicAuth(hotkey, signature),
+                json=data,
+            ):
+                pass
         except Exception as _:
             bt.logging.warning("Failed to export metrics, ", traceback.format_exc())
 
     def send_user_request_metric(self, uid: int):
         return self.send_metrics(
-            self.validator.periodic_check_dendrite,
+            self.validator.user_request_session,
+            self.validator.forward_dendrite,
             "user_requests",
             {
                 "miner_uid": uid,
@@ -252,6 +254,7 @@ class MinerMetricManager:
         self.miner_data.successful_stress_test(uid, generated_count, generation_time, similarity_score, error_rate)
 
         await self.send_metrics(
+            self.validator.stress_test_session,
             self.validator.periodic_check_dendrite,
             "success",
             {
@@ -267,6 +270,7 @@ class MinerMetricManager:
         self.failed_miner(uid)
 
         await self.send_metrics(
+            self.validator.stress_test_session,
             self.validator.periodic_check_dendrite,
             "failure",
             uid,
