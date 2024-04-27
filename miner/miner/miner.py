@@ -85,7 +85,7 @@ class Miner(BaseNeuron):
 
         self.last_metagraph_sync = self.block
 
-        self.image_generator_session = ClientSession()
+        self.image_generator_session = None
 
     @classmethod
     def check_config(cls, config: bt.config):
@@ -177,6 +177,8 @@ class Miner(BaseNeuron):
         self,
         synapse: ImageGenerationSynapse,
     ) -> ImageGenerationSynapse:
+        if not self.image_generator_session:
+            self.image_generator_session = ClientSession()
         async with self.image_generator_session.post(
             self.config.generation_endpoint,
             json=synapse.inputs.dict(),

@@ -291,6 +291,9 @@ class MinerMetricManager:
 
 
 async def set_miner_metrics(validator, uid: int):
+    if not validator.stress_test_session:
+        validator.stress_test_session = ClientSession()
+
     blacklist = validator.config.blacklist
     axon = validator.metagraph.axons[uid]
 
