@@ -127,7 +127,7 @@ class Validator(BaseNeuron):
         self.forward_dendrite = bt.dendrite(wallet=self.wallet)
         bt.logging.info(f"Dendrite: {self.periodic_check_dendrite}")
 
-        self.stress_test_session = ClientSession()
+        self.stress_test_session = None
         self.user_request_session = None
 
         # Set up initial scoring weights for validation
