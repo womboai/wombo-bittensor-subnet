@@ -307,6 +307,7 @@ async def set_miner_metrics(validator, uid: int):
 
     dendrite: bt.dendrite = validator.periodic_check_dendrite
     session = await dendrite.session
+    connector_changed = False
 
     while True:
         bt.logging.info(f"\tTesting {count} requests")
@@ -329,7 +330,10 @@ async def set_miner_metrics(validator, uid: int):
 
         if count > session.connector.limit:
             # Accessing private variables but can't find another way to do this
+            await session.close()
             session._connector = TCPConnector(limit=count)
+
+            connector_changed = True
 
         responses: list[ImageGenerationSynapse] = list(
             await asyncio.gather(
@@ -388,7 +392,9 @@ async def set_miner_metrics(validator, uid: int):
 
         count *= 2
 
-    session._connector = TCPConnector()
+    if connector_changed:
+        await session.close()
+        session._connector = TCPConnector()
 
     check_count = max(1, int(len(finished_responses) * 0.125))
 
