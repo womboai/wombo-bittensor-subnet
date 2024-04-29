@@ -348,6 +348,14 @@ class Validator(BaseNeuron):
 
         return miners[hotkey], hotkey
 
+    async def reset_idle_miner_incentives(self):
+        for uid, info in self.neuron_info.items():
+            if info.is_validator is False:
+                # Working miner, skip
+                continue
+
+            self.metric_manager.reset(uid)
+
     async def check_next_miner(self):
         """
         Validator forward pass, called by the validator every time step. Consists of:
@@ -376,6 +384,8 @@ class Validator(BaseNeuron):
             self,
             miner_uid,
         )
+
+        self.last_miner_check = self.block
 
         if hotkey:
             # Checked miners(with base scores) are pushed to the end of the queue
@@ -431,7 +441,9 @@ class Validator(BaseNeuron):
                         sleep = False
 
                     if blocks_since_check > check_blocks:
+                        await self.reset_idle_miner_incentives()
                         await self.check_next_miner()
+
                         sleep = False
 
                     # Sync metagraph and potentially set weights.
