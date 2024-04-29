@@ -453,7 +453,7 @@ class Validator(BaseNeuron):
                         neuron_refresh_in = neuron_refresh_blocks - blocks_since_neuron_refresh
                         check_in = check_blocks - blocks_since_check
 
-                        await asyncio.sleep(max(min(neuron_refresh_in, check_in), 0) * 12)
+                        await asyncio.sleep(max(min(neuron_refresh_in, check_in), 1) * 12)
 
                     self.step += 1
                 except Exception as _:
