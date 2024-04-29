@@ -384,17 +384,19 @@ async def set_miner_metrics(validator, uid: int):
 
         count *= 2
 
-    check_count = max(1, int(len(finished_responses) * 0.125))
+    check_count = max(1, int(len(finished_responses) * 0.0625))
 
     scores = []
 
-    for response, inputs in cryptographic_sample(finished_responses, check_count):
+    for index, (response, inputs) in enumerate(cryptographic_sample(finished_responses, check_count)):
         score = reward(
             validator.gpu_semaphore,
             validator.pipeline,
             inputs,
             response,
         )
+
+        bt.logging.info(f"Scored response {index} as {score}")
 
         scores.append(score)
 
