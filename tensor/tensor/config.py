@@ -16,8 +16,8 @@
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
 
-import os
 import argparse
+import os
 from typing import Callable
 
 import bittensor as bt
@@ -57,7 +57,7 @@ def check_config(config: bt.config, name: str):
         )
 
 
-def add_args(parser: argparse.ArgumentParser, default_device: str = "cpu"):
+def add_args(parser: argparse.ArgumentParser, default_device: str = "cuda"):
     """
     Adds relevant arguments to the parser for operation.
     """
