@@ -27,7 +27,7 @@ from typing import Any, TypeAlias, Annotated, Optional
 import bittensor as bt
 import nltk
 import torch
-from aiohttp import ClientSession, BasicAuth
+from aiohttp import ClientSession, BasicAuth, TCPConnector
 from pydantic import BaseModel, Field
 from substrateinterface import Keypair
 from torch import Tensor
@@ -305,6 +305,9 @@ async def set_miner_metrics(validator, uid: int):
 
     finished_responses: list[ValidatableResponse] = []
 
+    dendrite: bt.dendrite = validator.periodic_check_dendrite
+    session = await dendrite.session
+
     while True:
         bt.logging.info(f"\tTesting {count} requests")
 
@@ -323,6 +326,10 @@ async def set_miner_metrics(validator, uid: int):
             get_inputs()
             for _ in range(count)
         ]
+
+        if count > session.connector.limit:
+            # Accessing private variables but can't find another way to do this
+            session._connector = TCPConnector(limit=count)
 
         responses: list[ImageGenerationSynapse] = list(
             await asyncio.gather(
@@ -380,6 +387,8 @@ async def set_miner_metrics(validator, uid: int):
             break
 
         count *= 2
+
+    session._connector = TCPConnector()
 
     check_count = max(1, int(len(finished_responses) * 0.125))
 
