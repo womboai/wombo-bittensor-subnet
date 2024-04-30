@@ -525,17 +525,20 @@ async def score_similarity(
     input_kwargs = parse_input_parameters(inputs)
     frames_tensor = frames_tensor.to(pipeline.unet.device, pipeline.unet.dtype)
 
-    async with gpu_semaphore:
-        similarities = torch.tensor(
-            [
-                __validate_internal_cn(
-                    pipeline,
-                    i + 1,
-                    (frames_tensor[i], frames_tensor[i + 1]),
-                    **input_kwargs
-                )
-                for i in random_indices
-            ]
-        )
+    try:
+        async with gpu_semaphore:
+            similarities = torch.tensor(
+                [
+                    __validate_internal_cn(
+                        pipeline,
+                        i + 1,
+                        (frames_tensor[i], frames_tensor[i + 1]),
+                        **input_kwargs
+                    )
+                    for i in random_indices
+                ]
+            )
 
-    return max(similarities.min().item() * 0.5 + 0.5, 0.0)
+        return max(similarities.min().item() * 0.5 + 0.5, 0.0)
+    except Exception as e:
+        return 0.0
