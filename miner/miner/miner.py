@@ -177,8 +177,6 @@ class Miner(BaseNeuron):
         self,
         synapse: ImageGenerationSynapse,
     ) -> ImageGenerationSynapse:
-        if not self.image_generator_session:
-            self.image_generator_session = ClientSession()
         async with self.image_generator_session.post(
             self.config.generation_endpoint,
             json=synapse.inputs.dict(),
@@ -220,6 +218,20 @@ class Miner(BaseNeuron):
         return synapse
 
     async def blacklist_image(self, synapse: ImageGenerationSynapse) -> Tuple[bool, str]:
+        if not self.image_generator_session:
+            self.image_generator_session = ClientSession()
+
+        async with self.image_generator_session.get(
+            f"{self.is_whitelisted_endpoint}?hotkey={synapse.dendrite.hotkey}",
+            headers={"Content-Type": "application/json"},
+        ) as response:
+            response.raise_for_status()
+
+            is_hotkey_allowed = await response.json()
+
+        if is_hotkey_allowed:
+            return False, "Whitelisted hotkey"
+
         if not self.config.blacklist.allow_non_registered:
             if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
                 # Ignore requests from unrecognized entities.

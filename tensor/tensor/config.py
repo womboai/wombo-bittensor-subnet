@@ -16,8 +16,8 @@
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
 
-import os
 import argparse
+import os
 from typing import Callable
 
 import bittensor as bt
@@ -90,6 +90,13 @@ def add_args(parser: argparse.ArgumentParser, default_device: str = "cpu"):
         action="store_true",
         help="If set, we dont save events to a log file.",
         default=False,
+    )
+
+    parser.add_argument(
+        "--is_hotkey_allowed_endpoint",
+        type=str,
+        help="The endpoint called when checking if the hotkey should be whitelisted for requests",
+        default="",
     )
 
 
