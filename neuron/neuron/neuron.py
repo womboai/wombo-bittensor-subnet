@@ -21,9 +21,9 @@ from abc import ABC, abstractmethod
 import bittensor as bt
 
 from neuron.misc import ttl_get_block
+from neuron.select_endpoint import select_endpoint
 # Sync calls set weights and also resyncs the metagraph.
 from tensor.config import config
-from validator.reward import select_endpoint
 
 
 class BaseNeuron(ABC):

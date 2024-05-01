@@ -34,9 +34,10 @@ from torch import Tensor
 
 from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
+from neuron.select_endpoint import select_endpoint
 from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
-from validator.reward import select_endpoint, reward
+from validator.reward import reward
 
 nltk.download('words')
 nltk.download('universal_tagset')
