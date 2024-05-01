@@ -26,7 +26,7 @@ from validator.base.miner_metrics import MinerMetricManager
 
 
 class MinerUserRequestMetricManager(MinerMetricManager):
-    def send_user_request_metric(self, uid: int):
+    def send_user_request_metric(self, uid: int, successful: int, failed: int, similarity_score: float | None):
         if not self.validator.user_request_session:
             self.validator.user_request_session = ClientSession()
 
@@ -36,24 +36,33 @@ class MinerUserRequestMetricManager(MinerMetricManager):
             "user_requests",
             {
                 "miner_uid": uid,
-                "successful": self.miner_data.successful_user_requests[uid].item(),
-                "failed": self.miner_data.failed_user_requests[uid].item(),
-                "similarity_score": self.miner_data.similarity_scores[uid].item(),
+                "successful": successful,
+                "failed": failed,
+                "similarity_score": similarity_score,
             },
         )
 
     async def successful_user_request(self, uid: int, similarity_score: float):
-        self.successful_user_requests[uid] += 1
-        self.similarity_scores[uid] = min(self.similarity_scores[uid].item(), similarity_score)
+        async with self.validator.redis.pipeline() as pipeline:
+            successful = await pipeline.incr(f"successful_user_requests_{uid}")
+            failed = await pipeline.get(f"failed_user_requests_{uid}"),
+            old_similarity_score = await pipeline.set(f"similarity_score_{uid}", similarity_score, get=True)
 
-        await self.send_user_request_metric(uid)
+            await pipeline.execute()
+
+            similarity_score = min(old_similarity_score, similarity_score)
+
+            await self.send_user_request_metric(uid, successful, failed, similarity_score)
 
     async def failed_user_request(self, uid: int, similarity_score: Optional[float]):
-        self.failed_user_requests[uid] += 1
+        async with self.validator.redis.pipeline() as pipeline:
+            successful = await pipeline.get(f"successful_user_requests_{uid}")
+            failed = await pipeline.incr(f"failed_user_requests_{uid}"),
 
-        if similarity_score:
-            self.similarity_scores[uid] = min(self.similarity_scores[uid].item(), similarity_score)
-        else:
-            self.similarity_scores[uid] = self.similarity_scores[uid] * 0.75
+            if similarity_score:
+                old_similarity_score = await pipeline.set(f"similarity_score_{uid}", similarity_score, get=True)
+                similarity_score = min(old_similarity_score, similarity_score)
 
-        await self.send_user_request_metric(uid)
+            await pipeline.execute()
+
+            await self.send_user_request_metric(uid, successful, failed, similarity_score)

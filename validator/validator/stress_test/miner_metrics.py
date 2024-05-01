@@ -28,7 +28,6 @@ import nltk
 import torch
 from aiohttp import ClientSession, TCPConnector
 from pydantic import BaseModel, Field
-from torch import Tensor
 
 from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
@@ -89,21 +88,7 @@ class MinerMetrics(BaseModel):
         )
 
 
-class MinerData:
-    generation_counts: Tensor
-    generation_times: Tensor
-    similarity_scores: Tensor
-    error_rates: Tensor
-
-    def __init__(self, validator):
-        metagraph = validator.metagraph
-        device = validator.device
-
-        self.generation_counts = torch.zeros_like(metagraph.S, dtype=torch.int16, device=device)
-        self.generation_times = torch.zeros_like(metagraph.S, dtype=torch.float32, device=device)
-        self.similarity_scores = torch.zeros_like(metagraph.S, dtype=torch.float16, device=device)
-        self.error_rates = torch.zeros_like(metagraph.S, dtype=torch.float16, device=device)
-
+class MinerStressTestMetricManager(MinerMetricManager):
     def __getitem__(self, uid: int):
         if not self.generation_counts[uid]:
             return None
@@ -117,53 +102,31 @@ class MinerData:
             failed_user_requests=max(0, self.failed_user_requests[uid].item()),
         )
 
-    def failed_miner(self, uid: int):
-        self.generation_counts[uid] = 0
-        self.generation_times[uid] = 0.0
-        self.similarity_scores[uid] = 0.0
-        self.error_rates[uid] = 1.0
+    async def failed_miner(self, uid: int):
+        pipeline = self.validator.redis.pipeline()
 
-    def reset(self, uid: int):
-        self.generation_counts[uid] = 0
-        self.generation_times[uid] = 0.0
-        self.similarity_scores[uid] = 0.0
-        self.error_rates[uid] = 0.0
-        self.successful_user_requests[uid] = 0
-        self.failed_user_requests[uid] = 0
+        await asyncio.gather(
+            *[
+                pipeline.set(f"generation_count_{uid}", 0),
+                pipeline.set(f"generation_time_{uid}", 0.0),
+                pipeline.set(f"similarity_score_{uid}", 0.0),
+                pipeline.set(f"error_rate_{uid}", 0.0),
+            ]
+        )
 
-    def successful_stress_test(
-        self,
-        uid: int,
-        generated_count: int,
-        generation_time: float,
-        similarity_score: float,
-        error_rate: float,
-    ):
-        self.generation_counts[uid] = generated_count
-        self.generation_times[uid] = generation_time
-        self.similarity_scores[uid] = similarity_score
-        self.error_rates[uid] = error_rate
+    async def reset(self, uid: int):
+        pipeline = self.validator.redis.pipeline()
 
-
-class MinerStressTestMetricManager(MinerMetricManager):
-    miner_data: MinerData
-
-    def __init__(self, validator):
-        super().__init__(validator)
-
-        self.miner_data = MinerData(validator)
-
-    def __getitem__(self, uid: int):
-        return self.miner_data[uid]
-
-    def failed_miner(self, uid: int):
-        self.miner_data.failed_miner(uid)
-
-    def reset(self, uid: int):
-        self.miner_data.reset(uid)
-
-    def load_data(self, data: MinerData):
-        self.miner_data = data
+        await asyncio.gather(
+            *[
+                pipeline.set(f"generation_count_{uid}", 0),
+                pipeline.set(f"generation_time_{uid}", 0.0),
+                pipeline.set(f"similarity_score_{uid}", 0.0),
+                pipeline.set(f"error_rate_{uid}", 0.0),
+                pipeline.set(f"successful_user_requests_{uid}", 0),
+                pipeline.set(f"failed_user_requests_{uid}", 0),
+            ]
+        )
 
     async def successful_stress_test(
         self,
@@ -173,7 +136,16 @@ class MinerStressTestMetricManager(MinerMetricManager):
         similarity_score: float,
         error_rate: float,
     ):
-        self.miner_data.successful_stress_test(uid, generated_count, generation_time, similarity_score, error_rate)
+        pipeline = self.validator.redis.pipeline()
+
+        await asyncio.gather(
+            *[
+                pipeline.set(f"generation_count_{uid}", generated_count),
+                pipeline.set(f"generation_time_{uid}", generation_time),
+                pipeline.set(f"similarity_score_{uid}", similarity_score),
+                pipeline.set(f"error_rate_{uid}", error_rate),
+            ]
+        )
 
         await self.send_metrics(
             self.validator.session,
@@ -189,7 +161,7 @@ class MinerStressTestMetricManager(MinerMetricManager):
         )
 
     async def failed_stress_test(self, uid: int):
-        self.failed_miner(uid)
+        await self.failed_miner(uid)
 
         await self.send_metrics(
             self.validator.session,
