@@ -18,7 +18,7 @@
 
 import asyncio
 
-from validator.validator import Validator
+from validator.validator import BaseValidator
 
 if __name__ == "__main__":
-    asyncio.run(Validator().run())
+    asyncio.run(BaseValidator().run())

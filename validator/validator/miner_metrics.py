@@ -95,8 +95,6 @@ class MinerData:
     generation_times: Tensor
     similarity_scores: Tensor
     error_rates: Tensor
-    successful_user_requests: Tensor
-    failed_user_requests: Tensor
 
     def __init__(self, validator):
         metagraph = validator.metagraph
@@ -106,8 +104,6 @@ class MinerData:
         self.generation_times = torch.zeros_like(metagraph.S, dtype=torch.float32, device=device)
         self.similarity_scores = torch.zeros_like(metagraph.S, dtype=torch.float16, device=device)
         self.error_rates = torch.zeros_like(metagraph.S, dtype=torch.float16, device=device)
-        self.successful_user_requests = torch.zeros_like(metagraph.S, dtype=torch.int64, device=device)
-        self.failed_user_requests = torch.zeros_like(metagraph.S, dtype=torch.int64, device=device)
 
     def __getitem__(self, uid: int):
         if not self.generation_counts[uid]:
@@ -236,7 +232,7 @@ class MinerMetricManager:
 
         return self.send_metrics(
             self.validator.user_request_session,
-            self.validator.forward_dendrite,
+            self.validator.dendrite,
             "user_requests",
             {
                 "miner_uid": uid,
@@ -257,8 +253,8 @@ class MinerMetricManager:
         self.miner_data.successful_stress_test(uid, generated_count, generation_time, similarity_score, error_rate)
 
         await self.send_metrics(
-            self.validator.stress_test_session,
-            self.validator.periodic_check_dendrite,
+            self.validator.session,
+            self.validator.dendrite,
             "success",
             {
                 "miner_uid": uid,
@@ -273,8 +269,8 @@ class MinerMetricManager:
         self.failed_miner(uid)
 
         await self.send_metrics(
-            self.validator.stress_test_session,
-            self.validator.periodic_check_dendrite,
+            self.validator.session,
+            self.validator.dendrite,
             "failure",
             uid,
         )
@@ -291,8 +287,8 @@ class MinerMetricManager:
 
 
 async def set_miner_metrics(validator, uid: int):
-    if not validator.stress_test_session:
-        validator.stress_test_session = ClientSession()
+    if not validator.session:
+        validator.session = ClientSession()
 
     blacklist = validator.config.blacklist
     axon = validator.metagraph.axons[uid]
@@ -338,7 +334,7 @@ async def set_miner_metrics(validator, uid: int):
         responses: list[ImageGenerationSynapse] = list(
             await asyncio.gather(
                 *[
-                    validator.periodic_check_dendrite(
+                    validator.dendrite(
                         axons=axon,
                         synapse=ImageGenerationSynapse(inputs=inputs),
                         deserialize=False,

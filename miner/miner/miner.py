@@ -42,6 +42,8 @@ def miner_forward_info(synapse: NeuronInfoSynapse):
 
 
 class Miner(BaseNeuron):
+    axon: bt.axon
+
     nonces: dict[str, set[int]]
     nonce_lock: asyncio.Lock
     last_metagraph_sync: int
