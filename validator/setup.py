@@ -16,13 +16,10 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import os
-from os import path
 from io import open
-from pathlib import Path
+from os import path
 
 from setuptools import setup, find_packages
-
 
 here = path.abspath(path.dirname(__file__))
 
@@ -47,7 +44,8 @@ setup(
         "wombo-bittensor-subnet-neuron-selector",
         "wombo-bittensor-subnet-gpu-pipeline",
         "pillow==10.2.0",
-        "nltk==3.8.1"
+        "nltk==3.8.1",
+        "reids[hiredis,asyncio]==5.0.4",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",

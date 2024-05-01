@@ -109,15 +109,17 @@ class WomboSubnetAPI(SubnetsAPI):
         timeout: int,
     ) -> AsyncGenerator[ImageGenerationClientSynapse, None]:
         if isinstance(axons, list):
-            responses = asyncio.as_completed([
-                self.dendrite.forward(
-                    axons=axon,
-                    synapse=synapse,
-                    deserialize=False,
-                    timeout=timeout,
-                )
-                for axon in axons
-            ])
+            responses = asyncio.as_completed(
+                [
+                    self.dendrite.forward(
+                        axons=axon,
+                        synapse=synapse,
+                        deserialize=False,
+                        timeout=timeout,
+                    )
+                    for axon in axons
+                ]
+            )
 
             for future in responses:
                 yield await future
@@ -165,21 +167,7 @@ class WomboSubnetAPI(SubnetsAPI):
 
     @classmethod
     def add_args(cls, parser: ArgumentParser):
-        add_args(parser)
-
-        parser.add_argument(
-            "--blacklist.hotkeys",
-            action='append',
-            help="The hotkeys to block when sending requests",
-            default=[],
-        )
-
-        parser.add_argument(
-            "--blacklist.coldkeys",
-            action='append',
-            help="The coldkeys to block when sending requests",
-            default=[],
-        )
+        add_args(parser, "cpu")
 
     @classmethod
     def client_config(cls):

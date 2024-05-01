@@ -18,15 +18,72 @@
 #
 #
 
+#  The MIT License (MIT)
+#  Copyright © 2023 Yuma Rao
+#  Copyright © 2024 WOMBO
+#
+#  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+#  documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+#  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+#  and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+#
+#  The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+#  the Software.
+#
+#  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+#  THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+#  DEALINGS IN THE SOFTWARE.
+#
+#
+
 import copy
+import urllib.parse
 from asyncio import Future, Lock
 
 import bittensor as bt
+from redis.asyncio import Redis
 
 from neuron.neuron import BaseNeuron
 from neuron_selector.uids import sync_neuron_info
 from tensor.config import check_config
 from tensor.protocol import NeuronInfoSynapse
+
+
+def parse_redis_uri(uri: str):
+    url = urllib.parse.urlparse(uri)
+
+    if url.scheme == "redis":
+        ssl = False
+    elif url.scheme == "rediss":
+        ssl = True
+    else:
+        raise RuntimeError(f"Invalid Redis scheme {url.scheme}")
+
+    if url.path:
+        db = url.path[1:]
+
+        if not db:
+            db = 0
+    else:
+        db = 0
+
+    if url.username and not url.password:
+        username = None
+        password = url.username
+    else:
+        username = url.username
+        password = url.password
+
+    return {
+        "host": url.hostname,
+        "port": int(url.port),
+        "db": db,
+        "password": password,
+        "ssl": ssl,
+        "username": username,
+    }
 
 
 class BaseValidator(BaseNeuron):
@@ -46,6 +103,7 @@ class BaseValidator(BaseNeuron):
 
     periodic_validation_queue_lock: Lock
     periodic_validation_queue: set[int]
+    redis: Redis
 
     def __init__(self):
         super().__init__()
@@ -62,6 +120,12 @@ class BaseValidator(BaseNeuron):
         self.neuron_info = {}
 
         self.last_neuron_info_block = self.block
+
+        bt.logging.info(f"Connecting to redis at {self.config.neuron.redis_url}")
+
+        self.redis = Redis(**parse_redis_uri(self.config.neuron.redis_url))
+
+        self.step = 0
 
     @classmethod
     def check_config(cls, config: bt.config):
@@ -85,17 +149,10 @@ class BaseValidator(BaseNeuron):
         )
 
         parser.add_argument(
-            "--blacklist.hotkeys",
-            action='append',
-            help="The hotkeys to block when sending requests",
-            default=[],
-        )
-
-        parser.add_argument(
-            "--blacklist.coldkeys",
-            action='append',
-            help="The coldkeys to block when sending requests",
-            default=["5DhPDjLR4YNAixDLNFNP2pTiCpkDQ5A5vm5fyQ3Q52rYcEaw"],
+            "--neuron.redis_url",
+            type=str,
+            help="The URL to connect to Redis at",
+            default="redis://localhost:6379/",
         )
 
     async def sync_neuron_info(self):

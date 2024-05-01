@@ -20,6 +20,7 @@
 
 import asyncio
 import os
+import traceback
 from asyncio import Lock, Semaphore
 from typing import AsyncGenerator, Tuple
 
@@ -41,8 +42,9 @@ from tensor.protocol import (
     MinerGenerationOutput,
 )
 from tensor.timeouts import KEEP_ALIVE_TIMEOUT, AXON_REQUEST_TIMEOUT, CLIENT_REQUEST_TIMEOUT
+from validator.base.validator import BaseValidator
 from validator.reward import reward
-from validator.validator import BaseValidator
+from validator.user_requests.miner_metrics import MinerUserRequestMetricManager
 from validator.watermark import add_watermarks
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
@@ -98,6 +100,10 @@ class UserRequestValidator(BaseValidator):
     def __init__(self):
         super().__init__()
 
+        # Set up initial scoring weights for validation
+        bt.logging.info("Building validation weights.")
+        self.metric_manager = MinerUserRequestMetricManager(self)
+
         # Serve axon to enable external connections.
         self.serve_axon()
 
@@ -116,7 +122,7 @@ class UserRequestValidator(BaseValidator):
         self.neuron_info = {}
 
         self.last_neuron_info_block = self.block
-        self.last_miner_check = self.block
+        self.last_metagraph_sync = self.block
 
         self.pending_requests_lock = Lock()
         self.pending_request_futures = []
@@ -148,6 +154,80 @@ class UserRequestValidator(BaseValidator):
                 f"Failed to create Axon initialize with exception: {e}"
             )
             pass
+
+    async def run(self):
+        """
+        Initiates and manages the main loop for the miner on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
+
+        This function performs the following primary tasks:
+        1. Check for registration on the Bittensor network.
+        2. Continuously forwards queries to the miners on the network, rewarding their responses and updating the scores accordingly.
+        3. Periodically resynchronizes with the chain; updating the metagraph with the latest network state and setting weights.
+
+        The essence of the validator's operations is in the forward function, which is called every step. The forward function is responsible for querying the network and scoring the responses.
+
+        Note:
+            - The function leverages the global configurations set during the initialization of the miner.
+            - The miner's axon serves as its interface to the Bittensor network, handling incoming and outgoing requests.
+
+        Raises:
+            KeyboardInterrupt: If the miner is stopped by a manual interruption.
+            Exception: For unforeseen errors during the miner's operation, which are logged for diagnosis.
+        """
+
+        await self.sync_neuron_info()
+
+        self.axon.start()
+
+        bt.logging.info(
+            f"Running validator {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+        )
+
+        bt.logging.info(f"Validator starting at block: {self.block}")
+
+        # This loop maintains the validator's operations until intentionally stopped.
+        try:
+            while True:
+                bt.logging.info(f"step({self.step}) block({self.block})")
+
+                try:
+                    neuron_refresh_blocks = 25
+
+                    blocks_since_neuron_refresh = self.block - self.last_neuron_info_block
+                    blocks_since_sync = self.block - self.last_metagraph_sync
+
+                    sleep = True
+
+                    if blocks_since_neuron_refresh > neuron_refresh_blocks:
+                        await self.sync_neuron_info()
+                        sleep = False
+
+                    if blocks_since_sync > self.config.neuron.epoch_length:
+                        self.metagraph.sync()
+                        sleep = False
+
+                    if sleep:
+                        neuron_refresh_in = neuron_refresh_blocks - blocks_since_neuron_refresh
+                        sync_in = self.config.neuron.epoch_length - blocks_since_sync
+
+                        await asyncio.sleep(max(min(neuron_refresh_in, sync_in), 1) * 12)
+
+                    self.step += 1
+                except Exception as _:
+                    bt.logging.error("Failed to forward to miners, ", traceback.format_exc())
+
+        # If someone intentionally stops the validator, it'll safely terminate operations.
+        except KeyboardInterrupt:
+            self.axon.stop()
+            bt.logging.success("Validator killed by keyboard interrupt.")
+            exit()
+
+        # In case of unforeseen errors, the validator will log the error and continue operations.
+        except Exception as err:
+            bt.logging.error("Error during validation", str(err))
+            bt.logging.debug(
+                traceback.print_exception(type(err), err, err.__traceback__)
+            )
 
     @classmethod
     def add_args(cls, parser):

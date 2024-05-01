@@ -22,6 +22,7 @@ import asyncio
 import copy
 import os
 import random
+import traceback
 
 import bittensor as bt
 import torch
@@ -30,8 +31,8 @@ from torch import tensor
 
 from neuron_selector.uids import DEFAULT_NEURON_INFO, weighted_sample
 from tensor.config import add_args
-from validator.miner_metrics import MinerMetricManager, set_miner_metrics
-from validator.validator import BaseValidator
+from validator.base.validator import BaseValidator
+from validator.stress_test.miner_metrics import MinerStressTestMetricManager, stress_test_miner
 
 
 class StressTestValidator(BaseValidator):
@@ -40,9 +41,7 @@ class StressTestValidator(BaseValidator):
 
         # Set up initial scoring weights for validation
         bt.logging.info("Building validation weights.")
-        self.metric_manager = MinerMetricManager(self)
-
-        self.step = 0
+        self.metric_manager = MinerStressTestMetricManager(self)
 
         self.uid = self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address)
 
@@ -180,7 +179,7 @@ class StressTestValidator(BaseValidator):
                 if miner_uid in self.periodic_validation_queue:
                     self.periodic_validation_queue.remove(miner_uid)
 
-        await set_miner_metrics(
+        await stress_test_miner(
             self,
             miner_uid,
         )
@@ -211,12 +210,6 @@ class StressTestValidator(BaseValidator):
         """
 
         await self.sync_neuron_info()
-
-        self.axon.start()
-
-        bt.logging.info(
-            f"Running validator {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
-        )
 
         bt.logging.info(f"Validator starting at block: {self.block}")
 
@@ -257,7 +250,6 @@ class StressTestValidator(BaseValidator):
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
-            self.axon.stop()
             bt.logging.success("Validator killed by keyboard interrupt.")
             exit()
 

@@ -105,7 +105,3 @@ class BaseNeuron(ABC):
                 f" Please register the hotkey using `btcli subnets register` before trying again"
             )
             exit()
-
-    @abstractmethod
-    def should_sync_metagraph(self):
-        ...

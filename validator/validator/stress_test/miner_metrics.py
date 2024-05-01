@@ -20,23 +20,22 @@
 
 import asyncio
 import os
-import traceback
 from random import shuffle
-from typing import Any, TypeAlias, Annotated, Optional
+from typing import TypeAlias, Annotated
 
 import bittensor as bt
 import nltk
 import torch
-from aiohttp import ClientSession, BasicAuth, TCPConnector
+from aiohttp import ClientSession, TCPConnector
 from pydantic import BaseModel, Field
-from substrateinterface import Keypair
 from torch import Tensor
 
 from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
-from validator.reward import select_endpoint, reward
+from validator.base.miner_metrics import MinerMetricManager
+from validator.reward import reward
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -145,33 +144,14 @@ class MinerData:
         self.similarity_scores[uid] = similarity_score
         self.error_rates[uid] = error_rate
 
-    def successful_user_request(self, uid: int, similarity_score: float):
-        self.successful_user_requests[uid] += 1
-        self.similarity_scores[uid] = min(self.similarity_scores[uid].item(), similarity_score)
 
-    def failed_user_request(self, uid: int, similarity_score: Optional[float]):
-        self.failed_user_requests[uid] += 1
-
-        if similarity_score:
-            self.similarity_scores[uid] = min(self.similarity_scores[uid].item(), similarity_score)
-        else:
-            self.similarity_scores[uid] = self.similarity_scores[uid] * 0.75
-
-
-class MinerMetricManager:
+class MinerStressTestMetricManager(MinerMetricManager):
     miner_data: MinerData
 
     def __init__(self, validator):
-        self.validator = validator
+        super().__init__(validator)
 
         self.miner_data = MinerData(validator)
-
-        self.data_endpoint = select_endpoint(
-            validator.config.data_endpoint,
-            validator.config.subtensor.network,
-            "https://dev-neuron-identifier.api.wombo.ai/api/data",
-            "https://neuron-identifier.api.wombo.ai/api/data",
-        )
 
     def __getitem__(self, uid: int):
         return self.miner_data[uid]
@@ -182,65 +162,8 @@ class MinerMetricManager:
     def reset(self, uid: int):
         self.miner_data.reset(uid)
 
-    def resize(self):
-        new_data = MinerData(self.validator)
-        existing_data = self.miner_data
-
-        length = len(self.validator.hotkeys)
-
-        new_data.generation_counts[:length] = existing_data.generation_counts[:length]
-        new_data.generation_times[:length] = existing_data.generation_times[:length]
-        new_data.similarity_scores[:length] = existing_data.similarity_scores[:length]
-        new_data.error_rates[:length] = existing_data.error_rates[:length]
-        new_data.successful_user_requests[:length] = existing_data.successful_user_requests[:length]
-        new_data.failed_user_requests[:length] = existing_data.failed_user_requests[:length]
-
-        self.miner_data = new_data
-
     def load_data(self, data: MinerData):
         self.miner_data = data
-
-    async def send_metrics(
-        self,
-        session: ClientSession,
-        dendrite: bt.dendrite,
-        endpoint: str,
-        data: Any,
-    ):
-        if not self.validator.config.send_metrics:
-            return
-
-        keypair: Keypair = dendrite.keypair
-        hotkey = keypair.ss58_address
-        signature = f"0x{keypair.sign(hotkey).hex()}"
-
-        bt.logging.info(f"Sending {endpoint} metrics {data}")
-
-        try:
-            async with session.post(
-                f"{self.data_endpoint}/{endpoint}",
-                auth=BasicAuth(hotkey, signature),
-                json=data,
-            ):
-                pass
-        except Exception as _:
-            bt.logging.warning("Failed to export metrics, ", traceback.format_exc())
-
-    def send_user_request_metric(self, uid: int):
-        if not self.validator.user_request_session:
-            self.validator.user_request_session = ClientSession()
-
-        return self.send_metrics(
-            self.validator.user_request_session,
-            self.validator.dendrite,
-            "user_requests",
-            {
-                "miner_uid": uid,
-                "successful": self.miner_data.successful_user_requests[uid].item(),
-                "failed": self.miner_data.failed_user_requests[uid].item(),
-                "similarity_score": self.miner_data.similarity_scores[uid].item(),
-            },
-        )
 
     async def successful_stress_test(
         self,
@@ -275,18 +198,8 @@ class MinerMetricManager:
             uid,
         )
 
-    async def successful_user_request(self, uid: int, similarity_score: float):
-        self.miner_data.successful_user_request(uid, similarity_score)
 
-        await self.send_user_request_metric(uid)
-
-    async def failed_user_request(self, uid: int, similarity_score: Optional[float]):
-        self.miner_data.failed_user_request(uid, similarity_score)
-
-        await self.send_user_request_metric(uid)
-
-
-async def set_miner_metrics(validator, uid: int):
+async def stress_test_miner(validator, uid: int):
     if not validator.session:
         validator.session = ClientSession()
 

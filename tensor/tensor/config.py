@@ -93,6 +93,20 @@ def add_args(parser: argparse.ArgumentParser, default_device: str = "cpu"):
     )
 
     parser.add_argument(
+        "--blacklist.hotkeys",
+        action='append',
+        help="The hotkeys to block when sending or receiving requests",
+        default=[],
+    )
+
+    parser.add_argument(
+        "--blacklist.coldkeys",
+        action='append',
+        help="The coldkeys to block when sending or receiving requests",
+        default=["5DhPDjLR4YNAixDLNFNP2pTiCpkDQ5A5vm5fyQ3Q52rYcEaw"],
+    )
+
+    parser.add_argument(
         "--is_hotkey_allowed_endpoint",
         type=str,
         help="The endpoint called when checking if the hotkey should be whitelisted for requests",
