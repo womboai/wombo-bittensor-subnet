@@ -28,11 +28,9 @@ import torch
 import uvicorn
 from PIL import Image
 from diffusers import StableDiffusionXLControlNetPipeline
-from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from fastapi import FastAPI, Body
 from requests_toolbelt import MultipartEncoder
 from starlette.responses import Response
-from transformers import CLIPConfig, CLIPImageProcessor
 
 from gpu_pipeline.pipeline import get_pipeline, parse_input_parameters
 from gpu_pipeline.tensor import save_tensor
@@ -48,8 +46,6 @@ def image_stream(image: Image.Image) -> BytesIO:
 
 
 async def generate(
-    image_processor: CLIPImageProcessor,
-    safety_checker: StableDiffusionSafetyChecker,
     gpu_semaphore: Semaphore,
     pipeline: StableDiffusionXLControlNetPipeline,
     inputs: ImageGenerationInputs,
@@ -71,13 +67,6 @@ async def generate(
 
     image = output.images[0]
 
-    safety_checker_input = image_processor(image, return_tensors="pt").to(device=safety_checker.device)
-
-    [image], _ = safety_checker(
-        images=[image],
-        clip_input=safety_checker_input.pixel_values.to(torch.float16),
-    )
-
     if len(frames):
         frame_st_bytes = save_tensor(torch.stack(frames))
     else:
@@ -92,14 +81,10 @@ def main():
     device = os.getenv("DEVICE", "cuda")
     concurrency, pipeline = get_pipeline(device)
     gpu_semaphore = Semaphore(concurrency)
-    image_processor = pipeline.feature_extractor or CLIPImageProcessor()
-    safety_checker = StableDiffusionSafetyChecker(CLIPConfig()).to(device)
 
     @app.post("/api/generate")
     async def generate_image(inputs: Annotated[ImageGenerationInputs, Body()]) -> Response:
         frames_bytes, images = await generate(
-            image_processor,
-            safety_checker,
             gpu_semaphore,
             pipeline,
             inputs,

@@ -18,7 +18,28 @@
 #
 #
 
+#  The MIT License (MIT)
+#  Copyright © 2023 Yuma Rao
+#  Copyright © 2024 WOMBO
+#
+#  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+#  documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+#  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+#  and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+#
+#  The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+#  the Software.
+#
+#  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+#  THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+#  DEALINGS IN THE SOFTWARE.
+#
+#
+
 import asyncio
+import base64
 import os
 from random import shuffle
 from typing import TypeAlias, Annotated
@@ -26,15 +47,14 @@ from typing import TypeAlias, Annotated
 import bittensor as bt
 import nltk
 import torch
-from aiohttp import ClientSession, TCPConnector
+from aiohttp import ClientSession, TCPConnector, FormData, BasicAuth
 from pydantic import BaseModel, Field
 
 from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
-from validator.base.miner_metrics import MinerMetricManager
-from validator.reward import reward
+from validator.miner_metrics import MinerMetricManager, parse_redis_value
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -68,6 +88,40 @@ def generate_random_prompt():
     return ", ".join(words)
 
 
+async def score_output(
+    validator,
+    inputs: ImageGenerationInputs,
+    frames: bytes,
+) -> float:
+    data = FormData()
+
+    data.add_field(
+        "input_parameters",
+        inputs.json(),
+        content_type="application/json",
+    )
+
+    data.add_field(
+        "frames",
+        frames,
+        content_type="application/octet-stream",
+    )
+
+    self_axon = validator.metagraph.axons[validator.uid]
+
+    url = f"http://{self_axon.ip}:{self_axon.port}/score"
+    identifier = str(validator.dendrite.uuid)
+
+    async with validator.session.post(
+        url,
+        auth=BasicAuth(identifier, f"0x{validator.wallet.hotkey.sign(identifier)}"),
+        data=data,
+    ) as response:
+        response.raise_for_status()
+
+        return await response.json()
+
+
 class MinerMetrics(BaseModel):
     generated_count: Annotated[int, Field(ge=0)]
     generation_time: Annotated[float, Field(gt=0)]
@@ -89,43 +143,64 @@ class MinerMetrics(BaseModel):
 
 
 class MinerStressTestMetricManager(MinerMetricManager):
-    def __getitem__(self, uid: int):
-        if not self.generation_counts[uid]:
+    async def get(self, uid: int):
+        (
+            generated_count,
+            generation_time,
+            similarity_score,
+            error_rate,
+            successful_user_requests,
+            failed_user_requests,
+        ) = await self.validator.redis.mget(
+            [
+                f"generation_count_{uid}"
+                f"generation_time_{uid}"
+                f"similarity_score_{uid}"
+                f"error_rate_{uid}"
+                f"successful_user_requests_{uid}"
+                f"failed_user_requests_{uid}"
+            ]
+        )
+
+        if not generated_count:
             return None
 
+        generated_count = parse_redis_value(generated_count, int)
+        generation_time = parse_redis_value(generation_time, float)
+        similarity_score = parse_redis_value(similarity_score, float)
+        error_rate = parse_redis_value(error_rate, float)
+        successful_user_requests = parse_redis_value(successful_user_requests, int)
+        failed_user_requests = parse_redis_value(failed_user_requests, int)
+
         return MinerMetrics(
-            generated_count=max(0, self.generation_counts[uid].item()),
-            generation_time=max(0.0, self.generation_times[uid].item()),
-            similarity_score=max(0.0, min(1.0, self.similarity_scores[uid].item())),
-            error_rate=max(0.0, min(1.0, self.error_rates[uid].item())),
-            successful_user_requests=max(0, self.successful_user_requests[uid].item()),
-            failed_user_requests=max(0, self.failed_user_requests[uid].item()),
+            generated_count=max(0, generated_count),
+            generation_time=max(0.0, generation_time),
+            similarity_score=max(0.0, min(1.0, similarity_score)),
+            error_rate=max(0.0, min(1.0, error_rate)),
+            successful_user_requests=max(0, successful_user_requests),
+            failed_user_requests=max(0, failed_user_requests),
         )
 
     async def failed_miner(self, uid: int):
-        pipeline = self.validator.redis.pipeline()
-
-        await asyncio.gather(
-            *[
-                pipeline.set(f"generation_count_{uid}", 0),
-                pipeline.set(f"generation_time_{uid}", 0.0),
-                pipeline.set(f"similarity_score_{uid}", 0.0),
-                pipeline.set(f"error_rate_{uid}", 0.0),
-            ]
+        await self.validator.redis.mset(
+            {
+                f"generation_count_{uid}": 0,
+                f"generation_time_{uid}": 0.0,
+                f"similarity_score_{uid}": 0.0,
+                f"error_rate_{uid}": 0.0,
+            }
         )
 
     async def reset(self, uid: int):
-        pipeline = self.validator.redis.pipeline()
-
-        await asyncio.gather(
-            *[
-                pipeline.set(f"generation_count_{uid}", 0),
-                pipeline.set(f"generation_time_{uid}", 0.0),
-                pipeline.set(f"similarity_score_{uid}", 0.0),
-                pipeline.set(f"error_rate_{uid}", 0.0),
-                pipeline.set(f"successful_user_requests_{uid}", 0),
-                pipeline.set(f"failed_user_requests_{uid}", 0),
-            ]
+        await self.validator.redis.mset(
+            {
+                f"generation_count_{uid}": 0,
+                f"generation_time_{uid}": 0.0,
+                f"similarity_score_{uid}": 0.0,
+                f"error_rate_{uid}": 0.0,
+                f"successful_user_requests_{uid}": 0,
+                f"failed_user_requests_{uid}": 0,
+            }
         )
 
     async def successful_stress_test(
@@ -136,15 +211,13 @@ class MinerStressTestMetricManager(MinerMetricManager):
         similarity_score: float,
         error_rate: float,
     ):
-        pipeline = self.validator.redis.pipeline()
-
-        await asyncio.gather(
-            *[
-                pipeline.set(f"generation_count_{uid}", generated_count),
-                pipeline.set(f"generation_time_{uid}", generation_time),
-                pipeline.set(f"similarity_score_{uid}", similarity_score),
-                pipeline.set(f"error_rate_{uid}", error_rate),
-            ]
+        await self.validator.redis.mset(
+            {
+                f"generation_count_{uid}": generated_count,
+                f"generation_time_{uid}": generation_time,
+                f"similarity_score_{uid}": similarity_score,
+                f"error_rate_{uid}": error_rate,
+            }
         )
 
         await self.send_metrics(
@@ -275,19 +348,12 @@ async def stress_test_miner(validator, uid: int):
 
     check_count = max(1, int(len(finished_responses) * 0.0625))
 
-    scores = []
-
-    for index, (response, inputs) in enumerate(cryptographic_sample(finished_responses, check_count)):
-        score = reward(
-            validator.gpu_semaphore,
-            validator.pipeline,
-            inputs,
-            response,
+    scores = await asyncio.gather(
+        *[
+            score_output(validator, inputs, base64.b64decode(response.output.frames))
+            for response, inputs in cryptographic_sample(finished_responses, check_count)
+        ]
         )
-
-        bt.logging.info(f"Scored response {index} as {score}")
-
-        scores.append(score)
 
     if len(scores):
         score = torch.tensor(scores).mean().item()

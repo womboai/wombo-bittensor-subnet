@@ -30,9 +30,9 @@ from heapdict import heapdict
 from torch import tensor
 
 from neuron_selector.uids import DEFAULT_NEURON_INFO, weighted_sample
+from stress_test_validator.miner_metrics import MinerStressTestMetricManager, stress_test_miner
 from tensor.config import add_args
-from validator.base.validator import BaseValidator
-from validator.stress_test.miner_metrics import MinerStressTestMetricManager, stress_test_miner
+from validator.validator import BaseValidator
 
 
 class StressTestValidator(BaseValidator):
@@ -79,7 +79,7 @@ class StressTestValidator(BaseValidator):
 
         try:
             if self.should_set_weights():
-                self.set_weights()
+                await self.set_weights()
         except Exception as _:
             bt.logging.error("Failed to set validator weights, ", traceback.format_exc())
 
@@ -166,18 +166,16 @@ class StressTestValidator(BaseValidator):
         """
 
         if self.step % 2 == 0:
-            async with self.periodic_validation_queue_lock:
-                if len(self.periodic_validation_queue):
-                    hotkey = None
-                    miner_uid = self.periodic_validation_queue.pop()
-                else:
-                    miner_uid, hotkey = self.get_next_uid()
+            miner_uid = await self.redis.spop("stress_test_queue")
+
+            if miner_uid is None:
+                miner_uid, hotkey = self.get_next_uid()
+            else:
+                hotkey = None
         else:
             miner_uid, hotkey = self.get_next_uid()
 
-            async with self.periodic_validation_queue_lock:
-                if miner_uid in self.periodic_validation_queue:
-                    self.periodic_validation_queue.remove(miner_uid)
+            await self.redis.srem("stress_test_queue", miner_uid)
 
         await stress_test_miner(
             self,
@@ -260,12 +258,12 @@ class StressTestValidator(BaseValidator):
                 traceback.print_exception(type(err), err, err.__traceback__)
             )
 
-    def set_weights(self):
+    async def set_weights(self):
         """
         Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miners. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
         """
 
-        metrics = [self.metric_manager[uid] for uid in range(self.metagraph.n.item())]
+        metrics = await asyncio.gather(*[self.metric_manager.get(uid) for uid in range(self.metagraph.n.item())])
 
         scores = tensor(
             [
@@ -352,11 +350,6 @@ class StressTestValidator(BaseValidator):
                 # hotkey has been replaced
                 self.metric_manager.reset(uid)
 
-        # Check to see if the metagraph has changed size.
-        # If so, we need to add new hotkeys and moving averages.
-        if len(self.hotkeys) < len(self.metagraph.hotkeys):
-            self.metric_manager.resize()
-
         # Update the hotkeys.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
@@ -390,7 +383,6 @@ class StressTestValidator(BaseValidator):
         torch.save(
             {
                 "step": self.step,
-                "miner_data": self.metric_manager.miner_data,
                 "hotkeys": self.hotkeys,
                 "miner_heap": self.miner_heap,
             },
@@ -409,6 +401,5 @@ class StressTestValidator(BaseValidator):
         # Load the state of the validator from file.
         state = torch.load(path)
         self.step = state["step"]
-        self.metric_manager.load_data(state.get("miner_data", self.metric_manager.miner_data))
         self.hotkeys = state["hotkeys"]
         self.miner_heap = state.get("miner_heap", self.miner_heap)

@@ -18,11 +18,31 @@
 #
 #
 
+#  The MIT License (MIT)
+#  Copyright © 2023 Yuma Rao
+#  Copyright © 2024 WOMBO
+#
+#  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+#  documentation files (the “Software”), to deal in the Software without restriction, including without limitation
+#  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+#  and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+#
+#  The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+#  the Software.
+#
+#  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+#  THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+#  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+#  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+#  DEALINGS IN THE SOFTWARE.
+#
+#
+
 import asyncio
 import os
 import traceback
 from asyncio import Lock, Semaphore
-from typing import AsyncGenerator, Tuple
+from typing import AsyncGenerator, Tuple, Annotated
 
 import bittensor as bt
 import torch
@@ -30,6 +50,10 @@ from PIL.Image import Image
 from aiohttp import ClientSession
 from bittensor import TerminalInfo, AxonInfo
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
+from fastapi import Form, UploadFile, File, Depends, HTTPException
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from pydantic import Json
+from starlette import status
 from torch import Tensor, tensor
 from transformers import CLIPImageProcessor, CLIPConfig
 
@@ -42,10 +66,11 @@ from tensor.protocol import (
     MinerGenerationOutput,
 )
 from tensor.timeouts import KEEP_ALIVE_TIMEOUT, AXON_REQUEST_TIMEOUT, CLIENT_REQUEST_TIMEOUT
-from validator.base.validator import BaseValidator
-from validator.reward import reward
-from validator.user_requests.miner_metrics import MinerUserRequestMetricManager
-from validator.watermark import add_watermarks
+from user_requests_validator.miner_metrics import MinerUserRequestMetricManager
+from user_requests_validator.reward import reward
+from user_requests_validator.similarity_score_pipeline import score_similarity
+from user_requests_validator.watermark import add_watermarks
+from validator.validator import BaseValidator
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
 
@@ -97,6 +122,8 @@ class BadImagesDetected(Exception):
 class UserRequestValidator(BaseValidator):
     axon: bt.axon
 
+    security = HTTPBasic()
+
     def __init__(self):
         super().__init__()
 
@@ -117,6 +144,13 @@ class UserRequestValidator(BaseValidator):
         self.axon.fast_config.timeout_keep_alive = KEEP_ALIVE_TIMEOUT
         self.axon.fast_config.timeout_notify = AXON_REQUEST_TIMEOUT
 
+        self.axon.app.add_api_route(
+            "/score",
+            self.score_stress_test_output,
+            response_model=float,
+            methods=["POST"],
+        )
+
         bt.logging.info(f"Axon created: {self.axon}")
 
         self.neuron_info = {}
@@ -132,6 +166,20 @@ class UserRequestValidator(BaseValidator):
 
         self.image_processor = self.pipeline.feature_extractor or CLIPImageProcessor()
         self.safety_checker = StableDiffusionSafetyChecker(CLIPConfig()).to(self.device)
+
+    async def score_stress_test_output(
+        self,
+        input_parameters: Annotated[Json[ImageGenerationInputs], Form(media_type="application/json")],
+        frames: Annotated[UploadFile, File(media_type="application/octet-stream")],
+        credentials: Annotated[HTTPBasicCredentials, Depends(security)],
+    ):
+        if not self.wallet.hotkey.verify(credentials.username, credentials.password):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Mismatched signature"
+            )
+
+        return score_similarity(self.gpu_semaphore, self.pipeline, await frames.read(), input_parameters)
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
@@ -299,8 +347,7 @@ class UserRequestValidator(BaseValidator):
                 ]
             )
 
-            async with self.periodic_validation_queue_lock:
-                self.periodic_validation_queue.update({uid for uid, _ in bad_miner_uids})
+            await self.redis.sadd("stress_test_queue", *[uid for uid, _ in bad_miner_uids])
 
             bt.logging.info(
                 query_failure_error_message(
@@ -325,8 +372,7 @@ class UserRequestValidator(BaseValidator):
         if (os.urandom(1)[0] / 255) >= RANDOM_VALIDATION_CHANCE:
             return
 
-        async with self.periodic_validation_queue_lock:
-            self.periodic_validation_queue.update({uid for uid in working_miner_uids})
+        await self.redis.sadd("stress_test_queue", *working_miner_uids)
 
     def score_output(self, inputs: ImageGenerationInputs, response: ImageGenerationSynapse):
         return reward(
@@ -337,12 +383,15 @@ class UserRequestValidator(BaseValidator):
         )
 
     def is_unsafe_image(self, image: Image) -> bool:
-        safety_checker_input = self.image_processor(image, return_tensors="pt").to(self.device)
+        safety_checker_input = self.image_processor(image, return_tensors="pt")
 
-        _, has_nsfw_concept = self.safety_checker(
-            images=[image],
-            clip_input=safety_checker_input.pixel_values.to(torch.float16),
-        )
+        with self.gpu_semaphore:
+            safety_checker_input = safety_checker_input.to(self.device)
+
+            _, has_nsfw_concept = self.safety_checker(
+                images=[image],
+                clip_input=safety_checker_input.pixel_values.to(torch.float16),
+            )
 
         return has_nsfw_concept[0]
 
@@ -352,10 +401,7 @@ class UserRequestValidator(BaseValidator):
                 self.config.blacklist,
                 self.metagraph,
                 self.neuron_info,
-                (
-                    self.metric_manager.miner_data.generation_counts / self.metric_manager.miner_data.generation_times).nan_to_num(
-                    0.0
-                ),
+                (await self.metric_manager.get_rps()).nan_to_num(0.0),
                 lambda _, info: info.is_validator is False,
             )
             if synapse.miner_uid is None

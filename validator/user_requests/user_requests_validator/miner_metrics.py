@@ -20,9 +20,11 @@
 
 from typing import Optional
 
+import torch
 from aiohttp import ClientSession
+from torch import tensor
 
-from validator.base.miner_metrics import MinerMetricManager
+from validator.base.miner_metrics import MinerMetricManager, parse_redis_value
 
 
 class MinerUserRequestMetricManager(MinerMetricManager):
@@ -41,6 +43,28 @@ class MinerUserRequestMetricManager(MinerMetricManager):
                 "similarity_score": similarity_score,
             },
         )
+
+    async def get_rps(self):
+        count = self.validator.metagraph.n.item()
+
+        keys = [
+            *[f"generation_count_{uid}" for uid in range(count)],
+            *[f"generation_time_{uid}" for uid in range(count)],
+        ]
+
+        values = await self.validator.redis.mget(keys)
+
+        counts = tensor(
+            [
+                parse_redis_value(request_count, int)
+                for request_count in values[0:count]
+            ],
+            dtype=torch.int32,
+        )
+
+        times = tensor([parse_redis_value(time, float) for time in values[count:]])
+
+        return counts / times
 
     async def successful_user_request(self, uid: int, similarity_score: float):
         async with self.validator.redis.pipeline() as pipeline:

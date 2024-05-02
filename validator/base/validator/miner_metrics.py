@@ -28,6 +28,13 @@ from substrateinterface import Keypair
 from neuron.select_endpoint import select_endpoint
 
 
+def parse_redis_value(value: str | None, t: type):
+    if value is None:
+        return t()
+
+    return t(value)
+
+
 class MinerMetricManager:
     def __init__(self, validator):
         self.validator = validator
