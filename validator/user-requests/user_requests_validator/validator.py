@@ -122,6 +122,9 @@ class BadImagesDetected(Exception):
 class UserRequestValidator(BaseValidator):
     axon: bt.axon
 
+    pending_requests_lock: Lock
+    pending_request_futures: list[Future[None]]
+
     security = HTTPBasic()
 
     def __init__(self):
@@ -259,6 +262,20 @@ class UserRequestValidator(BaseValidator):
                         sync_in = self.config.neuron.epoch_length - blocks_since_sync
 
                         await asyncio.sleep(max(min(neuron_refresh_in, sync_in), 1) * 12)
+
+                    async with self.pending_requests_lock:
+                        remaining_futures = []
+                        for future in self.pending_request_futures:
+                            if not future.done():
+                                remaining_futures.append(future)
+                                continue
+                            try:
+                                future.result()
+                            except Exception as e:
+                                error_traceback = traceback.format_exc()
+                                bt.logging.error(f"Error in validation coroutine: {e}\n{error_traceback}")
+
+                        self.pending_request_futures = remaining_futures
 
                     self.step += 1
                 except Exception as _:
