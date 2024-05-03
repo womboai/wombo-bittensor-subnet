@@ -29,11 +29,11 @@ from validator.miner_metrics import MinerMetricManager, parse_redis_value
 
 class MinerUserRequestMetricManager(MinerMetricManager):
     def send_user_request_metric(self, uid: int, successful: int, failed: int, similarity_score: float | None):
-        if not self.validator.user_request_session:
-            self.validator.user_request_session = ClientSession()
+        if not self.validator.session:
+            self.validator.session = ClientSession()
 
         return self.send_metrics(
-            self.validator.user_request_session,
+            self.validator.session,
             self.validator.dendrite,
             "user_requests",
             {
