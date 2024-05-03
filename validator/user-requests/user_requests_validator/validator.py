@@ -150,7 +150,7 @@ class UserRequestValidator(BaseValidator):
         return await score_similarity(
             self.gpu_semaphore,
             self.pipeline,
-            base64.b64decode(synapse.frames),
+            base64.b64decode(synapse.frames.encode("ascii")),
             synapse.inputs,
         )
 

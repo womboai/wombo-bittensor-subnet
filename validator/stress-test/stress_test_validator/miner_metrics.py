@@ -76,7 +76,7 @@ async def score_output(
     axon = validator.metagraph.axons[validator.uid]
     return await validator.dendrite(
         axons=axon,
-        synapse=ScoreOutputSynapse(inputs=inputs, frames=frames),
+        synapse=ScoreOutputSynapse(inputs=inputs, frames=frames.decode("ascii")),
     )
 
 

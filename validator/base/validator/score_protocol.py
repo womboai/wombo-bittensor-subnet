@@ -24,7 +24,7 @@ from image_generation_protocol.io_protocol import ImageGenerationInputs
 
 class ScoreOutputSynapse(Synapse):
     inputs: ImageGenerationInputs
-    frames: bytes
+    frames: str
 
     score: float = 0.0
 
