@@ -18,7 +18,7 @@
 
 import asyncio
 
-from validator.validator import BaseValidator
+from stress_test_validator.validator import StressTestValidator
 
 if __name__ == "__main__":
-    asyncio.run(BaseValidator().run())
+    asyncio.run(StressTestValidator().run())
