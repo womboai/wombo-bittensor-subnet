@@ -56,4 +56,4 @@ $VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../neuron-sele
 $VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../neuron
 $VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/base
 $VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../gpu-pipeline
-$VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY
+$VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/user-requests
