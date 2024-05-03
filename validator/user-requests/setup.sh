@@ -46,7 +46,7 @@
 
 set -e
 
-VALIDATOR_DIRECTORY=$(dirname $(dirname $(realpath "$(pwd)/$0")))
+VALIDATOR_DIRECTORY=$(dirname $(dirname $(realpath $0)))
 
 python3 -m venv ../venv
 

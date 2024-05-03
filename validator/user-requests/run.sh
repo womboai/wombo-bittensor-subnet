@@ -22,6 +22,6 @@
 #
 #
 
-VALIDATOR_DIRECTORY=$(dirname $(dirname $(realpath "$(pwd)/$0")))
+VALIDATOR_DIRECTORY=$(dirname $(dirname $(realpath $0)))
 
 $VALIDATOR_DIRECTORY/venv/bin/python -m user_requests_validator.main $@

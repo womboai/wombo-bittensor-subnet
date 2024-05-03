@@ -25,7 +25,7 @@
 sudo apt-get install redis npm
 sudo npm install -g pm2
 
-DIRECTORY=$(dirname $(realpath "$(pwd)/$0"))
+DIRECTORY=$(dirname $(realpath $0))
 
 echo " \
 " > $DIRECTORY/nginx.conf
