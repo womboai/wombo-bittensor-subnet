@@ -21,7 +21,7 @@
 import asyncio
 import os
 import traceback
-from asyncio import Lock
+from asyncio import Lock, Future
 from typing import AsyncGenerator, Tuple, Annotated
 
 import bittensor as bt
