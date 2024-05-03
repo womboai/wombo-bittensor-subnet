@@ -39,7 +39,7 @@ setup(
         "wombo-bittensor-subnet-neuron",
         "wombo-bittensor-subnet-neuron-selector",
         "pillow==10.2.0",
-        "reids[hiredis,asyncio]==5.0.4",
+        "redis[hiredis,asyncio]==5.0.4",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
