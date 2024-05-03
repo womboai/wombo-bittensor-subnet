@@ -146,13 +146,15 @@ class UserRequestValidator(BaseValidator):
         self.image_processor = self.pipeline.feature_extractor or CLIPImageProcessor()
         self.safety_checker = StableDiffusionSafetyChecker(CLIPConfig()).to(self.device)
 
-    async def score_stress_test_output(self, synapse: ScoreOutputSynapse):
-        return await score_similarity(
+    async def score_stress_test_output(self, synapse: ScoreOutputSynapse) -> ScoreOutputSynapse:
+        synapse.score = await score_similarity(
             self.gpu_semaphore,
             self.pipeline,
             base64.b64decode(synapse.frames.encode("ascii")),
             synapse.inputs,
         )
+
+        return synapse
 
     def blacklist_score_request(self, synapse: ScoreOutputSynapse) -> Tuple[bool, str]:
         if synapse.dendrite.hotkey != self.wallet.hotkey.ss58_address:
