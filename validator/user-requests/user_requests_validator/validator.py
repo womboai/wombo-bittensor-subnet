@@ -233,7 +233,8 @@ class UserRequestValidator(BaseValidator):
                         sleep = False
 
                     if blocks_since_sync > self.config.neuron.epoch_length:
-                        self.metagraph.sync()
+                        self.metagraph.sync(subtensor=self.subtensor)
+                        self.last_metagraph_sync = self.block
                         sleep = False
 
                     if sleep:
