@@ -242,7 +242,7 @@ async def stress_test_miner(validator, uid: int):
 
     finished_responses: list[ValidatableResponse] = []
 
-    dendrite: bt.dendrite = validator.periodic_check_dendrite
+    dendrite: bt.dendrite = validator.dendrite
     session = await dendrite.session
 
     while True:
