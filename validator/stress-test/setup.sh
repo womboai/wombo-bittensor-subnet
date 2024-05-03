@@ -24,13 +24,13 @@
 
 set -e
 
-VALIDATOR_DIRECTORY=$(dirname $(dirname $(realpath $0)))
+DIRECTORY=$(dirname $(realpath $0))
 
-python3 -m venv venv
+python3 -m venv $DIRECTORY/venv
 
-$VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../image-generation-protocol
-$VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../tensor
-$VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../neuron-selector
-$VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../neuron
-$VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/base
-$VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/stress-test --extra-index-url "https://download.pytorch.org/whl/cpu/"
+$DIRECTORY/venv/bin/pip install -e $DIRECTORY/../../image-generation-protocol
+$DIRECTORY/venv/bin/pip install -e $DIRECTORY/../../tensor
+$DIRECTORY/venv/bin/pip install -e $DIRECTORY/../../neuron-selector
+$DIRECTORY/venv/bin/pip install -e $DIRECTORY/../../neuron
+$DIRECTORY/venv/bin/pip install -e $DIRECTORY/../base
+$DIRECTORY/venv/bin/pip install -e $DIRECTORY --extra-index-url "https://download.pytorch.org/whl/cpu/"
