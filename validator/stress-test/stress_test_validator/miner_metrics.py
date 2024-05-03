@@ -133,12 +133,12 @@ class MinerStressTestMetricManager(MinerMetricManager):
             failed_user_requests,
         ) = await self.validator.redis.mget(
             [
-                f"generation_count_{uid}"
-                f"generation_time_{uid}"
-                f"similarity_score_{uid}"
-                f"error_rate_{uid}"
-                f"successful_user_requests_{uid}"
-                f"failed_user_requests_{uid}"
+                f"generation_count_{uid}",
+                f"generation_time_{uid}",
+                f"similarity_score_{uid}",
+                f"error_rate_{uid}",
+                f"successful_user_requests_{uid}",
+                f"failed_user_requests_{uid}",
             ]
         )
 
