@@ -55,5 +55,5 @@ $DIRECTORY/venv/bin/pip install -e $DIRECTORY/../../tensor
 $DIRECTORY/venv/bin/pip install -e $DIRECTORY/../../neuron-selector
 $DIRECTORY/venv/bin/pip install -e $DIRECTORY/../../neuron
 $DIRECTORY/venv/bin/pip install -e $DIRECTORY/../base
-$DIRECTORY/venv/bin/pip install -e $DIRECTORY/../gpu-pipeline
+$DIRECTORY/venv/bin/pip install -e $DIRECTORY/../../gpu-pipeline
 $DIRECTORY/venv/bin/pip install -e $DIRECTORY
