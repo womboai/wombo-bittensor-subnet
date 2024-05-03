@@ -116,8 +116,11 @@ class StressTestValidator(BaseValidator):
             # Push new miners to be near the start of the queue to give them a base score
             value = random.random()
 
-            block_count = max(self.miner_heap.values()) - min(self.miner_heap.values())
-            self.miner_heap[hotkey] = int(block_count * value * value * 0.25)
+            if len(self.miner_heap):
+                block_count = max(self.miner_heap.values()) - min(self.miner_heap.values())
+                self.miner_heap[hotkey] = int(block_count * value * value * 0.25)
+            else:
+                self.miner_heap[hotkey] = 0
 
         disconnected_miner_list = [
             hotkey
@@ -128,12 +131,15 @@ class StressTestValidator(BaseValidator):
         for hotkey in disconnected_miner_list:
             self.miner_heap.pop(hotkey)
 
-        last_block = max(self.miner_heap.values())
+        if len(self.miner_heap):
+            last_block = max(self.miner_heap.values())
 
-        weighted_choices = [(last_block - block, hotkey) for hotkey, block in self.miner_heap.items()]
+            weighted_choices = [(last_block - block, hotkey) for hotkey, block in self.miner_heap.items()]
 
-        if sum([block for block, _ in weighted_choices]) > 0:
-            hotkey = weighted_sample(weighted_choices, k=1)[0]
+            if sum([block for block, _ in weighted_choices]) > 0:
+                hotkey = weighted_sample(weighted_choices, k=1)[0]
+            else:
+                hotkey = random.choice(list(self.miner_heap.keys()))
         else:
             hotkey = random.choice(list(self.miner_heap.keys()))
 
