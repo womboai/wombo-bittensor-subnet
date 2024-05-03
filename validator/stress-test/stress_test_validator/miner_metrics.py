@@ -353,7 +353,7 @@ async def stress_test_miner(validator, uid: int):
             score_output(validator, inputs, base64.b64decode(response.output.frames))
             for response, inputs in cryptographic_sample(finished_responses, check_count)
         ]
-        )
+    )
 
     if len(scores):
         score = torch.tensor(scores).mean().item()
