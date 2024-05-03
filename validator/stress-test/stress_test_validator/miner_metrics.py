@@ -120,10 +120,11 @@ class MinerStressTestMetricManager(MinerMetricManager):
             ]
         )
 
+        generated_count = parse_redis_value(generated_count, int)
+
         if not generated_count:
             return None
 
-        generated_count = parse_redis_value(generated_count, int)
         generation_time = parse_redis_value(generation_time, float)
         similarity_score = parse_redis_value(similarity_score, float)
         error_rate = parse_redis_value(error_rate, float)
