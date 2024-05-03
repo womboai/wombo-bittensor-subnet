@@ -53,6 +53,7 @@ python3 -m venv ../venv
 $VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../image-generation-protocol
 $VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../tensor
 $VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../neuron-selector
-$VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../gpu-pipeline
 $VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../neuron
+$VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/base
+$VALIDATOR_DIRECTORY/venv/bin/pip install -e $VALIDATOR_DIRECTORY/../gpu-pipeline
 $VALIDATOR_DIRECTORY/venv/bin/pip install -e .
