@@ -19,7 +19,6 @@
 #
 
 import asyncio
-import base64
 import os
 from random import shuffle
 from typing import TypeAlias, Annotated
@@ -27,7 +26,8 @@ from typing import TypeAlias, Annotated
 import bittensor as bt
 import nltk
 import torch
-from aiohttp import ClientSession, TCPConnector, FormData, BasicAuth
+from aiohttp import ClientSession, TCPConnector
+from bittensor import AxonInfo
 from pydantic import BaseModel, Field
 
 from image_generation_protocol.cryptographic_sample import cryptographic_sample
@@ -35,6 +35,7 @@ from image_generation_protocol.io_protocol import ImageGenerationInputs
 from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 from validator.miner_metrics import MinerMetricManager, parse_redis_value
+from validator.score_protocol import ScoreOutputSynapse
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -70,36 +71,14 @@ def generate_random_prompt():
 
 async def score_output(
     validator,
+    axon: AxonInfo,
     inputs: ImageGenerationInputs,
     frames: bytes,
 ) -> float:
-    data = FormData()
-
-    data.add_field(
-        "input_parameters",
-        inputs.json(),
-        content_type="application/json",
+    return await validator.dendrite(
+        axons=axon,
+        synapse=ScoreOutputSynapse(inputs=inputs, frames=frames),
     )
-
-    data.add_field(
-        "frames",
-        frames,
-        content_type="application/octet-stream",
-    )
-
-    self_axon = validator.metagraph.axons[validator.uid]
-
-    url = f"http://{self_axon.ip}:{self_axon.port}/score"
-    identifier = str(validator.dendrite.uuid)
-
-    async with validator.session.post(
-        url,
-        auth=BasicAuth(identifier, f"0x{validator.wallet.hotkey.sign(identifier)}"),
-        data=data,
-    ) as response:
-        response.raise_for_status()
-
-        return await response.json()
 
 
 class MinerMetrics(BaseModel):
@@ -330,7 +309,7 @@ async def stress_test_miner(validator, uid: int):
 
     scores = await asyncio.gather(
         *[
-            score_output(validator, inputs, base64.b64decode(response.output.frames))
+            score_output(validator, inputs, response.output.frames)
             for response, inputs in cryptographic_sample(finished_responses, check_count)
         ]
     )

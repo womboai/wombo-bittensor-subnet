@@ -19,10 +19,11 @@
 #
 
 import asyncio
+import base64
 import os
 import traceback
 from asyncio import Lock, Future
-from typing import AsyncGenerator, Tuple, Annotated
+from typing import AsyncGenerator, Tuple
 
 import bittensor as bt
 import torch
@@ -30,10 +31,7 @@ from PIL.Image import Image
 from aiohttp import ClientSession
 from bittensor import TerminalInfo, AxonInfo
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
-from fastapi import Form, UploadFile, File, Depends, HTTPException
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from pydantic import Json
-from starlette import status
+from fastapi.security import HTTPBasic
 from torch import Tensor, tensor
 from transformers import CLIPImageProcessor, CLIPConfig
 
@@ -50,6 +48,7 @@ from user_requests_validator.miner_metrics import MinerUserRequestMetricManager
 from user_requests_validator.reward import reward
 from user_requests_validator.similarity_score_pipeline import score_similarity
 from user_requests_validator.watermark import add_watermarks
+from validator.score_protocol import ScoreOutputSynapse
 from validator.validator import BaseValidator
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
@@ -124,15 +123,13 @@ class UserRequestValidator(BaseValidator):
             blacklist_fn=self.blacklist_image,
         )
 
+        self.axon.attach(
+            forward_fn=self.score_stress_test_output,
+            blacklist_fn=self.blacklist_score_request,
+        )
+
         self.axon.fast_config.timeout_keep_alive = KEEP_ALIVE_TIMEOUT
         self.axon.fast_config.timeout_notify = AXON_REQUEST_TIMEOUT
-
-        self.axon.app.add_api_route(
-            "/score",
-            self.score_stress_test_output,
-            response_model=float,
-            methods=["POST"],
-        )
 
         bt.logging.info(f"Axon created: {self.axon}")
 
@@ -149,19 +146,19 @@ class UserRequestValidator(BaseValidator):
         self.image_processor = self.pipeline.feature_extractor or CLIPImageProcessor()
         self.safety_checker = StableDiffusionSafetyChecker(CLIPConfig()).to(self.device)
 
-    async def score_stress_test_output(
-        self,
-        input_parameters: Annotated[Json[ImageGenerationInputs], Form(media_type="application/json")],
-        frames: Annotated[UploadFile, File(media_type="application/octet-stream")],
-        credentials: Annotated[HTTPBasicCredentials, Depends(security)],
-    ):
-        if not self.wallet.hotkey.verify(credentials.username, credentials.password):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Mismatched signature"
-            )
+    async def score_stress_test_output(self, synapse: ScoreOutputSynapse):
+        return await score_similarity(
+            self.gpu_semaphore,
+            self.pipeline,
+            base64.b64decode(synapse.frames),
+            synapse.inputs,
+        )
 
-        return await score_similarity(self.gpu_semaphore, self.pipeline, await frames.read(), input_parameters)
+    def blacklist_score_request(self, synapse: ScoreOutputSynapse) -> Tuple[bool, str]:
+        if synapse.dendrite.hotkey != self.wallet.hotkey.ss58_address:
+            return True, "Mismatching hotkey"
+
+        return False, "Correct hotkey"
 
     def serve_axon(self):
         """Serve axon to enable external connections."""

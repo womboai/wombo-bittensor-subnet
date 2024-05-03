@@ -26,10 +26,22 @@ sudo apt-get install redis npm
 sudo npm install -g pm2
 
 DIRECTORY=$(dirname $(realpath $0))
+GPU_COUNT=$((nvidia-smi -L || true) | wc -l)
 
 echo " \
-" > $DIRECTORY/nginx.conf
+http {
+  upstream validator {
+    TODO
+  }
 
-GPU_COUNT=$((nvidia-smi -L || true) | wc -l)
+  server {
+    listen 10000
+
+    location / {
+      proxy_pass http://validator
+    }
+  }
+}
+" > $DIRECTORY/nginx.conf
 
 pm2 start nginx --name wombo-validator-nginx -- -c $DIRECTORY/nginx.conf
