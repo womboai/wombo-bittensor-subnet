@@ -18,30 +18,10 @@
 #
 #
 
-#  The MIT License (MIT)
-#  Copyright © 2023 Yuma Rao
-#  Copyright © 2024 WOMBO
-#
-#  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
-#  documentation files (the “Software”), to deal in the Software without restriction, including without limitation
-#  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-#  and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-#
-#  The above copyright notice and this permission notice shall be included in all copies or substantial portions of
-#  the Software.
-#
-#  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
-#  THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-#  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-#  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-#  DEALINGS IN THE SOFTWARE.
-#
-#
-
 import asyncio
 import os
 import traceback
-from asyncio import Lock, Semaphore
+from asyncio import Lock
 from typing import AsyncGenerator, Tuple, Annotated
 
 import bittensor as bt
@@ -164,8 +144,7 @@ class UserRequestValidator(BaseValidator):
         self.pending_requests_lock = Lock()
         self.pending_request_futures = []
 
-        concurrency, self.pipeline = get_pipeline(self.device)
-        self.gpu_semaphore = Semaphore(concurrency)
+        self.gpu_semaphore, self.pipeline = get_pipeline(self.device)
 
         self.image_processor = self.pipeline.feature_extractor or CLIPImageProcessor()
         self.safety_checker = StableDiffusionSafetyChecker(CLIPConfig()).to(self.device)
@@ -182,7 +161,7 @@ class UserRequestValidator(BaseValidator):
                 detail="Mismatched signature"
             )
 
-        return score_similarity(self.gpu_semaphore, self.pipeline, await frames.read(), input_parameters)
+        return await score_similarity(self.gpu_semaphore, self.pipeline, await frames.read(), input_parameters)
 
     def serve_axon(self):
         """Serve axon to enable external connections."""
@@ -342,7 +321,7 @@ class UserRequestValidator(BaseValidator):
                 bad_responses.append((response, None))
                 continue
 
-            similarity_score = self.score_output(inputs, response)
+            similarity_score = await self.score_output(inputs, response)
 
             if similarity_score < 0.85:
                 bad_responses.append((response, similarity_score))
@@ -375,7 +354,7 @@ class UserRequestValidator(BaseValidator):
             )
 
         async def rank_response(uid: int, uid_response: ImageGenerationSynapse):
-            score = self.score_output(inputs, uid_response)
+            score = await self.score_output(inputs, uid_response)
             await self.metric_manager.successful_user_request(uid, score)
 
         # Some failed to response, punish them
@@ -391,8 +370,8 @@ class UserRequestValidator(BaseValidator):
 
         await self.redis.sadd("stress_test_queue", *working_miner_uids)
 
-    def score_output(self, inputs: ImageGenerationInputs, response: ImageGenerationSynapse):
-        return reward(
+    async def score_output(self, inputs: ImageGenerationInputs, response: ImageGenerationSynapse):
+        return await reward(
             self.gpu_semaphore,
             self.pipeline,
             inputs,
@@ -447,7 +426,7 @@ class UserRequestValidator(BaseValidator):
                 bad_responses.append((response, None))
                 continue
 
-            similarity_score = self.score_output(synapse.inputs, response)
+            similarity_score = await self.score_output(synapse.inputs, response)
 
             if similarity_score < 0.85:
                 bad_responses.append((response, similarity_score))
