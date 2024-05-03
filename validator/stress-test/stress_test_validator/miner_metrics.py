@@ -27,7 +27,6 @@ import bittensor as bt
 import nltk
 import torch
 from aiohttp import ClientSession, TCPConnector
-from bittensor import AxonInfo
 from pydantic import BaseModel, Field
 
 from image_generation_protocol.cryptographic_sample import cryptographic_sample
@@ -71,10 +70,10 @@ def generate_random_prompt():
 
 async def score_output(
     validator,
-    axon: AxonInfo,
     inputs: ImageGenerationInputs,
     frames: bytes,
 ) -> float:
+    axon = validator.metagraph.axons[validator.uid]
     return await validator.dendrite(
         axons=axon,
         synapse=ScoreOutputSynapse(inputs=inputs, frames=frames),
