@@ -215,7 +215,7 @@ class UserRequestValidator(BaseValidator):
         # This loop maintains the validator's operations until intentionally stopped.
         try:
             while True:
-                bt.logging.info(f"step({self.step}) block({self.block})")
+                bt.logging.info(f"block({self.block})")
 
                 try:
                     neuron_refresh_blocks = 25
@@ -253,8 +253,6 @@ class UserRequestValidator(BaseValidator):
                                 bt.logging.error(f"Error in validation coroutine: {e}\n{error_traceback}")
 
                         self.pending_request_futures = remaining_futures
-
-                    self.step += 1
                 except Exception as _:
                     bt.logging.error("Failed to forward to miners, ", traceback.format_exc())
 

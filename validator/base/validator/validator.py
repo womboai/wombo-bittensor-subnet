@@ -99,8 +99,6 @@ class BaseValidator(BaseNeuron):
 
         self.redis = Redis(**parse_redis_uri(self.config.neuron.redis_url))
 
-        self.step = 0
-
     @classmethod
     def check_config(cls, config: bt.config):
         check_config(config, "validator")

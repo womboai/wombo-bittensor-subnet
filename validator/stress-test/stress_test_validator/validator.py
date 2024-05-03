@@ -52,6 +52,8 @@ class StressTestValidator(BaseValidator):
         bt.logging.info("load_state()")
         self.load_state()
 
+        self.step = 0
+
     @classmethod
     def add_args(cls, parser):
         add_args(parser, "cpu")
