@@ -344,12 +344,15 @@ class Validator(BaseNeuron):
         for hotkey in disconnected_miner_list:
             self.miner_heap.pop(hotkey)
 
-        last_block = max(self.miner_heap.values())
+        if len(self.miner_heap):
+            last_block = max(self.miner_heap.values())
 
-        weighted_choices = [(last_block - block, hotkey) for hotkey, block in self.miner_heap.items()]
+            weighted_choices = [(last_block - block, hotkey) for hotkey, block in self.miner_heap.items()]
 
-        if sum([block for block, _ in weighted_choices]) > 0:
-            hotkey = weighted_sample(weighted_choices, k=1)[0]
+            if sum([block for block, _ in weighted_choices]) > 0:
+                hotkey = weighted_sample(weighted_choices, k=1)[0]
+            else:
+                hotkey = random.choice(list(self.miner_heap.keys()))
         else:
             hotkey = random.choice(list(self.miner_heap.keys()))
 
