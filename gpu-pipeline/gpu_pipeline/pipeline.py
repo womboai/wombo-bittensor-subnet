@@ -45,7 +45,7 @@ TAO_PATTERN = r'\b(?:' + '|'.join(
             "bittensor", "tao", "tau",
         ], key=len, reverse=True
     )
-    ) + r')\b'
+) + r')\b'
 
 
 def get_tao_img(width: int, height: int):
@@ -76,7 +76,6 @@ def parse_input_parameters(inputs: ImageGenerationInputs) -> tuple[StableDiffusi
         input_kwargs["generator"] = torch.Generator().manual_seed(seed)
 
     input_kwargs["prompt"] = replace_keywords_with_tau_symbol(inputs.prompt)
-    input_kwargs["output_type"] = "pil"
 
     input_kwargs["image"] = get_tao_img(inputs.width, inputs.height)
 

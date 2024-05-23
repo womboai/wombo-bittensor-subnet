@@ -103,13 +103,6 @@ class Miner(BaseNeuron):
         add_args(parser)
 
         parser.add_argument(
-            "--generation_endpoint",
-            type=str,
-            help="The endpoint to call for miner generation",
-            default="http://localhost:8001/api/generate",
-        )
-
-        parser.add_argument(
             "--blacklist.force_validator_permit",
             action="store_true",
             help="If set, we will force incoming requests to have a permit.",
