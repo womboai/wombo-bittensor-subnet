@@ -92,6 +92,13 @@ def add_args(parser: argparse.ArgumentParser, default_device: str = "cuda"):
         default=False,
     )
 
+    parser.add_argument(
+        "--is_hotkey_allowed_endpoint",
+        type=str,
+        help="The endpoint called when checking if the hotkey should be whitelisted for requests",
+        default="",
+    )
+
 
 def config(add_args_fn: Callable[[argparse.ArgumentParser], None]):
     """

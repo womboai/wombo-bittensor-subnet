@@ -25,15 +25,16 @@ import random
 import traceback
 from asyncio import Future, Lock
 from threading import Semaphore
-from typing import AsyncGenerator, Tuple
+from typing import AsyncGenerator, Tuple, Annotated
 
 import bittensor as bt
 import heapdict
 import torch
 from PIL.Image import Image
 from aiohttp import ClientSession
-from bittensor import AxonInfo, TerminalInfo
+from bittensor import AxonInfo, TerminalInfo, Synapse
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
+from pydantic import BaseModel, Field
 from torch import tensor, Tensor
 from transformers import CLIPConfig, CLIPImageProcessor
 
@@ -48,7 +49,7 @@ from tensor.protocol import (
 )
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT, AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
 from validator.miner_metrics import MinerMetricManager, set_miner_metrics
-from validator.reward import select_endpoint, reward
+from validator.reward import reward
 from validator.watermark import add_watermarks
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
@@ -98,6 +99,16 @@ class BadImagesDetected(Exception):
         self.axon = axon
 
 
+class GPUInfo(BaseModel):
+    name: str
+    memory: str
+    active: bool
+
+
+class GPUInfoSynapse(Synapse):
+    gpus: Annotated[list[GPUInfo], Field(default_factory=lambda: [])]
+
+
 class Validator(BaseNeuron):
     """
     Your validator neuron class. You should use this class to define your validator's behavior. In particular, you should replace the forward function with your own logic.
@@ -107,7 +118,7 @@ class Validator(BaseNeuron):
     This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
     """
 
-    spec_version: int = 18
+    spec_version: int = 19
     neuron_info: dict[int, NeuronInfoSynapse]
 
     pending_requests_lock: Lock
@@ -149,6 +160,8 @@ class Validator(BaseNeuron):
             forward_fn=self.forward_image,
             blacklist_fn=self.blacklist_image,
         )
+
+        self.axon.attach(forward_fn=self.forward_gpu_info)
 
         self.axon.fast_config.timeout_keep_alive = KEEP_ALIVE_TIMEOUT
         self.axon.fast_config.timeout_notify = AXON_REQUEST_TIMEOUT
@@ -209,13 +222,6 @@ class Validator(BaseNeuron):
             "--validation_endpoint",
             type=str,
             help="The endpoint to call for validator scoring",
-            default="",
-        )
-
-        parser.add_argument(
-            "--is_hotkey_allowed_endpoint",
-            type=str,
-            help="The endpoint called when checking if the hotkey is accepted by validators",
             default="",
         )
 
@@ -323,8 +329,11 @@ class Validator(BaseNeuron):
             # Push new miners to be near the start of the queue to give them a base score
             value = random.random()
 
-            block_count = max(self.miner_heap.values()) - min(self.miner_heap.values())
-            self.miner_heap[hotkey] = int(block_count * value * value * 0.25)
+            if len(self.miner_heap):
+                block_count = max(self.miner_heap.values()) - min(self.miner_heap.values())
+                self.miner_heap[hotkey] = int(block_count * value * value * 0.25)
+            else:
+                self.miner_heap[hotkey] = 0
 
         disconnected_miner_list = [
             hotkey
@@ -335,18 +344,29 @@ class Validator(BaseNeuron):
         for hotkey in disconnected_miner_list:
             self.miner_heap.pop(hotkey)
 
-        last_block = max(self.miner_heap.values())
+        if len(self.miner_heap):
+            last_block = max(self.miner_heap.values())
 
-        weighted_choices = [(last_block - block, hotkey) for hotkey, block in self.miner_heap.items()]
+            weighted_choices = [(last_block - block, hotkey) for hotkey, block in self.miner_heap.items()]
 
-        if sum([block for block, _ in weighted_choices]) > 0:
-            hotkey = weighted_sample(weighted_choices, k=1)[0]
+            if sum([block for block, _ in weighted_choices]) > 0:
+                hotkey = weighted_sample(weighted_choices, k=1)[0]
+            else:
+                hotkey = random.choice(list(self.miner_heap.keys()))
         else:
             hotkey = random.choice(list(self.miner_heap.keys()))
 
         self.miner_heap.pop(hotkey)
 
         return miners[hotkey], hotkey
+
+    async def reset_idle_miner_incentives(self):
+        for uid, info in self.neuron_info.items():
+            if info.is_validator is False:
+                # Working miner, skip
+                continue
+
+            self.metric_manager.reset(uid)
 
     async def check_next_miner(self):
         """
@@ -376,6 +396,8 @@ class Validator(BaseNeuron):
             self,
             miner_uid,
         )
+
+        self.last_miner_check = self.block
 
         if hotkey:
             # Checked miners(with base scores) are pushed to the end of the queue
@@ -431,7 +453,9 @@ class Validator(BaseNeuron):
                         sleep = False
 
                     if blocks_since_check > check_blocks:
+                        await self.reset_idle_miner_incentives()
                         await self.check_next_miner()
+
                         sleep = False
 
                     # Sync metagraph and potentially set weights.
@@ -441,7 +465,7 @@ class Validator(BaseNeuron):
                         neuron_refresh_in = neuron_refresh_blocks - blocks_since_neuron_refresh
                         check_in = check_blocks - blocks_since_check
 
-                        await asyncio.sleep(max(min(neuron_refresh_in, check_in), 0) * 12)
+                        await asyncio.sleep(max(min(neuron_refresh_in, check_in), 1) * 12)
 
                     self.step += 1
                 except Exception as _:
@@ -724,6 +748,23 @@ class Validator(BaseNeuron):
 
         return has_nsfw_concept[0]
 
+    def forward_gpu_info(self, synapse: GPUInfoSynapse) -> GPUInfoSynapse:
+        device = torch.device(self.device)
+
+        devices = [torch.cuda.device(gpu_index) for gpu_index in range(torch.cuda.device_count())]
+        properties = [torch.cuda.get_device_properties(device) for device in devices]
+
+        synapse.gpus = [
+            GPUInfo(
+                name=gpu_properties.name,
+                memory=str(gpu_properties.total_memory),
+                active=gpu == device,
+            )
+            for gpu, gpu_properties in zip(devices, properties)
+        ]
+
+        return synapse
+
     async def forward_image(self, synapse: ImageGenerationClientSynapse) -> ImageGenerationClientSynapse:
         miner_uids = (
             get_best_uids(
@@ -812,18 +853,11 @@ class Validator(BaseNeuron):
         raise GetMinerResponseException(synapse.inputs, bad_dendrites, [axon for axon, _ in bad_axons])
 
     async def blacklist_image(self, synapse: ImageGenerationClientSynapse) -> Tuple[bool, str]:
-        is_hotkey_allowed_endpoint = select_endpoint(
-            self.config.is_hotkey_allowed_endpoint,
-            self.config.subtensor.network,
-            "https://dev-neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
-            "https://neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
-        )
-
         if not self.user_request_session:
             self.user_request_session = ClientSession()
 
         async with self.user_request_session.get(
-            f"{is_hotkey_allowed_endpoint}?hotkey={synapse.dendrite.hotkey}",
+            f"{self.is_whitelisted_endpoint}?hotkey={synapse.dendrite.hotkey}",
             headers={"Content-Type": "application/json"},
         ) as response:
             response.raise_for_status()

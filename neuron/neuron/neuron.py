@@ -21,6 +21,7 @@ from abc import ABC, abstractmethod
 import bittensor as bt
 
 from neuron.misc import ttl_get_block
+from neuron.select_endpoint import select_endpoint
 # Sync calls set weights and also resyncs the metagraph.
 from tensor.config import config
 
@@ -86,6 +87,13 @@ class BaseNeuron(ABC):
 
         bt.logging.info(
             f"Running neuron on subnet: {self.config.netuid} with using network: {self.subtensor.chain_endpoint}"
+        )
+
+        self.is_whitelisted_endpoint = select_endpoint(
+            self.config.is_hotkey_allowed_endpoint,
+            self.config.subtensor.network,
+            "https://dev-neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
+            "https://neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
         )
 
     @abstractmethod

@@ -25,6 +25,7 @@ from asyncio import Semaphore
 from typing import cast, Tuple
 
 import bittensor as bt
+from aiohttp import ClientSession
 from bittensor import SynapseDendriteNoneException
 from substrateinterface import Keypair
 
@@ -90,6 +91,8 @@ class Miner(BaseNeuron):
         concurrency, self.pipeline = get_pipeline(self.device)
 
         self.gpu_semaphore = Semaphore(concurrency)
+
+        self.image_generator_session = None
 
     @classmethod
     def check_config(cls, config: bt.config):
@@ -191,6 +194,20 @@ class Miner(BaseNeuron):
         return synapse
 
     async def blacklist_image(self, synapse: ImageGenerationSynapse) -> Tuple[bool, str]:
+        if not self.image_generator_session:
+            self.image_generator_session = ClientSession()
+
+        async with self.image_generator_session.get(
+            f"{self.is_whitelisted_endpoint}?hotkey={synapse.dendrite.hotkey}",
+            headers={"Content-Type": "application/json"},
+        ) as response:
+            response.raise_for_status()
+
+            is_hotkey_allowed = await response.json()
+
+        if is_hotkey_allowed:
+            return False, "Whitelisted hotkey"
+
         if not self.config.blacklist.allow_non_registered:
             if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
                 # Ignore requests from unrecognized entities.

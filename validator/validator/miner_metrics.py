@@ -27,16 +27,17 @@ from typing import Any, TypeAlias, Annotated, Optional
 import bittensor as bt
 import nltk
 import torch
-from aiohttp import ClientSession, BasicAuth
+from aiohttp import ClientSession, BasicAuth, TCPConnector
 from pydantic import BaseModel, Field
 from substrateinterface import Keypair
 from torch import Tensor
 
 from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
+from neuron.select_endpoint import select_endpoint
 from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
-from validator.reward import select_endpoint, reward
+from validator.reward import reward
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -308,6 +309,9 @@ async def set_miner_metrics(validator, uid: int):
 
     finished_responses: list[ValidatableResponse] = []
 
+    dendrite: bt.dendrite = validator.periodic_check_dendrite
+    session = await dendrite.session
+
     while True:
         bt.logging.info(f"\tTesting {count} requests")
 
@@ -326,6 +330,11 @@ async def set_miner_metrics(validator, uid: int):
             get_inputs()
             for _ in range(count)
         ]
+
+        if count > session.connector.limit:
+            # Accessing private variables but can't find another way to do this
+            await session.close()
+            session._connector = TCPConnector(limit=count)
 
         responses: list[ImageGenerationSynapse] = list(
             await asyncio.gather(
@@ -384,17 +393,19 @@ async def set_miner_metrics(validator, uid: int):
 
         count *= 2
 
-    check_count = max(1, int(len(finished_responses) * 0.125))
+    check_count = max(1, int(len(finished_responses) * 0.0625))
 
     scores = []
 
-    for response, inputs in cryptographic_sample(finished_responses, check_count):
+    for index, (response, inputs) in enumerate(cryptographic_sample(finished_responses, check_count)):
         score = reward(
             validator.gpu_semaphore,
             validator.pipeline,
             inputs,
             response,
         )
+
+        bt.logging.info(f"Scored response {index} as {score}")
 
         scores.append(score)
 
