@@ -19,9 +19,7 @@
 #
 
 import asyncio
-import base64
 import traceback
-from asyncio import Semaphore
 from typing import cast, Tuple
 
 import bittensor as bt
@@ -30,7 +28,7 @@ from bittensor import SynapseDendriteNoneException
 from substrateinterface import Keypair
 
 from gpu_pipeline.pipeline import get_pipeline
-from image_generation_protocol.io_protocol import ImageGenerationOutput
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 from miner.image_generator import generate
 from neuron.neuron import BaseNeuron
 from tensor.config import add_args, check_config
@@ -90,9 +88,7 @@ class Miner(BaseNeuron):
 
         self.last_metagraph_sync = self.block
 
-        concurrency, self.pipeline = get_pipeline(self.device)
-
-        self.gpu_semaphore = Semaphore(concurrency)
+        self.gpu_semaphore, self.pipeline = get_pipeline(self.device)
 
         self.image_generator_session = None
 
@@ -164,14 +160,8 @@ class Miner(BaseNeuron):
             bt.logging.error(traceback.format_exc())
 
     def sync(self):
-        """
-        Wrapper for synchronizing the state of the network for the given miner or validator.
-        """
-        # Ensure miner or validator hotkey is still registered on the network.
+        # Ensure miner hotkey is still registered on the network.
         self.check_registered()
-
-        if not self.should_sync_metagraph():
-            return
 
         try:
             self.resync_metagraph()
@@ -187,21 +177,11 @@ class Miner(BaseNeuron):
 
         self.last_metagraph_sync = self.block
 
-    def should_sync_metagraph(self):
-        return True
-
     async def forward_image(
         self,
-        synapse: ImageGenerationSynapse,
-    ) -> ImageGenerationSynapse:
-        frames, images = await generate(self.gpu_semaphore, self.pipeline, synapse.inputs)
-
-        synapse.output = ImageGenerationOutput(
-            frames=base64.b64encode(frames),
-            images=[base64.b64encode(image.getvalue()) for image in images],
-        )
-
-        return synapse
+        inputs: ImageGenerationInputs,
+    ) -> bytes:
+        return await generate(self.gpu_semaphore, self.pipeline, inputs)
 
     async def blacklist_image(self, synapse: ImageGenerationSynapse) -> Tuple[bool, str]:
         if not self.image_generator_session:
