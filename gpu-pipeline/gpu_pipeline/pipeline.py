@@ -20,6 +20,7 @@
 
 import os
 import re
+from asyncio import Semaphore
 from pathlib import Path
 from typing import Any
 
@@ -111,7 +112,7 @@ def get_tao_lora_path() -> str:
     )
 
 
-def get_pipeline(device: str | None) -> tuple[int, StableDiffusionXLControlNetPipeline]:
+def get_pipeline(device: str | None) -> tuple[Semaphore, StableDiffusionXLControlNetPipeline]:
     concurrency = int(os.getenv("CONCURRENCY", str(1)))
 
     pipeline = (
@@ -141,4 +142,4 @@ def get_pipeline(device: str | None) -> tuple[int, StableDiffusionXLControlNetPi
         ),
     ).to(device)
 
-    return concurrency, cn_pipeline
+    return Semaphore(concurrency), cn_pipeline

@@ -15,37 +15,10 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
-#
-#
 
-import base64
-from threading import Semaphore
-from typing import cast
+import asyncio
 
-from diffusers import StableDiffusionXLControlNetPipeline
+from stress_test_validator.validator import StressTestValidator
 
-from image_generation_protocol.io_protocol import ImageGenerationOutput, ImageGenerationInputs
-from tensor.protocol import ImageGenerationSynapse
-from validator.similarity_score_pipeline import score_similarity
-
-
-def reward(
-    semaphore: Semaphore,
-    pipeline: StableDiffusionXLControlNetPipeline,
-    query: ImageGenerationInputs,
-    synapse: ImageGenerationSynapse,
-):
-    """
-    Reward the miner response to the generation request. This method returns a reward
-    value for the miner, which is used to update the miner's score.
-
-    Returns:
-    - float: The reward value for the miner.
-    """
-
-    frames = cast(ImageGenerationOutput, synapse.output).frames
-
-    if not frames:
-        return 0.0
-
-    return score_similarity(semaphore, pipeline, base64.b64decode(frames), query)
+if __name__ == "__main__":
+    asyncio.run(StressTestValidator().run())

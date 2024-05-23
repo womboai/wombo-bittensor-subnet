@@ -4,6 +4,8 @@ set -e
 
 ./setup.sh
 
+GPU_COUNT=$((nvidia-smi -L || true) | wc -l)
+
 venv/bin/python -m validator.main $@ &
 
 PID=$!

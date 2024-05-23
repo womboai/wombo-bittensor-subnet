@@ -45,6 +45,8 @@ def miner_forward_info(synapse: NeuronInfoSynapse):
 
 
 class Miner(BaseNeuron):
+    axon: bt.axon
+
     nonces: dict[str, set[int]]
     nonce_lock: asyncio.Lock
     last_metagraph_sync: int
@@ -125,7 +127,7 @@ class Miner(BaseNeuron):
 
     async def run(self):
         # Check that miner is registered on the network.
-        await self.sync()
+        self.sync()
 
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
@@ -149,7 +151,7 @@ class Miner(BaseNeuron):
                     continue
 
                 # Sync metagraph and potentially set weights.
-                await self.sync()
+                self.sync()
 
         # If someone intentionally stops the miner, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -161,7 +163,22 @@ class Miner(BaseNeuron):
         except Exception as _:
             bt.logging.error(traceback.format_exc())
 
-    async def resync_metagraph(self):
+    def sync(self):
+        """
+        Wrapper for synchronizing the state of the network for the given miner or validator.
+        """
+        # Ensure miner or validator hotkey is still registered on the network.
+        self.check_registered()
+
+        if not self.should_sync_metagraph():
+            return
+
+        try:
+            self.resync_metagraph()
+        except Exception as _:
+            bt.logging.error("Failed to resync metagraph, ", traceback.format_exc())
+
+    def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
         bt.logging.info("resync_metagraph()")
 

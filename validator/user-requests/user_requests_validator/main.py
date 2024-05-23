@@ -15,47 +15,10 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
-#
-#
 
-from asyncio import Semaphore
-from io import BytesIO
+import asyncio
 
-import torch
-from PIL import Image
-from diffusers import StableDiffusionXLControlNetPipeline
+from user_requests_validator.validator import UserRequestValidator
 
-from gpu_pipeline.pipeline import parse_input_parameters
-from gpu_pipeline.tensor import save_tensor
-from image_generation_protocol.io_protocol import ImageGenerationInputs
-
-
-def image_stream(image: Image.Image) -> BytesIO:
-    output = BytesIO()
-    image.save(output, format="jpeg")
-    output.seek(0)
-
-    return output
-
-
-async def generate(
-    gpu_semaphore: Semaphore,
-    pipeline: StableDiffusionXLControlNetPipeline,
-    inputs: ImageGenerationInputs,
-) -> bytes:
-    frames = []
-
-    def save_frames(_pipe, _step_index, _timestep, callback_kwargs):
-        frames.append(callback_kwargs["latents"])
-
-        return callback_kwargs
-
-    input_kwargs = parse_input_parameters(inputs)
-
-    async with gpu_semaphore:
-        pipeline(
-            **input_kwargs,
-            callback_on_step_end=save_frames,
-        )
-
-    return save_tensor(torch.stack(frames))
+if __name__ == "__main__":
+    asyncio.run(UserRequestValidator().run())

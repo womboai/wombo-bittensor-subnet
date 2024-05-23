@@ -15,7 +15,6 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import traceback
 from abc import ABC, abstractmethod
 
 import bittensor as bt
@@ -33,6 +32,11 @@ class BaseNeuron(ABC):
     In addition to creating a wallet, subtensor, and metagraph, this class also handles the synchronization of the network state via a basic checkpointing mechanism based on epoch length.
     """
 
+    subtensor: bt.subtensor
+    wallet: bt.wallet
+    metagraph: bt.metagraph
+    config: bt.config
+
     @classmethod
     @abstractmethod
     def check_config(cls, config: bt.config):
@@ -42,12 +46,6 @@ class BaseNeuron(ABC):
     @abstractmethod
     def add_args(cls, parser):
         ...
-
-    subtensor: bt.subtensor
-    wallet: bt.wallet
-    metagraph: bt.metagraph
-    config: bt.config
-    axon: bt.axon
 
     @property
     def block(self):
@@ -96,25 +94,6 @@ class BaseNeuron(ABC):
             "https://neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
         )
 
-    @abstractmethod
-    async def resync_metagraph(self):
-        ...
-
-    async def sync(self):
-        """
-        Wrapper for synchronizing the state of the network for the given miner or validator.
-        """
-        # Ensure miner or validator hotkey is still registered on the network.
-        self.check_registered()
-
-        if not self.should_sync_metagraph():
-            return
-
-        try:
-            await self.resync_metagraph()
-        except Exception as _:
-            bt.logging.error("Failed to resync metagraph, ", traceback.format_exc())
-
     def check_registered(self):
         # --- Check for registration.
         if not self.subtensor.is_hotkey_registered(
@@ -126,7 +105,3 @@ class BaseNeuron(ABC):
                 f" Please register the hotkey using `btcli subnets register` before trying again"
             )
             exit()
-
-    @abstractmethod
-    def should_sync_metagraph(self):
-        ...
