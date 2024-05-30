@@ -17,17 +17,16 @@
 #  DEALINGS IN THE SOFTWARE.
 #
 #
-
+from itertools import chain
 from os import listdir, PathLike
 from os.path import isfile, join
 from pathlib import Path
 
 import grpc_tools.protoc
-from more_itertools import flatten
 
 
 def list_all_files(directory: PathLike | str):
-    return flatten(
+    return chain.from_iterable(
         [
             [Path(join(directory, file)).absolute()]
             if isfile(file)
@@ -42,16 +41,19 @@ def build(_setup_kwargs):
     root_folder = project_folder.parent.absolute()
     protos_directory = project_folder / "protos"
 
-    proto_files = [protos_directory / file for file in listdir(protos_directory)]
-
     args = [
         "--proto_path",
         root_folder,
-        *proto_files,
+        *list_all_files(protos_directory),
         "--python_out",
+        project_folder,
+        "--pyi_out",
         project_folder,
         "--grpc_python_out",
         project_folder,
     ]
 
-    grpc_tools.protoc.main(args)
+    exit_code = grpc_tools.protoc.main(args)
+
+    if exit_code:
+        raise RuntimeError(f"grpc_tools.protoc returned exit code {exit_code}")

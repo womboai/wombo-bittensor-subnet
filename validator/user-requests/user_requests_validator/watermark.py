@@ -36,7 +36,6 @@
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
 
-import base64
 from io import BytesIO
 from pathlib import Path
 
@@ -53,15 +52,12 @@ def watermark_image(image: Image.Image) -> Image.Image:
     return image_copy
 
 
-def add_watermarks(images: list[Image.Image]) -> list[bytes]:
+def apply_watermark(image: Image.Image) -> bytes:
     """
     Add watermarks to the images.
     """
 
-    def save_image(image: Image.Image) -> bytes:
-        image = watermark_image(image)
-        with BytesIO() as image_bytes:
-            image.save(image_bytes, format="JPEG")
-            return base64.b64encode(image_bytes.getvalue())
-
-    return [save_image(image) for image in images]
+    image = watermark_image(image)
+    with BytesIO() as image_bytes:
+        image.save(image_bytes, format="JPEG")
+        return image_bytes.getvalue()

@@ -5,8 +5,6 @@ version = "1.0.0"
 
 description = "The base of the validator, with everything used for sending requests to miners."
 
-readme = "../../README.md"
-
 license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]

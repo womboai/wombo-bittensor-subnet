@@ -5,8 +5,6 @@ version = "1.0.0"
 
 description = "The portion of the validator used for sending challenges to the miners and setting weights."
 
-readme = "../../README.md"
-
 license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]

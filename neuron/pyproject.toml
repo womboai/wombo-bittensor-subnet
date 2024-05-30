@@ -5,8 +5,6 @@ version = "1.0.0"
 
 description = "A hotkey that lives on-chain, that being a miner or validator(or both), "
 
-readme = "../README.md"
-
 license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]
@@ -34,7 +32,7 @@ python = ">=3.10,<3.11"
 wombo-bittensor-subnet-tensor = { path = "../tensor", develop = true }
 
 [build-system]
-requires = ["poetry-core", "setuptools"]
+requires = ["poetry-core", "setuptools", "grpcio-tools==1.64.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.build]

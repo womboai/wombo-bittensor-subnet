@@ -24,6 +24,8 @@ from neuron.select_endpoint import select_endpoint
 # Sync calls set weights and also resyncs the metagraph.
 from tensor.config import config
 
+SPEC_VERSION = 20
+
 
 class BaseNeuron(ABC):
     """

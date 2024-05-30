@@ -23,11 +23,11 @@ import urllib.parse
 
 import bittensor as bt
 from redis.asyncio import Redis
+from tensor.protocol import NeuronInfo
 
 from neuron.neuron import BaseNeuron
 from neuron_selector.uids import sync_neuron_info
 from tensor.config import check_config
-from tensor.protocol import NeuronInfo
 
 
 def parse_redis_uri(uri: str):
@@ -74,7 +74,6 @@ class BaseValidator(BaseNeuron):
     This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
     """
 
-    spec_version: int = 18
     neuron_info: dict[int, NeuronInfo]
 
     redis: Redis

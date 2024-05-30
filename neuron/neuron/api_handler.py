@@ -20,9 +20,8 @@
 
 from asyncio import Lock
 from time import monotonic_ns
-from typing import Callable, Awaitable
 
-from grpc import ServerInterceptor, HandlerCallDetails, unary_unary_rpc_method_handler, StatusCode
+from grpc import unary_unary_rpc_method_handler, StatusCode
 from grpc.aio import Metadata
 from substrateinterface import Keypair
 
@@ -33,7 +32,11 @@ HOTKEY_HEADER = "bt_header_dendrite_hotkey"
 SIGNATURE_HEADER = "bt_header_dendrite_signature"
 
 
-class RequestVerifier(ServerInterceptor):
+def request_error(status_code: StatusCode, detail: str):
+    return unary_unary_rpc_method_handler(lambda _, context: context.abort(status_code, detail))
+
+
+class RequestVerifier:
     def __init__(self, hotkey: str):
         super().__init__()
 
@@ -41,16 +44,10 @@ class RequestVerifier(ServerInterceptor):
         self.nonce_lock = Lock()
         self.hotkey = hotkey
 
-    def intercept_service(
-        self,
-        continuation: Callable[[HandlerCallDetails], Awaitable[None] | None],
-        handler_call_details: HandlerCallDetails,
-    ):
-        metadata: Metadata = handler_call_details.invocation_metadata
-
-        hotkey = metadata[HOTKEY_HEADER]
-        nonce = int(metadata[NONCE_HEADER])
-        signature = metadata[SIGNATURE_HEADER]
+    def verify(self, invocation_metadata: Metadata):
+        hotkey = invocation_metadata[HOTKEY_HEADER]
+        nonce = int(invocation_metadata[NONCE_HEADER])
+        signature = invocation_metadata[SIGNATURE_HEADER]
 
         # Build the keypair from the dendrite_hotkey
         keypair = Keypair(ss58_address=hotkey)
@@ -59,11 +56,9 @@ class RequestVerifier(ServerInterceptor):
         message = f"{nonce}.{hotkey}.{self.hotkey}"
 
         if not keypair.verify(message, signature):
-            return unary_unary_rpc_method_handler(
-                lambda _, context: context.abort(
-                    StatusCode.UNAUTHENTICATED,
-                    f"Signature mismatch with {message} and {signature}",
-                )
+            return request_error(
+                StatusCode.UNAUTHENTICATED,
+                f"Signature mismatch with {message} and {signature}",
             )
 
         async with self.nonce_lock:
@@ -72,82 +67,12 @@ class RequestVerifier(ServerInterceptor):
             # Ensure this is not a repeated request.
             if nonces:
                 if nonce in nonces:
-                    return unary_unary_rpc_method_handler(
-                        lambda _, context: context.abort(
-                            StatusCode.UNAUTHENTICATED,
-                            "Duplicate nonce",
-                        )
-                    )
+                    return request_error(StatusCode.UNAUTHENTICATED, "Duplicate nonce")
             else:
                 nonces = set[int]()
                 self.nonces[hotkey] = nonces
 
             if monotonic_ns() - nonce > _MAX_ALLOWED_NONCE_DELTA:
-                return unary_unary_rpc_method_handler(
-                    lambda _, context: context.abort(
-                        StatusCode.UNAUTHENTICATED,
-                        "Nonce is too old",
-                    )
-                )
-
-            nonces.add(nonce)
-
-
-class RequestBlackLister(ServerInterceptor):
-    def __init__(self, test: Callable[[str]]):
-        super().__init__()
-
-        self.nonces = {}
-        self.nonce_lock = Lock()
-        self.hotkey = hotkey
-
-    def intercept_service(
-        self,
-        continuation: Callable[[HandlerCallDetails], Awaitable[None] | None],
-        handler_call_details: HandlerCallDetails,
-    ):
-        metadata: Metadata = handler_call_details.invocation_metadata
-
-        hotkey = metadata[HOTKEY_HEADER]
-        nonce = int(metadata[NONCE_HEADER])
-        signature = metadata[SIGNATURE_HEADER]
-
-        # Build the keypair from the dendrite_hotkey
-        keypair = Keypair(ss58_address=hotkey)
-
-        # Build the signature messages.
-        message = f"{nonce}.{hotkey}.{self.hotkey}"
-
-        if not keypair.verify(message, signature):
-            return unary_unary_rpc_method_handler(
-                lambda _, context: context.abort(
-                    StatusCode.UNAUTHENTICATED,
-                    f"Signature mismatch with {message} and {signature}",
-                )
-            )
-
-        async with self.nonce_lock:
-            nonces = self.nonces.get(hotkey)
-
-            # Ensure this is not a repeated request.
-            if nonces:
-                if nonce in nonces:
-                    return unary_unary_rpc_method_handler(
-                        lambda _, context: context.abort(
-                            StatusCode.UNAUTHENTICATED,
-                            "Duplicate nonce",
-                        )
-                    )
-            else:
-                nonces = set[int]()
-                self.nonces[hotkey] = nonces
-
-            if monotonic_ns() - nonce > _MAX_ALLOWED_NONCE_DELTA:
-                return unary_unary_rpc_method_handler(
-                    lambda _, context: context.abort(
-                        StatusCode.UNAUTHENTICATED,
-                        "Nonce is too old",
-                    )
-                )
+                return request_error(StatusCode.UNAUTHENTICATED, "Nonce is too old")
 
             nonces.add(nonce)

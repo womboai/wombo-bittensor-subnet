@@ -5,8 +5,6 @@ version = "1.0.0"
 
 description = "The TAO image pipeline"
 
-readme = "../README.md"
-
 license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]

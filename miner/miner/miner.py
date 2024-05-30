@@ -21,36 +21,86 @@
 import asyncio
 import traceback
 from asyncio import Semaphore
-from typing import Tuple
 
 import bittensor as bt
-from aiohttp import ClientSession
 from diffusers import StableDiffusionXLControlNetPipeline
-from grpc import ServicerContext
-from image_generation_protocol.io_protocol import ImageGenerationInputs
+from grpc import StatusCode
+from grpc.aio import ServicerContext
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
 from gpu_pipeline.pipeline import get_pipeline
 from miner.image_generator import generate
 from miner.protos.miner_pb2_grpc import MinerServicer
-from neuron.api_handler import ApiHandler
-from neuron.neuron import BaseNeuron
+from neuron.api_handler import ApiHandler, request_error, RequestVerifier, HOTKEY_HEADER
+from neuron.neuron import BaseNeuron, SPEC_VERSION
+from neuron.protos.neuron_pb2 import InfoRequest, InfoResponse, NeuronCapabilities
+from neuron.protos.neuron_pb2_grpc import NeuronServicer
 from tensor.config import add_args, check_config
-from tensor.protocol import ImageGenerationSynapse, NeuronInfo, NeuronCapability, NEURON_INFO_ENDPOINT
-from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
 
-def miner_forward_info():
-    return NeuronInfo(capabilities={NeuronCapability.MINER})
+class MinerInfoService(NeuronServicer):
+    def Info(self, request: InfoRequest, context: ServicerContext):
+        return InfoResponse(
+            spec_version=SPEC_VERSION,
+            capabilities=[NeuronCapabilities.MINER]
+        )
 
 
-class MinerService(MinerServicer):
-    def __init__(self, gpu_semaphore: Semaphore, pipeline: StableDiffusionXLControlNetPipeline):
+class MinerGenerationService(MinerServicer):
+    def __init__(
+        self,
+        config: bt.config,
+        metagraph: bt.metagraph,
+        verifier: RequestVerifier,
+        gpu_semaphore: Semaphore,
+        pipeline: StableDiffusionXLControlNetPipeline,
+    ):
         super().__init__()
 
+        self.config = config
+        self.metagraph = metagraph
+        self.verifier = verifier
         self.gpu_semaphore = gpu_semaphore
         self.pipeline = pipeline
 
     async def Generate(self, request: GenerationRequestInputs, context: ServicerContext):
+        verification_failure = self.verifier.verify(context.invocation_metadata())
+
+        if verification_failure:
+            return verification_failure
+
+        hotkey = context.invocation_metadata()[HOTKEY_HEADER]
+
+        if not self.config.blacklist.allow_non_registered:
+            if hotkey not in self.metagraph.hotkeys:
+                # Ignore requests from unrecognized entities.
+                bt.logging.trace(
+                    f"Blacklisting unrecognized hotkey {hotkey}"
+                )
+
+                return request_error(StatusCode.PERMISSION_DENIED, "Unrecognized hotkey")
+
+            uid = self.metagraph.hotkeys.index(hotkey)
+
+            if self.config.blacklist.force_validator_permit and not self.metagraph.validator_permit[uid]:
+                bt.logging.trace(
+                    f"No validator permit for hotkey {hotkey}"
+                )
+
+                return request_error(StatusCode.PERMISSION_DENIED, "No validator permit")
+
+            if self.metagraph.stake[uid] < self.config.blacklist.validator_minimum_tao:
+                # Ignore requests from unrecognized entities.
+                bt.logging.trace(
+                    f"Not enough stake for hotkey {hotkey}"
+                )
+
+                return request_error(StatusCode.PERMISSION_DENIED, "Insufficient stake")
+
+        bt.logging.trace(
+            f"Not Blacklisting recognized hotkey {hotkey}"
+        )
+
         await generate(self.gpu_semaphore, self.pipeline, request)
 
 
@@ -78,14 +128,6 @@ class Miner(BaseNeuron):
 
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to miner axon.")
-
-        self.api.app.get(f"/{NEURON_INFO_ENDPOINT}")(miner_forward_info)
-
-        self.api.attach(
-            forward_fn=self.forward_image,
-            blacklist_fn=self.blacklist_image,
-            priority_fn=self.priority_image,
-        )
 
         self.last_metagraph_sync = self.block
 
@@ -179,64 +221,3 @@ class Miner(BaseNeuron):
         self.metagraph.sync(subtensor=self.subtensor)
 
         self.last_metagraph_sync = self.block
-
-    async def forward_image(
-        self,
-        inputs: ImageGenerationInputs,
-    ) -> bytes:
-        return
-
-    async def blacklist_image(self, synapse: ImageGenerationSynapse) -> Tuple[bool, str]:
-        if not self.image_generator_session:
-            self.image_generator_session = ClientSession()
-
-        async with self.image_generator_session.get(
-            f"{self.is_whitelisted_endpoint}?hotkey={synapse.dendrite.hotkey}",
-            headers={"Content-Type": "application/json"},
-        ) as response:
-            response.raise_for_status()
-
-            is_hotkey_allowed = await response.json()
-
-        if is_hotkey_allowed:
-            return False, "Whitelisted hotkey"
-
-        if not self.config.blacklist.allow_non_registered:
-            if synapse.dendrite.hotkey not in self.metagraph.hotkeys:
-                # Ignore requests from unrecognized entities.
-                bt.logging.trace(
-                    f"Blacklisting unrecognized hotkey {synapse.dendrite.hotkey}"
-                )
-                return True, "Unrecognized hotkey"
-
-            uid = self.metagraph.hotkeys.index(synapse.dendrite.hotkey)
-
-            if self.config.blacklist.force_validator_permit and not self.metagraph.validator_permit[uid]:
-                bt.logging.trace(
-                    f"No validator permit for hotkey {synapse.dendrite.hotkey}"
-                )
-                return True, "No validator permit"
-
-            if self.metagraph.total_stake[uid] < self.config.blacklist.validator_minimum_tao:
-                # Ignore requests from unrecognized entities.
-                bt.logging.trace(
-                    f"Not enough stake for hotkey {synapse.dendrite.hotkey}"
-                )
-                return True, "Insufficient stake"
-
-        bt.logging.trace(
-            f"Not Blacklisting recognized hotkey {synapse.dendrite.hotkey}"
-        )
-        return False, "Hotkey recognized!"
-
-    async def priority_image(self, synapse: ImageGenerationSynapse) -> float:
-        caller_uid = self.metagraph.hotkeys.index(
-            synapse.dendrite.hotkey
-        )  # Get the caller index.
-        priority = float(
-            self.metagraph.S[caller_uid]
-        )  # Return the stake as the priority.
-        bt.logging.trace(
-            f"Prioritizing {synapse.dendrite.hotkey} with value: ", priority
-        )
-        return priority

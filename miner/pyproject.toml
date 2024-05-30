@@ -5,8 +5,6 @@ version = "1.0.0"
 
 description = "The subnet's primary compute provider, incentivied to be ran under a load balancer. Generates media to be used by validators."
 
-readme = "../README.md"
-
 license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]
@@ -35,7 +33,7 @@ wombo-bittensor-subnet-gpu-pipeline = { path = "../gpu-pipeline", develop = true
 wombo-bittensor-subnet-neuron = { path = "../neuron", develop = true }
 
 [build-system]
-requires = ["poetry-core", "setuptools"]
+requires = ["poetry-core", "setuptools", "grpcio-tools==1.64.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.build]

@@ -5,8 +5,6 @@ version = "1.0.0"
 
 description = "The base for every runnable project in SN30, used for all of the core stuff"
 
-readme = "../README.md"
-
 license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]
@@ -29,8 +27,11 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+[tool.poetry.dev-dependencies]
+grpcio = "1.64.0"
+
 [build-system]
-requires = ["poetry-core", "setuptools"]
+requires = ["poetry-core", "setuptools", "grpcio-tools==1.64.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.build]

@@ -28,11 +28,12 @@ from diffusers.pipelines.controlnet.pipeline_controlnet_sd_xl import (
     ControlNetModel, MultiControlNetModel,
 )
 from diffusers.utils.torch_utils import randn_tensor
+from image_generation_protocol.cryptographic_sample import cryptographic_sample
+from image_generation_protocol.io_protocol import ImageGenerationInputs
+from torch import Tensor
 
 from gpu_pipeline.pipeline import parse_input_parameters
 from gpu_pipeline.tensor import load_tensor
-from image_generation_protocol.cryptographic_sample import cryptographic_sample
-from image_generation_protocol.io_protocol import ImageGenerationInputs
 
 
 # Credits to Huggingface for the SDXL pipeline code
@@ -504,16 +505,16 @@ async def score_similarity(
     pipeline: StableDiffusionXLControlNetPipeline,
     frames: bytes,
     inputs: ImageGenerationInputs,
-) -> float:
+) -> tuple[float, Tensor] | None:
     frames_tensor = load_tensor(frames)
 
     if frames_tensor.shape[0] != inputs.num_inference_steps:
-        return 0.0
+        return None
 
     num_random_indices = min(3, inputs.num_inference_steps)
 
     if frames_tensor.shape[0] - 1 < num_random_indices:
-        return 0.0
+        return None
 
     random_indices = sorted(
         cryptographic_sample(
@@ -538,4 +539,4 @@ async def score_similarity(
             ]
         )
 
-    return max(similarities.min().item() * 0.5 + 0.5, 0.0)
+    return max(similarities.min().item() * 0.5 + 0.5, 0.0), frames_tensor[-1]
