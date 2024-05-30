@@ -17,16 +17,35 @@
 #  DEALINGS IN THE SOFTWARE.
 #
 #
-from bittensor import Synapse
+
+from inspect import Parameter, Signature, signature
+from typing import Annotated
+
+from fastapi import File
+from pydantic import BaseModel
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 
 
-class ScoreOutputSynapse(Synapse):
+class OutputScoreRequest(BaseModel):
     inputs: ImageGenerationInputs
-    frames: str
+    frames: Annotated[bytes, File(media_type="application/x-octet-stream")]
 
-    score: float = 0.0
 
-    def deserialize(self) -> float:
-        return self.score
+def form_model(model_type: type[BaseModel]):
+    parameters = [
+        Parameter(
+            parameter.alias,
+            Parameter.POSITIONAL_ONLY,
+            default=Signature.empty if parameter.required else parameter.default,
+            annotation=parameter.outer_type_,
+        )
+        for name, parameter in model_type.__fields__.items()
+    ]
+
+    def as_form(**data):
+        return model_type(**data)
+
+    as_form.__signature__ = signature(as_form).replace(parameters=parameters)
+
+    return as_form

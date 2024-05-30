@@ -15,49 +15,36 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
 
-import base64
-from io import BytesIO
-from typing import cast
+from enum import Enum
+from typing import Annotated
 
-import bittensor as bt
-from PIL import Image
+from fastapi import File, Form
 from pydantic import BaseModel
 
-from image_generation_protocol.io_protocol import ImageGenerationInputs, ImageGenerationOutput
+from image_generation_protocol.io_protocol import ImageGenerationInputs
+
+NEURON_INFO_ENDPOINT = "info"
 
 
-def load_base64_image(data: bytes) -> Image.Image:
-    return Image.open(BytesIO(base64.b64decode(data)))
+class NeuronCapability(Enum):
+    FORWARDING_VALIDATOR = "forwarding-validator"
+    MINER = "miner"
 
 
-class NeuronInfoSynapse(bt.Synapse):
-    is_validator: bool | None = None
-
-
-class ImageGenerationSynapse(bt.Synapse):
-    inputs: ImageGenerationInputs
-    output: ImageGenerationOutput | None = None
+class NeuronInfo(BaseModel):
+    capabilities: set[NeuronCapability]
 
 
 class MinerGenerationOutput(BaseModel):
-    images: list[bytes]
-    process_time: float
-    miner_uid: int
-    miner_hotkey: str
+    frames: Annotated[bytes, File(media_type="application/x-octet-stream")]
+    process_time: Annotated[float, Form(media_type="application/json")]
+    miner_hotkey: Annotated[str, Form(media_type="application/json")]
 
 
-class ImageGenerationClientSynapse(bt.Synapse):
+class ImageGenerationClientRequest(BaseModel):
     inputs: ImageGenerationInputs
     watermark: bool
     miner_uid: int | None
-    output: MinerGenerationOutput | None
-
-    def deserialize(self) -> list[Image.Image]:
-        f"""
-        Assumes the {self.output} field is filled by axon
-        """
-        return [
-            load_base64_image(data)
-            for data in cast(MinerGenerationOutput, self.output).images
-        ]

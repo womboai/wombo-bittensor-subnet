@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package ai.wombo.tao.neuron;
+
+message MinerGenerationResponse {
+  bytes frames = 1;
+}
+
+message InfoRequest {}
+
+enum NeuronCapabilities {
+  FORWARDING_VALIDATOR = 0;
+  MINER = 1;
+}
+
+message InfoResponse {
+  uint32 spec_version = 1;
+  repeated NeuronCapabilities capabilities = 2;
+}
+
+service Neuron {
+  rpc Info(InfoRequest) returns (stream InfoResponse);
+}

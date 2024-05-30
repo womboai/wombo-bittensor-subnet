@@ -18,34 +18,35 @@
 #
 #
 
-import base64
-from asyncio import Semaphore
-from typing import cast
+from os import urandom
 
-from diffusers import StableDiffusionXLControlNetPipeline
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
-from image_generation_protocol.io_protocol import ImageGenerationOutput, ImageGenerationInputs
-from tensor.protocol import ImageGenerationSynapse
-from user_requests_validator.similarity_score_pipeline import score_similarity
+DEFAULT_WIDTH = 768
+DEFAULT_HEIGHT = 1344
+DEFAULT_STEPS = 20
+DEFAULT_GUIDANCE = 7.0
+
+MIN_SIZE = 512
+MAX_SIZE = 1536
+MAX_STEPS = 100
 
 
-async def reward(
-    semaphore: Semaphore,
-    pipeline: StableDiffusionXLControlNetPipeline,
-    query: ImageGenerationInputs,
-    synapse: ImageGenerationSynapse,
-):
-    """
-    Reward the miner response to the generation request. This method returns a reward
-    value for the miner, which is used to update the miner's score.
+# I dislike how manual this is, but it's probably fine
+def sanitize_inputs(inputs: GenerationRequestInputs):
+    if not inputs.width or inputs.width < MIN_SIZE or inputs.height > MAX_SIZE:
+        inputs.width = DEFAULT_WIDTH
 
-    Returns:
-    - float: The reward value for the miner.
-    """
+    if not inputs.height or inputs.height < MIN_SIZE or inputs.height > MAX_SIZE:
+        inputs.width = DEFAULT_HEIGHT
 
-    frames = cast(ImageGenerationOutput, synapse.output).frames
+    if not inputs.num_inference_steps or inputs.num_inference_steps > MAX_STEPS:
+        inputs.num_inference_steps = DEFAULT_STEPS
 
-    if not frames:
-        return 0.0
+    if not inputs.guidance_scale:
+        inputs.guidance_scale = DEFAULT_GUIDANCE
 
-    return await score_similarity(semaphore, pipeline, base64.b64decode(frames), query)
+    if not inputs.seed:
+        inputs.seed = int.from_bytes(urandom(4), "little")
+
+    return inputs

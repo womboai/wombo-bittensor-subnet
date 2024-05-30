@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package ai.wombo.tao.miner;
+
+import "tensor/protos/inputs.proto";
+import "neuron/protos/neuron.proto";
+
+service Miner {
+  rpc Generate(ai.wombo.tao.inputs.GenerationRequestInputs) returns (stream ai.wombo.tao.neuron.MinerGenerationResponse);
+}

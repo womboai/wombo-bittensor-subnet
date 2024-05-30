@@ -8,9 +8,9 @@ import torch
 from bittensor import AxonInfo
 from torch import Tensor
 
-from tensor.protocol import NeuronInfoSynapse
+from tensor.protocol import NeuronInfo
 
-DEFAULT_NEURON_INFO = NeuronInfoSynapse()
+DEFAULT_NEURON_INFO = NeuronInfo(capabilities=set())
 
 T = TypeVar("T")
 
@@ -61,9 +61,9 @@ async def sync_neuron_info(self, dendrite: bittensor.dendrite):
 
     axons = [axon_by_hotkey[hotkey] for hotkey in uid_by_hotkey.keys()]
 
-    neuron_info: list[NeuronInfoSynapse] = await dendrite(
+    neuron_info: list[NeuronInfo] = await dendrite(
         axons=axons,
-        synapse=NeuronInfoSynapse(),
+        synapse=NeuronInfo(),
         deserialize=False,
     )
 
@@ -81,9 +81,9 @@ async def sync_neuron_info(self, dendrite: bittensor.dendrite):
 def get_best_uids(
     blacklist: Any,
     metagraph: bittensor.metagraph,
-    neuron_info: dict[int, NeuronInfoSynapse],
+    neuron_info: dict[int, NeuronInfo],
     rank: Tensor,
-    condition: Callable[[int, NeuronInfoSynapse], bool],
+    condition: Callable[[int, NeuronInfo], bool],
     k: int = 3,
 ) -> Tensor:
     available_uids = [

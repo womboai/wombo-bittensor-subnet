@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package ai.wombo.tao.generation;
+
+message ImageGenerationResponse {
+  bytes image = 1;
+}
+

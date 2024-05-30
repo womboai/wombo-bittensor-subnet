@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "wombo-bittensor-subnet"
+
+version = "1.0.0"
+
+description = "Subnet 30 generates compelling content, powers real-world applications, and incentivizes digital posting and social sharing. As the subnet expands, it will unlock new opportunities for people to earn subnet emissions directly through their social media performance."
+
+readme = "README.md"
+
+license = "MIT"
+
+authors = ["WOMBO <hello@w.ai>"]
+
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry-monorepo.deps]

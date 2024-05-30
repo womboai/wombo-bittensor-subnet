@@ -10,16 +10,16 @@ from typing import Annotated, AsyncGenerator, cast, TypeAlias
 import bittensor as bt
 import uvicorn
 from bittensor import SubnetsAPI, TerminalInfo, AxonInfo
-from fastapi import FastAPI, Body, HTTPException, status
+from fastapi import FastAPI, Body, HTTPException, status, File, Form
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Json
 from torch import tensor
 
 from image_generation_protocol.io_protocol import ImageGenerationInputs
 from neuron_selector.uids import get_best_uids, sync_neuron_info
 from tensor.config import config, add_args
-from tensor.protocol import ImageGenerationClientSynapse, MinerGenerationOutput
+from tensor.protocol import ImageGenerationClientRequest, MinerGenerationOutput
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 
 Axon: TypeAlias = AxonInfo | bt.axon
@@ -39,9 +39,9 @@ class NeuronGenerationInfo(BaseModel):
 
 
 class ImageGenerationResult(BaseModel):
-    images: list[bytes]
-    validator_info: NeuronGenerationInfo
-    miner_info: NeuronGenerationInfo
+    image: Annotated[bytes, File(media_type="image/jpeg")]
+    validator_info: Annotated[Json[NeuronGenerationInfo], Form(media_type="application/json")]
+    miner_info: Annotated[Json[NeuronGenerationInfo], Form(media_type="application/json")]
 
 
 class ImageGenerationClientInputs(ImageGenerationInputs):
@@ -78,8 +78,8 @@ class WomboSubnetAPI(SubnetsAPI):
         self.periodic_metagraph_resync: Task
         self.neuron_info = {}
 
-    def prepare_synapse(self, inputs: ImageGenerationClientInputs) -> ImageGenerationClientSynapse:
-        return ImageGenerationClientSynapse(
+    def prepare_synapse(self, inputs: ImageGenerationClientInputs) -> ImageGenerationClientRequest:
+        return ImageGenerationClientRequest(
             inputs=inputs,
             watermark=inputs.watermark,
             miner_uid=inputs.miner_uid,
@@ -87,8 +87,8 @@ class WomboSubnetAPI(SubnetsAPI):
 
     async def process_responses(
         self,
-        responses: AsyncGenerator[ImageGenerationClientSynapse, None],
-    ) -> ImageGenerationClientSynapse:
+        responses: AsyncGenerator[ImageGenerationClientRequest, None],
+    ) -> ImageGenerationClientRequest:
         bad_responses = []
 
         async for response in responses:
@@ -105,9 +105,9 @@ class WomboSubnetAPI(SubnetsAPI):
     async def get_responses(
         self,
         axons: bt.axon | list[bt.axon],
-        synapse: ImageGenerationClientSynapse,
+        synapse: ImageGenerationClientRequest,
         timeout: int,
-    ) -> AsyncGenerator[ImageGenerationClientSynapse, None]:
+    ) -> AsyncGenerator[ImageGenerationClientRequest, None]:
         if isinstance(axons, list):
             responses = asyncio.as_completed(
                 [
@@ -137,7 +137,7 @@ class WomboSubnetAPI(SubnetsAPI):
         inputs: ImageGenerationClientInputs,
         axons: Axon | list[Axon],
         timeout: int = CLIENT_REQUEST_TIMEOUT,
-    ) -> ImageGenerationClientSynapse:
+    ) -> ImageGenerationClientRequest:
         synapse = self.prepare_synapse(inputs)
         bt.logging.debug(f"Querying validator axons with synapse {synapse.name}...")
 

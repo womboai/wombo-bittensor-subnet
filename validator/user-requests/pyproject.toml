@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "wombo-bittensor-subnet-user-requests-validator"
+
+version = "1.0.0"
+
+description = "The portion of the validator used for forwarding user requests to miners."
+
+readme = "../../README.md"
+
+license = "MIT"
+
+authors = ["WOMBO <hello@w.ai>"]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+wombo-bittensor-subnet-validator = { path = "../base", develop = true }
+wombo-bittensor-subnet-gpu-pipeline = { path = "../../gpu-pipeline", develop = true }
+wombo-bittensor-subnet-neuron-selector = { path = "../../neuron-selector", develop = true }
+pillow = "10.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

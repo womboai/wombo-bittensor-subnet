@@ -20,31 +20,41 @@
 
 import asyncio
 import traceback
-from typing import cast, Tuple
+from asyncio import Semaphore
+from typing import Tuple
 
 import bittensor as bt
 from aiohttp import ClientSession
-from bittensor import SynapseDendriteNoneException
-from substrateinterface import Keypair
+from diffusers import StableDiffusionXLControlNetPipeline
+from grpc import ServicerContext
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 
 from gpu_pipeline.pipeline import get_pipeline
-from image_generation_protocol.io_protocol import ImageGenerationInputs
 from miner.image_generator import generate
+from miner.protos.miner_pb2_grpc import MinerServicer
+from neuron.api_handler import ApiHandler
 from neuron.neuron import BaseNeuron
 from tensor.config import add_args, check_config
-from tensor.protocol import ImageGenerationSynapse, NeuronInfoSynapse
-from tensor.timeouts import AXON_REQUEST_TIMEOUT, KEEP_ALIVE_TIMEOUT
+from tensor.protocol import ImageGenerationSynapse, NeuronInfo, NeuronCapability, NEURON_INFO_ENDPOINT
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
 
-def miner_forward_info(synapse: NeuronInfoSynapse):
-    synapse.is_validator = False
+def miner_forward_info():
+    return NeuronInfo(capabilities={NeuronCapability.MINER})
 
-    return synapse
+
+class MinerService(MinerServicer):
+    def __init__(self, gpu_semaphore: Semaphore, pipeline: StableDiffusionXLControlNetPipeline):
+        super().__init__()
+
+        self.gpu_semaphore = gpu_semaphore
+        self.pipeline = pipeline
+
+    async def Generate(self, request: GenerationRequestInputs, context: ServicerContext):
+        await generate(self.gpu_semaphore, self.pipeline, request)
 
 
 class Miner(BaseNeuron):
-    axon: bt.axon
-
     nonces: dict[str, set[int]]
     nonce_lock: asyncio.Lock
     last_metagraph_sync: int
@@ -64,31 +74,24 @@ class Miner(BaseNeuron):
             )
 
         # The axon handles request processing, allowing validators to send this miner requests.
-        self.axon = bt.axon(wallet=self.wallet, config=self.config)
+        self.api = ApiHandler(self.wallet.hotkey.ss58_address)
 
         # Attach determiners which functions are called when servicing a request.
         bt.logging.info(f"Attaching forward function to miner axon.")
 
-        self.axon.attach(forward_fn=miner_forward_info)
+        self.api.app.get(f"/{NEURON_INFO_ENDPOINT}")(miner_forward_info)
 
-        self.axon.attach(
+        self.api.attach(
             forward_fn=self.forward_image,
             blacklist_fn=self.blacklist_image,
             priority_fn=self.priority_image,
-            verify_fn=self.verify_image,
         )
-
-        self.axon.fast_config.timeout_keep_alive = KEEP_ALIVE_TIMEOUT
-        self.axon.fast_config.timeout_notify = AXON_REQUEST_TIMEOUT
-
-        bt.logging.info(f"Axon created: {self.axon}")
-
-        self.nonces = {}
-        self.nonce_lock = asyncio.Lock()
 
         self.last_metagraph_sync = self.block
 
         self.gpu_semaphore, self.pipeline = get_pipeline(self.device)
+
+        self.pipeline.vae = None
 
         self.image_generator_session = None
 
@@ -128,12 +131,12 @@ class Miner(BaseNeuron):
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
         bt.logging.info(
-            f"Serving miner axon {self.axon} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+            f"Serving miner axon {self.api} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
-        self.axon.serve(netuid=self.config.netuid, subtensor=self.subtensor)
+        self.api.serve(netuid=self.config.netuid, subtensor=self.subtensor)
 
         # Start the miner's axon, making it active on the network.
-        self.axon.start()
+        self.api.start()
 
         bt.logging.info(f"Miner starting at block: {self.block}")
 
@@ -151,7 +154,7 @@ class Miner(BaseNeuron):
 
         # If someone intentionally stops the miner, it'll safely terminate operations.
         except KeyboardInterrupt:
-            self.axon.stop()
+            self.api.stop()
             bt.logging.success("Miner killed by keyboard interrupt.")
             exit()
 
@@ -181,7 +184,7 @@ class Miner(BaseNeuron):
         self,
         inputs: ImageGenerationInputs,
     ) -> bytes:
-        return await generate(self.gpu_semaphore, self.pipeline, inputs)
+        return
 
     async def blacklist_image(self, synapse: ImageGenerationSynapse) -> Tuple[bool, str]:
         if not self.image_generator_session:
@@ -237,41 +240,3 @@ class Miner(BaseNeuron):
             f"Prioritizing {synapse.dendrite.hotkey} with value: ", priority
         )
         return priority
-
-    async def verify_image(self, synapse: ImageGenerationSynapse) -> None:
-        if synapse.dendrite is None:
-            raise SynapseDendriteNoneException()
-
-        # Build the keypair from the dendrite_hotkey
-        keypair = Keypair(ss58_address=synapse.dendrite.hotkey)
-
-        # Build the signature messages.
-        message = f"{synapse.dendrite.nonce}.{synapse.dendrite.hotkey}.{self.wallet.hotkey.ss58_address}.{synapse.dendrite.uuid}.{synapse.computed_body_hash}"
-
-        if not keypair.verify(message, synapse.dendrite.signature):
-            raise Exception(
-                f"Signature mismatch with {message} and {synapse.dendrite.signature}"
-            )
-
-        # Build the unique endpoint key.
-        endpoint_key = f"{synapse.dendrite.hotkey}:{synapse.dendrite.uuid}"
-
-        async with self.nonce_lock:
-            known_key = endpoint_key in self.nonces.keys()
-
-            # Check the nonce from the endpoint key.
-            if (
-                known_key
-                and self.nonces[endpoint_key] is not None
-                and synapse.dendrite.nonce is not None
-                and synapse.dendrite.nonce in self.nonces[endpoint_key]
-            ):
-                raise Exception("Duplicate nonce")
-
-            if known_key:
-                nonces = self.nonces[endpoint_key]
-            else:
-                nonces = set()
-                self.nonces[endpoint_key] = nonces
-
-            nonces.add(cast(int, synapse.dendrite.nonce))

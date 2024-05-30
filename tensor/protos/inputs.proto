@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package ai.wombo.tao.inputs;
+
+message GenerationRequestInputs {
+  string prompt = 1;
+  optional string prompt_2 = 2;
+  optional uint32 width = 3;
+  optional uint32 height = 4;
+  optional uint32 num_inference_steps = 5;
+  optional float guidance_scale = 6;
+  optional string negative_prompt = 7;
+  optional string negative_prompt_2 = 8;
+  optional uint32 seed = 9;
+  optional float controlnet_conditioning_scale = 10;
+}

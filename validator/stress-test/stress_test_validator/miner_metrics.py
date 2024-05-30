@@ -31,10 +31,9 @@ from pydantic import BaseModel, Field
 
 from image_generation_protocol.cryptographic_sample import cryptographic_sample
 from image_generation_protocol.io_protocol import ImageGenerationInputs
-from tensor.protocol import ImageGenerationSynapse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 from validator.miner_metrics import MinerMetricManager, parse_redis_value
-from validator.score_protocol import ScoreOutputSynapse
+from validator.score_protocol import OutputScoreRequest
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -55,7 +54,7 @@ The max percentage of failures acceptable before stopping
  and assuming we have reached the maximum viable RPS 
 """
 
-ValidatableResponse: TypeAlias = tuple[ImageGenerationSynapse, ImageGenerationInputs]
+ValidatableResponse: TypeAlias = tuple[bytes, ImageGenerationInputs]
 
 WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ" or tag == "NOUN"]
 REQUEST_INCENTIVE = 0.0001
@@ -76,7 +75,7 @@ async def score_output(
     axon = validator.metagraph.axons[validator.uid]
     return await validator.dendrite(
         axons=axon,
-        synapse=ScoreOutputSynapse(inputs=inputs, frames=frames.decode("ascii")),
+        synapse=OutputScoreRequest(inputs=inputs, frames=frames),
     )
 
 
@@ -235,7 +234,6 @@ async def stress_test_miner(validator, uid: int):
                 height=1024,
                 num_inference_steps=30,
                 controlnet_conditioning_scale=0.5,
-                seed=int.from_bytes(os.urandom(4), "little"),
             )
 
         request_inputs = [

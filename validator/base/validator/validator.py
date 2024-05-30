@@ -27,7 +27,7 @@ from redis.asyncio import Redis
 from neuron.neuron import BaseNeuron
 from neuron_selector.uids import sync_neuron_info
 from tensor.config import check_config
-from tensor.protocol import NeuronInfoSynapse
+from tensor.protocol import NeuronInfo
 
 
 def parse_redis_uri(uri: str):
@@ -75,7 +75,7 @@ class BaseValidator(BaseNeuron):
     """
 
     spec_version: int = 18
-    neuron_info: dict[int, NeuronInfoSynapse]
+    neuron_info: dict[int, NeuronInfo]
 
     redis: Redis
 

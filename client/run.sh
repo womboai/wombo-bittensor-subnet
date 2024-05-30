@@ -1,3 +1,3 @@
 #!/bin/bash
 
-venv/bin/python -m client.main $@
+poetry run python -m client.main $@
