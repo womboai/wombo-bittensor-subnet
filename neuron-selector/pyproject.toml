@@ -11,6 +11,8 @@ license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]
 
+packages = [{ include = "neuron_selector" }]
+
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -32,9 +34,7 @@ python = ">=3.10,<3.11"
 wombo-bittensor-subnet-tensor = { path = "../tensor", develop = true }
 
 [build-system]
-requires = ["poetry-core", "setuptools"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry.build]
-script = "build.py"
-generate-setup-file = true
+[tool.poetry-monorepo.deps]

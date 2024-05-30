@@ -11,6 +11,8 @@ license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]
 
+packages = [{ include = "stress_test_validator" }]
+
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -36,3 +38,5 @@ heapdict = "1.0.1"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry-monorepo.deps]

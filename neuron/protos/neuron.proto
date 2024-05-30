@@ -19,5 +19,5 @@ message InfoResponse {
 }
 
 service Neuron {
-  rpc Info(InfoRequest) returns (stream InfoResponse);
+  rpc Info(InfoRequest) returns (InfoResponse);
 }

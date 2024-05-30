@@ -18,5 +18,40 @@
 #
 #
 
+from os import listdir, PathLike
+from os.path import isfile, join
+from pathlib import Path
+
+import grpc_tools.protoc
+from more_itertools import flatten
+
+
+def list_all_files(directory: PathLike | str):
+    return flatten(
+        [
+            [Path(join(directory, file)).absolute()]
+            if isfile(file)
+            else list_all_files(join(directory, file))
+            for file in listdir(directory)
+        ]
+    )
+
+
 def build(_setup_kwargs):
-    pass
+    project_folder = Path(__file__).parent.absolute()
+    root_folder = project_folder.parent.absolute()
+    protos_directory = project_folder / "protos"
+
+    proto_files = [protos_directory / file for file in listdir(protos_directory)]
+
+    args = [
+        "--proto_path",
+        root_folder,
+        *proto_files,
+        "--python_out",
+        project_folder,
+        "--grpc_python_out",
+        project_folder,
+    ]
+
+    grpc_tools.protoc.main(args)

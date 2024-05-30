@@ -6,5 +6,5 @@ import "tensor/protos/inputs.proto";
 import "neuron/protos/neuron.proto";
 
 service Miner {
-  rpc Generate(ai.wombo.tao.inputs.GenerationRequestInputs) returns (stream ai.wombo.tao.neuron.MinerGenerationResponse);
+  rpc Generate(ai.wombo.tao.inputs.GenerationRequestInputs) returns (ai.wombo.tao.neuron.MinerGenerationResponse);
 }

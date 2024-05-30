@@ -11,6 +11,8 @@ license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]
 
+packages = [{ include = "neuron" }]
+
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -37,4 +39,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.build]
 script = "build.py"
-generate-setup-file = true
+generate-setup-file = false
+
+[tool.poetry-monorepo.deps]

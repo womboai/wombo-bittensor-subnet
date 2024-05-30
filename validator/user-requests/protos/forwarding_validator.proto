@@ -4,7 +4,6 @@ package ai.wombo.tao.miner;
 
 import "tensor/protos/inputs.proto";
 import "neuron/protos/neuron.proto";
-import "neuron-selector/protos/image_generation.proto";
 
 message OutputScore {
   float score = 1;
@@ -12,10 +11,17 @@ message OutputScore {
 
 message ValidatorUserRequest {
   ai.wombo.tao.inputs.GenerationRequestInputs inputs = 1;
-  optional uint32 miner_uid = 2;
+  bool watermark = 2;
+  optional uint32 miner_uid = 3;
+}
+
+message ValidatorGenerationResponse {
+  bytes image = 1;
+  uint32 miner_uid = 2;
+  float generation_time = 3;
 }
 
 service ForwardingValidator {
-  rpc ScoreOutput(stream ai.wombo.tao.neuron.MinerGenerationResponse) returns (OutputScore);
-  rpc Generate(ValidatorUserRequest) returns (stream ai.wombo.tao.generation.ImageGenerationResponse);
+  rpc ScoreOutput(ai.wombo.tao.neuron.MinerGenerationResponse) returns (OutputScore);
+  rpc Generate(ValidatorUserRequest) returns (ValidatorGenerationResponse);
 }

@@ -3,17 +3,25 @@ syntax = "proto3";
 package ai.wombo.tao.miner;
 
 import "tensor/protos/inputs.proto";
-import "neuron-selector/protos/image_generation.proto";
-
-message OutputScore {
-  float score = 1;
-}
 
 message UserRequest {
   ai.wombo.tao.inputs.GenerationRequestInputs inputs = 1;
   optional uint32 miner_uid = 2;
+  optional uint32 validator_uid = 3;
+}
+
+message NeuronInfo {
+  string hotkey = 1;
+  uint32 uid = 2;
+  float processing_time = 3;
+}
+
+message GenerationResponse {
+  bytes image = 1;
+  NeuronInfo miner_info = 2;
+  NeuronInfo validator_info = 3;
 }
 
 service Client {
-  rpc Generate(UserRequest) returns (stream ai.wombo.tao.generation.ImageGenerationResponse);
+  rpc Generate(UserRequest) returns (GenerationResponse);
 }

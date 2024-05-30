@@ -11,6 +11,8 @@ license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]
 
+packages = [{ include = "gpu_pipeline" }]
+
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -42,3 +44,5 @@ opencv-python-headless = "4.8.0.76"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry-monorepo.deps]

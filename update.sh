@@ -1,5 +1,3 @@
-#!/bin/bash
-
 #
 # The MIT License (MIT)
 # Copyright © 2023 Yuma Rao
@@ -22,46 +20,20 @@
 #
 #
 
-set -e
+# Save the current HEAD hash
+current_head=$(git rev-parse HEAD)
 
-sudo apt-get install redis npm
-sudo npm install -g pm2
+git pull
 
-PORT=$1
-DIRECTORY=$(dirname $(realpath $0))
-GPU_COUNT=$((nvidia-smi -L || true) | wc -l)
+# Get the new HEAD hash
+new_head=$(git rev-parse HEAD)
 
-echo "
-http {
-  upstream validator {
-" > $DIRECTORY/nginx.conf
+# Check if the new HEAD is different from the current HEAD
+if [ "$current_head" = "$new_head" ]; then
+  echo "No update received"
+  exit
+fi
 
-for i in "$(seq $GPU_COUNT)"; do
-  echo "  server localhost:$(($PORT + $i))" >> $DIRECTORY/nginx.conf
-done
+echo "Got an update, restarting all WOMBO neurons"
 
-echo "
-  }
-
-  server {
-    listen $PORT
-
-    location / {
-      proxy_pass http://validator
-    }
-  }
-}
-" >> $DIRECTORY/nginx.conf
-
-pm2 start nginx --name wombo-validator-nginx -- -c $DIRECTORY/nginx.conf
-pm2 start $DIRECTORY/stress-test/run.sh --name wombo-stress-test-validator -- ${@:2}
-
-for i in "$(seq $GPU_COUNT)"; do
-  pm2 start \
-    $DIRECTORY/user-requests/run.sh \
-    --name wombo-user-requests-validator-$i -- \
-    --neuron.device "cuda:$(($i - 1))" \
-    --axon.port $(($PORT + $i)) \
-    --axon.external_port $PORT \
-    ${@:2}
-done
+pm2 restart wombo-*

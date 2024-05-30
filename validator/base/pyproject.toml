@@ -11,6 +11,8 @@ license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]
 
+packages = [{ include = "validator" }]
+
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -36,3 +38,5 @@ redis = { version = "5.0.4", extras = ["hiredis", "asyncio"] }
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry-monorepo.deps]
