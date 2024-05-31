@@ -27,7 +27,7 @@ from diffusers import StableDiffusionXLControlNetPipeline
 
 from gpu_pipeline.pipeline import parse_input_parameters
 from gpu_pipeline.tensor import save_tensor
-from image_generation_protocol.io_protocol import ImageGenerationInputs
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
 
 def image_stream(image: Image.Image) -> BytesIO:
@@ -41,7 +41,7 @@ def image_stream(image: Image.Image) -> BytesIO:
 async def generate(
     gpu_semaphore: Semaphore,
     pipeline: StableDiffusionXLControlNetPipeline,
-    inputs: ImageGenerationInputs,
+    inputs: GenerationRequestInputs,
 ) -> bytes:
     frames = []
 

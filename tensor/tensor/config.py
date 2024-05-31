@@ -17,11 +17,11 @@
 #  DEALINGS IN THE SOFTWARE.
 
 import argparse
+import logging
 import os
 from typing import Callable
 
 import bittensor as bt
-from loguru import logger
 
 
 def check_config(config: bt.config, name: str):
@@ -42,19 +42,8 @@ def check_config(config: bt.config, name: str):
     if not os.path.exists(config.neuron.full_path):
         os.makedirs(config.neuron.full_path, exist_ok=True)
 
-    if not config.neuron.dont_save_events:
-        # Add custom event logger for the events.
-        logger.level("EVENTS", no=38, icon="📝")
-        logger.add(
-            os.path.join(config.neuron.full_path, "events.log"),
-            rotation=config.neuron.events_retention_size,
-            serialize=True,
-            enqueue=True,
-            backtrace=False,
-            diagnose=False,
-            level="EVENTS",
-            format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
-        )
+    # Add custom event logger for the events.
+    logging.addLevelName(38, "EVENTS")
 
 
 def add_args(parser: argparse.ArgumentParser, default_device: str = "cuda"):
@@ -79,17 +68,10 @@ def add_args(parser: argparse.ArgumentParser, default_device: str = "cuda"):
     )
 
     parser.add_argument(
-        "--neuron.events_retention_size",
+        "--neuron.redis_url",
         type=str,
-        help="Events retention size.",
-        default="2 GB",
-    )
-
-    parser.add_argument(
-        "--neuron.dont_save_events",
-        action="store_true",
-        help="If set, we dont save events to a log file.",
-        default=False,
+        help="The URL to connect to Redis at",
+        default="redis://localhost:6379/",
     )
 
     parser.add_argument(

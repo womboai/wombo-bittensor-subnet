@@ -35,11 +35,7 @@ wombo-bittensor-subnet-neuron-selector = { path = "../../neuron-selector", devel
 pillow = "10.2.0"
 
 [build-system]
-requires = ["poetry-core", "setuptools", "grpcio-tools==1.64.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.build]
-script = "build.py"
-generate-setup-file = false
 
 [tool.poetry-monorepo.deps]

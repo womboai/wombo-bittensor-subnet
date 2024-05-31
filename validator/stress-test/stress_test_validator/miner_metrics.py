@@ -26,14 +26,17 @@ from typing import TypeAlias, Annotated
 import bittensor as bt
 import nltk
 import torch
-from aiohttp import ClientSession, TCPConnector
+from grpc.aio import insecure_channel
 from pydantic import BaseModel, Field
 
-from image_generation_protocol.cryptographic_sample import cryptographic_sample
-from image_generation_protocol.io_protocol import ImageGenerationInputs
+from neuron.redis import parse_redis_value
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
-from validator.miner_metrics import MinerMetricManager, parse_redis_value
-from validator.score_protocol import OutputScoreRequest
+from user_requests_validator.cryptographic_sample import cryptographic_sample
+from validator.miner_metrics import MinerMetricManager
+from validator.protos.scoring_pb2 import OutputScoreRequest, OutputScore
+from validator.protos.scoring_pb2_grpc import OutputScorerStub
+from validator.validator import generate_miner_response
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -54,7 +57,7 @@ The max percentage of failures acceptable before stopping
  and assuming we have reached the maximum viable RPS 
 """
 
-ValidatableResponse: TypeAlias = tuple[bytes, ImageGenerationInputs]
+ValidatableResponse: TypeAlias = tuple[bytes, GenerationRequestInputs]
 
 WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ" or tag == "NOUN"]
 REQUEST_INCENTIVE = 0.0001
@@ -69,14 +72,17 @@ def generate_random_prompt():
 
 async def score_output(
     validator,
-    inputs: ImageGenerationInputs,
+    inputs: GenerationRequestInputs,
     frames: bytes,
 ) -> float:
     axon = validator.metagraph.axons[validator.uid]
-    return await validator.dendrite(
-        axons=axon,
-        synapse=OutputScoreRequest(inputs=inputs, frames=frames),
-    )
+
+    async with insecure_channel(f"{axon.ip}:{axon.port}") as channel:
+        response: OutputScore = await OutputScorerStub(channel).ScoreOutput(
+            OutputScoreRequest(inputs=inputs, frames=frames)
+        )
+
+        return response.score
 
 
 class MinerMetrics(BaseModel):
@@ -203,9 +209,6 @@ class MinerStressTestMetricManager(MinerMetricManager):
 
 
 async def stress_test_miner(validator, uid: int):
-    if not validator.session:
-        validator.session = ClientSession()
-
     blacklist = validator.config.blacklist
     axon = validator.metagraph.axons[uid]
 
@@ -220,14 +223,11 @@ async def stress_test_miner(validator, uid: int):
 
     finished_responses: list[ValidatableResponse] = []
 
-    dendrite: bt.dendrite = validator.dendrite
-    session = await dendrite.session
-
     while True:
         bt.logging.info(f"\tTesting {count} requests")
 
         def get_inputs():
-            return ImageGenerationInputs(
+            return GenerationRequestInputs(
                 prompt=generate_random_prompt(),
                 negative_prompt="blurry, nude, (out of focus), JPEG artifacts",
                 width=1024,
@@ -241,43 +241,26 @@ async def stress_test_miner(validator, uid: int):
             for _ in range(count)
         ]
 
-        if count > session.connector.limit:
-            # Accessing private variables but can't find another way to do this
-            await session.close()
-            session._connector = TCPConnector(limit=count)
-
-        responses: list[ImageGenerationSynapse] = list(
+        responses = list(
             await asyncio.gather(
                 *[
-                    validator.dendrite(
-                        axons=axon,
-                        synapse=ImageGenerationSynapse(inputs=inputs),
-                        deserialize=False,
-                        timeout=CLIENT_REQUEST_TIMEOUT,
-                    )
+                    generate_miner_response(inputs, axon)
                     for inputs in request_inputs
                 ]
             )
         )
 
-        slowest_response = max(
-            responses,
-            key=lambda response: (
-                response.dendrite.process_time
-                if response.dendrite and response.dendrite.process_time
-                else -1
-            ),
-        )
+        slowest_response: tuple[bytes, float] = max(responses, key=lambda response: response[1] if response else -1)
 
         finished_responses.extend(
             [
-                (response, inputs)
+                (response[0], inputs)
                 for response, inputs in zip(responses, request_inputs)
-                if response.output
+                if response
             ]
         )
 
-        error_count = [bool(response.output) for response in responses].count(False)
+        error_count = [bool(response) for response in responses].count(False)
 
         if error_count == len(responses):
             if error_rate is not None:
@@ -291,7 +274,7 @@ async def stress_test_miner(validator, uid: int):
 
         error_rate = error_count / len(responses)
 
-        response_time = slowest_response.dendrite.process_time
+        response_time = slowest_response[1]
 
         if not response_time:
             break

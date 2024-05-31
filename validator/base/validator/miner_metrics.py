@@ -28,13 +28,6 @@ from substrateinterface import Keypair
 from neuron.select_endpoint import select_endpoint
 
 
-def parse_redis_value(value: str | None, t: type):
-    if value is None:
-        return t()
-
-    return t(value)
-
-
 class MinerMetricManager:
     def __init__(self, validator):
         self.validator = validator
@@ -49,14 +42,13 @@ class MinerMetricManager:
     async def send_metrics(
         self,
         session: ClientSession,
-        dendrite: bt.dendrite,
+        keypair: Keypair,
         endpoint: str,
         data: Any,
     ):
         if not self.validator.config.send_metrics:
             return
 
-        keypair: Keypair = dendrite.keypair
         hotkey = keypair.ss58_address
         signature = f"0x{keypair.sign(hotkey).hex()}"
 

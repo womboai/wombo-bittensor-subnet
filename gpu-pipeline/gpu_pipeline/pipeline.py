@@ -35,7 +35,7 @@ from diffusers import (
     ControlNetModel, DPMSolverMultistepScheduler,
 )
 
-from image_generation_protocol.io_protocol import ImageGenerationInputs
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
 TAO_PATTERN = r'\b(?:' + '|'.join(
     re.escape(keyword) for keyword in sorted(
@@ -69,16 +69,21 @@ def replace_keywords_with_tau_symbol(input_string):
     return replaced_string
 
 
-def parse_input_parameters(inputs: ImageGenerationInputs) -> tuple[StableDiffusionXLControlNetPipeline, dict[str, Any]]:
-    input_kwargs = inputs.dict()
-    seed = input_kwargs.pop("seed")
+def parse_input_parameters(inputs: GenerationRequestInputs) -> dict[str, Any]:
+    input_kwargs = {
+        "prompt": replace_keywords_with_tau_symbol(inputs.prompt),
+        "prompt_2": inputs.prompt_2,
+        "width": inputs.width,
+        "height": inputs.height,
+        "num_inference_steps": inputs.num_inference_steps,
+        "guidance_scale": inputs.guidance_scale,
+        "negative_prompt": inputs.negative_prompt,
+        "negative_prompt_2": inputs.negative_prompt_2,
+        "image": get_tao_img(inputs.width, inputs.height),
+    }
 
-    if seed:
-        input_kwargs["generator"] = torch.Generator().manual_seed(seed)
-
-    input_kwargs["prompt"] = replace_keywords_with_tau_symbol(inputs.prompt)
-
-    input_kwargs["image"] = get_tao_img(inputs.width, inputs.height)
+    if inputs.seed:
+        input_kwargs["generator"] = torch.Generator().manual_seed(inputs.seed)
 
     return input_kwargs
 

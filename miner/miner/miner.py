@@ -23,19 +23,19 @@ import traceback
 from asyncio import Semaphore
 
 import bittensor as bt
+import grpc
 from diffusers import StableDiffusionXLControlNetPipeline
 from grpc import StatusCode
 from grpc.aio import ServicerContext
-from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
 from gpu_pipeline.pipeline import get_pipeline
 from miner.image_generator import generate
-from miner.protos.miner_pb2_grpc import MinerServicer
-from neuron.api_handler import ApiHandler, request_error, RequestVerifier, HOTKEY_HEADER
+from neuron.api_handler import request_error, RequestVerifier, HOTKEY_HEADER, serve_ip
 from neuron.neuron import BaseNeuron, SPEC_VERSION
-from neuron.protos.neuron_pb2 import InfoRequest, InfoResponse, NeuronCapabilities
-from neuron.protos.neuron_pb2_grpc import NeuronServicer
+from neuron.protos.neuron_pb2_grpc import MinerServicer, add_MinerServicer_to_server
 from tensor.config import add_args, check_config
+from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoRequest, InfoResponse, NeuronCapabilities
+from tensor.protos.inputs_pb2_grpc import NeuronServicer
 
 
 class MinerInfoService(NeuronServicer):
@@ -51,7 +51,7 @@ class MinerGenerationService(MinerServicer):
         self,
         config: bt.config,
         metagraph: bt.metagraph,
-        verifier: RequestVerifier,
+        hotkey: str,
         gpu_semaphore: Semaphore,
         pipeline: StableDiffusionXLControlNetPipeline,
     ):
@@ -59,12 +59,12 @@ class MinerGenerationService(MinerServicer):
 
         self.config = config
         self.metagraph = metagraph
-        self.verifier = verifier
+        self.verifier = RequestVerifier(hotkey)
         self.gpu_semaphore = gpu_semaphore
         self.pipeline = pipeline
 
     async def Generate(self, request: GenerationRequestInputs, context: ServicerContext):
-        verification_failure = self.verifier.verify(context.invocation_metadata())
+        verification_failure = await self.verifier.verify(context.invocation_metadata())
 
         if verification_failure:
             return verification_failure
@@ -123,19 +123,27 @@ class Miner(BaseNeuron):
                 "You are allowing non-registered entities to send requests to your miner. This is a security risk."
             )
 
-        # The axon handles request processing, allowing validators to send this miner requests.
-        self.api = ApiHandler(self.wallet.hotkey.ss58_address)
-
-        # Attach determiners which functions are called when servicing a request.
-        bt.logging.info(f"Attaching forward function to miner axon.")
-
-        self.last_metagraph_sync = self.block
-
         self.gpu_semaphore, self.pipeline = get_pipeline(self.device)
 
         self.pipeline.vae = None
 
-        self.image_generator_session = None
+        # The axon handles request processing, allowing validators to send this miner requests.
+        self.server = grpc.aio.server()
+
+        add_MinerServicer_to_server(
+            MinerGenerationService(
+                self.config,
+                self.metagraph,
+                self.wallet.hotkey.ss58_address,
+                self.gpu_semaphore,
+                self.pipeline,
+            ),
+            self.server
+        )
+
+        self.server.add_insecure_port(f"{self.config.axon.ip}:{self.config.axon.port}")
+
+        self.last_metagraph_sync = self.block
 
     @classmethod
     def check_config(cls, config: bt.config):
@@ -173,12 +181,12 @@ class Miner(BaseNeuron):
         # Serve passes the axon information to the network + netuid we are hosting on.
         # This will auto-update if the axon port of external ip have changed.
         bt.logging.info(
-            f"Serving miner axon {self.api} on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
+            f"Serving miner on network: {self.config.subtensor.chain_endpoint} with netuid: {self.config.netuid}"
         )
-        self.api.serve(netuid=self.config.netuid, subtensor=self.subtensor)
+        serve_ip(self.config, self.subtensor, self.wallet)
 
-        # Start the miner's axon, making it active on the network.
-        self.api.start()
+        # Start the miner's gRPC server, making it active on the network.
+        await self.server.start()
 
         bt.logging.info(f"Miner starting at block: {self.block}")
 
@@ -196,7 +204,8 @@ class Miner(BaseNeuron):
 
         # If someone intentionally stops the miner, it'll safely terminate operations.
         except KeyboardInterrupt:
-            self.api.stop()
+            await self.server.wait_for_termination()
+            await self.server.stop()
             bt.logging.success("Miner killed by keyboard interrupt.")
             exit()
 

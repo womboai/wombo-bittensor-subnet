@@ -27,8 +27,11 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+
 [tool.poetry.dev-dependencies]
-grpcio = "1.64.0"
+types-protobuf = ">=5.26"
 
 [build-system]
 requires = ["poetry-core", "setuptools", "grpcio-tools==1.64.0"]

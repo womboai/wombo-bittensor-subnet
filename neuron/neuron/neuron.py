@@ -18,8 +18,10 @@
 from abc import ABC, abstractmethod
 
 import bittensor as bt
+from redis.asyncio import Redis
 
 from neuron.misc import ttl_get_block
+from neuron.redis import parse_redis_uri
 from neuron.select_endpoint import select_endpoint
 # Sync calls set weights and also resyncs the metagraph.
 from tensor.config import config
@@ -38,6 +40,7 @@ class BaseNeuron(ABC):
     wallet: bt.wallet
     metagraph: bt.metagraph
     config: bt.config
+    redis: Redis
 
     @classmethod
     @abstractmethod
@@ -58,7 +61,7 @@ class BaseNeuron(ABC):
         self.check_config(self.config)
 
         # Set up logging with the provided configuration and directory.
-        bt.logging(config=self.config, logging_dir=self.config.full_path)
+        bt.logging(config=self.config.logging, logging_dir=self.config.full_path)
 
         # If a gpu is required, set the device to cuda:N (e.g. cuda:0)
         self.device = self.config.neuron.device
@@ -95,6 +98,10 @@ class BaseNeuron(ABC):
             "https://dev-neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
             "https://neuron-identifier.api.wombo.ai/api/is_hotkey_allowed",
         )
+
+        bt.logging.info(f"Connecting to redis at {self.config.neuron.redis_url}")
+
+        self.redis = Redis(**parse_redis_uri(self.config.neuron.redis_url))
 
     def check_registered(self):
         # --- Check for registration.

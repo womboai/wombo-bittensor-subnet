@@ -18,22 +18,20 @@
 #
 #
 
-from asyncio import Semaphore
 from typing import List, Optional, Union, Tuple, Dict, Any, cast
 
 import torch
 from PIL import Image
-from diffusers.pipelines.controlnet.pipeline_controlnet_sd_xl import (
-    is_compiled_module, StableDiffusionXLControlNetPipeline, is_torch_version,
-    ControlNetModel, MultiControlNetModel,
-)
-from diffusers.utils.torch_utils import randn_tensor
-from image_generation_protocol.cryptographic_sample import cryptographic_sample
-from image_generation_protocol.io_protocol import ImageGenerationInputs
+from diffusers import StableDiffusionXLControlNetPipeline, ControlNetModel
+from diffusers.pipelines.controlnet import MultiControlNetModel
+from diffusers.utils import is_torch_version
+from diffusers.utils.torch_utils import randn_tensor, is_compiled_module
 from torch import Tensor
 
 from gpu_pipeline.pipeline import parse_input_parameters
 from gpu_pipeline.tensor import load_tensor
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
+from user_requests_validator.cryptographic_sample import cryptographic_sample
 
 
 # Credits to Huggingface for the SDXL pipeline code
@@ -501,10 +499,9 @@ def __validate_internal_cn(
 
 
 async def score_similarity(
-    gpu_semaphore: Semaphore,
     pipeline: StableDiffusionXLControlNetPipeline,
     frames: bytes,
-    inputs: ImageGenerationInputs,
+    inputs: GenerationRequestInputs,
 ) -> tuple[float, Tensor] | None:
     frames_tensor = load_tensor(frames)
 
@@ -526,17 +523,16 @@ async def score_similarity(
     input_kwargs = parse_input_parameters(inputs)
     frames_tensor = frames_tensor.to(pipeline.unet.device, pipeline.unet.dtype)
 
-    async with gpu_semaphore:
-        similarities = torch.tensor(
-            [
-                __validate_internal_cn(
-                    pipeline,
-                    i + 1,
-                    (frames_tensor[i], frames_tensor[i + 1]),
-                    **input_kwargs
-                )
-                for i in random_indices
-            ]
-        )
+    similarities = torch.tensor(
+        [
+            __validate_internal_cn(
+                pipeline,
+                i + 1,
+                (frames_tensor[i], frames_tensor[i + 1]),
+                **input_kwargs
+            )
+            for i in random_indices
+        ]
+    )
 
     return max(similarities.min().item() * 0.5 + 0.5, 0.0), frames_tensor[-1]

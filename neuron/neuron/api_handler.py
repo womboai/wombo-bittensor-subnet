@@ -21,6 +21,8 @@
 from asyncio import Lock
 from time import monotonic_ns
 
+import bittensor as bt
+from bittensor.utils.networking import get_external_ip
 from grpc import unary_unary_rpc_method_handler, StatusCode
 from grpc.aio import Metadata
 from substrateinterface import Keypair
@@ -36,7 +38,26 @@ def request_error(status_code: StatusCode, detail: str):
     return unary_unary_rpc_method_handler(lambda _, context: context.abort(status_code, detail))
 
 
+def serve_ip(config: bt.config, subtensor: bt.subtensor, wallet: bt.wallet):
+    """Serve axon to enable external connections."""
+
+    bt.logging.info("serving ip to chain...")
+
+    external_ip = config.axon.external_ip or get_external_ip()
+    external_port = config.axon.external_port or config.axon.port
+
+    subtensor.serve(
+        wallet=wallet,
+        ip=external_ip,
+        port=external_port,
+        protocol=4,
+        netuid=config.netuid,
+    )
+
+
 class RequestVerifier:
+    nonces: dict[str, set[int]]
+
     def __init__(self, hotkey: str):
         super().__init__()
 
@@ -44,7 +65,7 @@ class RequestVerifier:
         self.nonce_lock = Lock()
         self.hotkey = hotkey
 
-    def verify(self, invocation_metadata: Metadata):
+    async def verify(self, invocation_metadata: Metadata):
         hotkey = invocation_metadata[HOTKEY_HEADER]
         nonce = int(invocation_metadata[NONCE_HEADER])
         signature = invocation_metadata[SIGNATURE_HEADER]

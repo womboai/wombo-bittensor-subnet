@@ -14,3 +14,19 @@ message GenerationRequestInputs {
   optional uint32 seed = 9;
   optional float controlnet_conditioning_scale = 10;
 }
+
+message InfoRequest {}
+
+enum NeuronCapabilities {
+  FORWARDING_VALIDATOR = 0;
+  MINER = 1;
+}
+
+message InfoResponse {
+  uint32 spec_version = 1;
+  repeated NeuronCapabilities capabilities = 2;
+}
+
+service Neuron {
+  rpc Info(InfoRequest) returns (InfoResponse);
+}

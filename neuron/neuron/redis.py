@@ -18,34 +18,48 @@
 #
 #
 
-from inspect import Parameter, Signature, signature
-from typing import Annotated
-
-from fastapi import File
-from pydantic import BaseModel
-
-from image_generation_protocol.io_protocol import ImageGenerationInputs
+from urllib.parse import urlparse
 
 
-class OutputScoreRequest(BaseModel):
-    inputs: ImageGenerationInputs
-    frames: Annotated[bytes, File(media_type="application/x-octet-stream")]
+def parse_redis_value(value: str | None, t: type):
+    if value is None:
+        return t()
+
+    return t(value)
 
 
-def form_model(model_type: type[BaseModel]):
-    parameters = [
-        Parameter(
-            parameter.alias,
-            Parameter.POSITIONAL_ONLY,
-            default=Signature.empty if parameter.required else parameter.default,
-            annotation=parameter.outer_type_,
-        )
-        for name, parameter in model_type.__fields__.items()
-    ]
+def parse_redis_uri(uri: str):
+    url = urlparse(uri)
 
-    def as_form(**data):
-        return model_type(**data)
+    if url.scheme == "redis":
+        ssl = False
+    elif url.scheme == "rediss":
+        ssl = True
+    else:
+        raise RuntimeError(f"Invalid Redis scheme {url.scheme}")
 
-    as_form.__signature__ = signature(as_form).replace(parameters=parameters)
+    if url.path:
+        path_db = url.path[1:]
 
-    return as_form
+        if not path_db:
+            db = 0
+        else:
+            db = int(path_db)
+    else:
+        db = 0
+
+    if not url.username or url.password:
+        username = url.username
+        password = url.password
+    else:
+        username = None
+        password = url.username
+
+    return {
+        "host": url.hostname,
+        "port": url.port,
+        "db": db,
+        "password": password,
+        "ssl": ssl,
+        "username": username,
+    }

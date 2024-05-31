@@ -3,11 +3,6 @@ syntax = "proto3";
 package ai.wombo.tao.miner;
 
 import "tensor/protos/inputs.proto";
-import "neuron/protos/neuron.proto";
-
-message OutputScore {
-  float score = 1;
-}
 
 message ValidatorUserRequest {
   ai.wombo.tao.inputs.GenerationRequestInputs inputs = 1;
@@ -22,6 +17,5 @@ message ValidatorGenerationResponse {
 }
 
 service ForwardingValidator {
-  rpc ScoreOutput(ai.wombo.tao.neuron.MinerGenerationResponse) returns (OutputScore);
   rpc Generate(ValidatorUserRequest) returns (ValidatorGenerationResponse);
 }

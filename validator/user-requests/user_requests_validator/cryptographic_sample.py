@@ -66,13 +66,13 @@ def cryptographic_sample(population: Sequence[T], k: int):
             result[i] = pool[j]
             pool[j] = pool[n - i - 1]  # move non-selected item into vacancy
     else:
-        selected = set()
-        selected_add = selected.add
+        selected = set[T]()
+
         for i in range(k):
             j = __rand_below(n)
             while j in selected:
                 j = __rand_below(n)
-            selected_add(j)
+            selected.add(j)
             result[i] = population[j]
 
     return result

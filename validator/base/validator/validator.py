@@ -19,50 +19,30 @@
 #
 
 import copy
-import urllib.parse
+from time import perf_counter
 
 import bittensor as bt
-from redis.asyncio import Redis
-from tensor.protocol import NeuronInfo
+from bittensor import AxonInfo
+from grpc.aio import insecure_channel
 
 from neuron.neuron import BaseNeuron
+from neuron.protos.neuron_pb2 import MinerGenerationResponse
+from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron_selector.uids import sync_neuron_info
 from tensor.config import check_config
+from tensor.protos.inputs_pb2 import InfoResponse, GenerationRequestInputs
 
 
-def parse_redis_uri(uri: str):
-    url = urllib.parse.urlparse(uri)
+async def generate_miner_response(inputs: GenerationRequestInputs, axon: AxonInfo) -> tuple[bytes, float] | None:
+    # TODO Return None if error
+    async with insecure_channel(f"{axon.ip}:{axon.port}") as channel:
+        stub = MinerStub(channel)
+        generation_call = stub.Generate(inputs)
 
-    if url.scheme == "redis":
-        ssl = False
-    elif url.scheme == "rediss":
-        ssl = True
-    else:
-        raise RuntimeError(f"Invalid Redis scheme {url.scheme}")
+        start = perf_counter()
+        response: MinerGenerationResponse = await generation_call
 
-    if url.path:
-        db = url.path[1:]
-
-        if not db:
-            db = 0
-    else:
-        db = 0
-
-    if url.username and not url.password:
-        username = None
-        password = url.username
-    else:
-        username = url.username
-        password = url.password
-
-    return {
-        "host": url.hostname,
-        "port": int(url.port),
-        "db": db,
-        "password": password,
-        "ssl": ssl,
-        "username": username,
-    }
+        return response.frames, perf_counter() - start
 
 
 class BaseValidator(BaseNeuron):
@@ -74,9 +54,7 @@ class BaseValidator(BaseNeuron):
     This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
     """
 
-    neuron_info: dict[int, NeuronInfo]
-
-    redis: Redis
+    neuron_info: dict[int, InfoResponse]
 
     def __init__(self):
         super().__init__()
@@ -84,19 +62,11 @@ class BaseValidator(BaseNeuron):
         # Save a copy of the hotkeys to local memory.
         self.hotkeys = copy.deepcopy(self.metagraph.hotkeys)
 
-        # Dendrite lets us send messages to other nodes (axons) in the network.
-        self.dendrite = bt.dendrite(wallet=self.wallet)
-        bt.logging.info(f"Dendrite: {self.dendrite}")
-
         self.session = None
 
         self.neuron_info = {}
 
         self.last_neuron_info_block = self.block
-
-        bt.logging.info(f"Connecting to redis at {self.config.neuron.redis_url}")
-
-        self.redis = Redis(**parse_redis_uri(self.config.neuron.redis_url))
 
     @classmethod
     def check_config(cls, config: bt.config):
@@ -117,13 +87,6 @@ class BaseValidator(BaseNeuron):
             action="store_false",
             dest="send_metrics",
             help="Disables sending metrics.",
-        )
-
-        parser.add_argument(
-            "--neuron.redis_url",
-            type=str,
-            help="The URL to connect to Redis at",
-            default="redis://localhost:6379/",
         )
 
     async def sync_neuron_info(self):
