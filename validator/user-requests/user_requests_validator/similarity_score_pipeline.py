@@ -502,16 +502,16 @@ async def score_similarity(
     pipeline: StableDiffusionXLControlNetPipeline,
     frames: bytes,
     inputs: GenerationRequestInputs,
-) -> tuple[float, Tensor] | None:
+) -> tuple[float, Tensor]:
     frames_tensor = load_tensor(frames)
 
     if frames_tensor.shape[0] != inputs.num_inference_steps:
-        return None
+        return 0.0, frames_tensor[-1]
 
     num_random_indices = min(3, inputs.num_inference_steps)
 
     if frames_tensor.shape[0] - 1 < num_random_indices:
-        return None
+        return 0.0, frames_tensor[-1]
 
     random_indices = sorted(
         cryptographic_sample(

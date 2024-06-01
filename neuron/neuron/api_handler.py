@@ -22,6 +22,7 @@ from asyncio import Lock
 from time import monotonic_ns
 
 import bittensor as bt
+from aiohttp import ClientSession
 from bittensor.utils.networking import get_external_ip
 from grpc import unary_unary_rpc_method_handler, StatusCode
 from grpc.aio import Metadata
@@ -97,3 +98,24 @@ class RequestVerifier:
                 return request_error(StatusCode.UNAUTHENTICATED, "Nonce is too old")
 
             nonces.add(nonce)
+
+
+class WhitelistChecker:
+    is_whitelisted_endpoint: str
+    session: ClientSession | None
+
+    def __init__(self, is_whitelisted_endpoint: str):
+        self.is_whitelisted_endpoint = is_whitelisted_endpoint
+        self.session = None
+
+    async def check(self, hotkey: str):
+        if not self.session:
+            self.session = ClientSession()
+
+        async with self.session.get(
+            f"{self.is_whitelisted_endpoint}?hotkey={hotkey}",
+            headers={"Content-Type": "application/json"},
+        ) as response:
+            response.raise_for_status()
+
+            return await response.json()

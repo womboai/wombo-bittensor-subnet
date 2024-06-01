@@ -36,7 +36,7 @@ from user_requests_validator.cryptographic_sample import cryptographic_sample
 from validator.miner_metrics import MinerMetricManager
 from validator.protos.scoring_pb2 import OutputScoreRequest, OutputScore
 from validator.protos.scoring_pb2_grpc import OutputScorerStub
-from validator.validator import generate_miner_response
+from validator.validator import MinerResponse, get_miner_response, SuccessfulMinerResponse
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -57,7 +57,7 @@ The max percentage of failures acceptable before stopping
  and assuming we have reached the maximum viable RPS 
 """
 
-ValidatableResponse: TypeAlias = tuple[bytes, GenerationRequestInputs]
+ValidatableResponse: TypeAlias = tuple[SuccessfulMinerResponse, GenerationRequestInputs]
 
 WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ" or tag == "NOUN"]
 REQUEST_INCENTIVE = 0.0001
@@ -223,74 +223,80 @@ async def stress_test_miner(validator, uid: int):
 
     finished_responses: list[ValidatableResponse] = []
 
-    while True:
-        bt.logging.info(f"\tTesting {count} requests")
+    async with insecure_channel(f"{axon.ip}:{axon.port}") as channel:
+        while True:
+            bt.logging.info(f"\tTesting {count} requests")
 
-        def get_inputs():
-            return GenerationRequestInputs(
-                prompt=generate_random_prompt(),
-                negative_prompt="blurry, nude, (out of focus), JPEG artifacts",
-                width=1024,
-                height=1024,
-                num_inference_steps=30,
-                controlnet_conditioning_scale=0.5,
+            def get_inputs():
+                return GenerationRequestInputs(
+                    prompt=generate_random_prompt(),
+                    negative_prompt="blurry, nude, (out of focus), JPEG artifacts",
+                    width=1024,
+                    height=1024,
+                    num_inference_steps=30,
+                    controlnet_conditioning_scale=0.5,
+                )
+
+            request_inputs = [
+                get_inputs()
+                for _ in range(count)
+            ]
+
+            responses: list[MinerResponse] = list(
+                await asyncio.gather(
+                    *[
+                        get_miner_response(inputs, axon, channel)
+                        for inputs in request_inputs
+                    ]
+                )
             )
 
-        request_inputs = [
-            get_inputs()
-            for _ in range(count)
-        ]
+            slowest_response = max(
+                responses,
+                key=lambda response: response.process_time if response.output else -1
+            )
 
-        responses = list(
-            await asyncio.gather(
-                *[
-                    generate_miner_response(inputs, axon)
-                    for inputs in request_inputs
+            finished_responses.extend(
+                [
+                    (response, inputs)
+                    for response, inputs in zip(responses, request_inputs)
+                    if response.successful
                 ]
             )
-        )
 
-        slowest_response: tuple[bytes, float] = max(responses, key=lambda response: response[1] if response else -1)
+            error_count = [bool(response.successful) for response in responses].count(False)
 
-        finished_responses.extend(
-            [
-                (response[0], inputs)
-                for response, inputs in zip(responses, request_inputs)
-                if response
-            ]
-        )
+            if error_count == len(responses):
+                if error_rate is not None:
+                    # Failed this pass, but succeeded a previous pass. We use the last pass's result
+                    break
+                else:
+                    # Failed, mark as such
+                    await validator.metric_manager.failed_stress_test(uid)
 
-        error_count = [bool(response) for response in responses].count(False)
+                    return
 
-        if error_count == len(responses):
-            if error_rate is not None:
-                # Failed this pass, but succeeded a previous pass. We use the last pass's result
+            error_rate = error_count / len(responses)
+
+            response_time = slowest_response.process_time
+
+            if not response_time:
                 break
-            else:
-                # Failed, mark as such
-                await validator.metric_manager.failed_stress_test(uid)
 
-                return
+            bt.logging.info(
+                f"\t{count} requests generated in {response_time} with an error rate of {error_rate * 100}%"
+            )
 
-        error_rate = error_count / len(responses)
+            if error_rate >= MAX_ERROR_RATE or response_time > TIME_CONSTRAINT:
+                break
 
-        response_time = slowest_response[1]
-
-        if not response_time:
-            break
-
-        bt.logging.info(f"\t{count} requests generated in {response_time} with an error rate of {error_rate * 100}%")
-
-        if error_rate >= MAX_ERROR_RATE or response_time > TIME_CONSTRAINT:
-            break
-
-        count *= 2
+            count *= 2
 
     check_count = max(1, int(len(finished_responses) * 0.0625))
 
     scores = await asyncio.gather(
         *[
-            score_output(validator, inputs, response.output.frames)
+            score_output(validator, inputs, response.frames)
             for response, inputs in cryptographic_sample(finished_responses, check_count)
         ]
     )

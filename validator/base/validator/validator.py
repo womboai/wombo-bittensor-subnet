@@ -20,10 +20,13 @@
 
 import copy
 from time import perf_counter
+from typing import TypeAlias, Literal, cast, Annotated
 
 import bittensor as bt
 from bittensor import AxonInfo
-from grpc.aio import insecure_channel
+from grpc import RpcError, StatusCode
+from grpc.aio import insecure_channel, Channel, AioRpcError
+from pydantic import BaseModel, Field
 
 from neuron.neuron import BaseNeuron
 from neuron.protos.neuron_pb2 import MinerGenerationResponse
@@ -33,16 +36,53 @@ from tensor.config import check_config
 from tensor.protos.inputs_pb2 import InfoResponse, GenerationRequestInputs
 
 
-async def generate_miner_response(inputs: GenerationRequestInputs, axon: AxonInfo) -> tuple[bytes, float] | None:
-    # TODO Return None if error
-    async with insecure_channel(f"{axon.ip}:{axon.port}") as channel:
+class SuccessfulMinerResponse(BaseModel):
+    frames: bytes
+    process_time: float
+    axon: AxonInfo
+    successful: Literal[True] = True
+
+
+class FailedMinerResponse(BaseModel):
+    axon: AxonInfo
+    status: StatusCode
+    detail: str | None
+    successful: Literal[False] = False
+
+
+MinerResponse: TypeAlias = Annotated[
+    SuccessfulMinerResponse | FailedMinerResponse,
+    Field(discriminator="successful"),
+]
+
+
+async def get_miner_response(inputs: GenerationRequestInputs, axon: AxonInfo, channel: Channel) -> MinerResponse:
+    try:
         stub = MinerStub(channel)
-        generation_call = stub.Generate(inputs)
 
         start = perf_counter()
-        response: MinerGenerationResponse = await generation_call
+        response: MinerGenerationResponse = await stub.Generate(inputs)
 
-        return response.frames, perf_counter() - start
+        process_time = perf_counter() - start
+
+        return SuccessfulMinerResponse(
+            frames=response.frames,
+            process_time=process_time,
+            axon=axon,
+        )
+    except RpcError as error:
+        grpc_error = cast(AioRpcError, error)
+
+        return FailedMinerResponse(
+            axon=axon,
+            status=grpc_error.code(),
+            detail=grpc_error.details(),
+        )
+
+
+async def generate_miner_response(inputs: GenerationRequestInputs, axon: AxonInfo) -> MinerResponse:
+    async with insecure_channel(f"{axon.ip}:{axon.port}") as channel:
+        return await get_miner_response(inputs, axon, channel)
 
 
 class BaseValidator(BaseNeuron):

@@ -19,7 +19,7 @@
 import os
 from functools import reduce
 from math import ceil, log
-from typing import TypeVar, Sequence
+from typing import TypeVar, Sequence, cast
 
 T = TypeVar("T")
 
@@ -40,7 +40,7 @@ def __rand_below(n: int):
     return r
 
 
-def cryptographic_sample(population: Sequence[T], k: int):
+def cryptographic_sample(population: Sequence[T], k: int) -> list[T]:
     """
     Version of `random.sample` that uses os.urandom for random number generation
     """
@@ -50,7 +50,7 @@ def cryptographic_sample(population: Sequence[T], k: int):
     if not 0 <= k <= n:
         raise ValueError("Sample larger than population or is negative")
 
-    result = [None] * k
+    result: list[T | None] = [None] * k
     set_size = 21  # size of a small set minus size of an empty list
 
     if k > 5:
@@ -75,4 +75,4 @@ def cryptographic_sample(population: Sequence[T], k: int):
             selected.add(j)
             result[i] = population[j]
 
-    return result
+    return cast(list[T], result)

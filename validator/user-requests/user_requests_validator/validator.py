@@ -21,38 +21,55 @@
 import asyncio
 import os
 import traceback
-from asyncio import Lock, Future, Semaphore
+from asyncio import Semaphore, Lock
 from typing import AsyncGenerator
 
 import bittensor as bt
 import torch
-from aiohttp import ClientSession
-from bittensor import TerminalInfo, AxonInfo
+from bittensor import AxonInfo
 from diffusers import StableDiffusionXLControlNetPipeline
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from fastapi.security import HTTPBasic
 from grpc import StatusCode
 from grpc.aio import ServicerContext
+from redis.asyncio import Redis
 from torch import Tensor, tensor
-from transformers import CLIPImageProcessor, CLIPConfig
+from transformers import CLIPConfig
 
 from gpu_pipeline.pipeline import get_pipeline
 from gpu_pipeline.tensor import load_tensor
-from neuron.api_handler import HOTKEY_HEADER, request_error, RequestVerifier, serve_ip
+from neuron.api_handler import HOTKEY_HEADER, request_error, RequestVerifier, serve_ip, WhitelistChecker
 from neuron.neuron import SPEC_VERSION
+from neuron_selector.protos.forwarding_validator_pb2 import ValidatorUserRequest
+from neuron_selector.protos.forwarding_validator_pb2_grpc import ForwardingValidatorServicer
 from neuron_selector.uids import get_best_uids
 from tensor.config import add_args
 from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoRequest, InfoResponse, NeuronCapabilities
 from tensor.protos.inputs_pb2_grpc import NeuronServicer
 from user_requests_validator.miner_metrics import MinerUserRequestMetricManager
-from user_requests_validator.protos.forwarding_validator_pb2 import ValidatorUserRequest
-from user_requests_validator.protos.forwarding_validator_pb2_grpc import ForwardingValidatorServicer
 from user_requests_validator.similarity_score_pipeline import score_similarity
 from user_requests_validator.watermark import apply_watermark
 from validator.protos.scoring_pb2 import OutputScoreRequest
-from validator.validator import BaseValidator, generate_miner_response
+from validator.protos.scoring_pb2_grpc import OutputScorerServicer
+from validator.validator import BaseValidator, generate_miner_response, MinerResponse, FailedMinerResponse
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.25)))
+RANDOM_OUTPUT_SCORE_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.5)))
+
+
+async def get_forward_responses(
+    axons: list[AxonInfo],
+    inputs: GenerationRequestInputs,
+) -> AsyncGenerator[MinerResponse, None]:
+    responses = asyncio.as_completed(
+        [
+            generate_miner_response(inputs, axon)
+            for axon in axons
+        ]
+    )
+
+    for response in responses:
+        yield await response
 
 
 class MinerInfoService(NeuronServicer):
@@ -63,24 +80,19 @@ class MinerInfoService(NeuronServicer):
         )
 
 
-class MinerGenerationService(ForwardingValidatorServicer):
+class OutputScoreService(OutputScorerServicer):
     def __init__(
         self,
-        config: bt.config,
-        metagraph: bt.metagraph,
         hotkey: str,
         gpu_semaphore: Semaphore,
         pipeline: StableDiffusionXLControlNetPipeline,
     ):
         super().__init__()
 
-        self.config = config
-        self.metagraph = metagraph
         self.hotkey = hotkey
         self.verifier = RequestVerifier(hotkey)
         self.gpu_semaphore = gpu_semaphore
         self.pipeline = pipeline
-        self.session = None
 
     async def ScoreOutput(self, request: OutputScoreRequest, context: ServicerContext):
         verification_failure = await self.verifier.verify(context.invocation_metadata())
@@ -100,6 +112,36 @@ class MinerGenerationService(ForwardingValidatorServicer):
                 request.inputs,
             ))[0]
 
+
+class ValidatorGenerationService(ForwardingValidatorServicer):
+
+    def __init__(
+        self,
+        config: bt.config,
+        metagraph: bt.metagraph,
+        hotkey: str,
+        is_whitelisted_endpoint: str,
+        device: str,
+        metric_manager: MinerUserRequestMetricManager,
+        redis: Redis,
+        gpu_semaphore: Semaphore,
+        pipeline: StableDiffusionXLControlNetPipeline,
+    ):
+        super().__init__()
+
+        self.config = config
+        self.metagraph = metagraph
+        self.hotkey = hotkey
+        self.whitelist_checker = WhitelistChecker(is_whitelisted_endpoint)
+        self.verifier = RequestVerifier(hotkey)
+        self.gpu_semaphore = gpu_semaphore
+        self.pipeline = pipeline
+
+        self.safety_checker = StableDiffusionSafetyChecker(CLIPConfig()).to(device)
+
+        self.metric_manager = metric_manager
+        self.redis = redis
+
     async def Generate(self, request: ValidatorUserRequest, context: ServicerContext):
         verification_failure = await self.verifier.verify(context.invocation_metadata())
 
@@ -108,18 +150,7 @@ class MinerGenerationService(ForwardingValidatorServicer):
 
         hotkey = context.invocation_metadata()[HOTKEY_HEADER]
 
-        if not self.session:
-            self.session = ClientSession()
-
-        async with self.session.get(
-            f"{self.is_whitelisted_endpoint}?hotkey={hotkey}",
-            headers={"Content-Type": "application/json"},
-        ) as response:
-            response.raise_for_status()
-
-            is_hotkey_allowed = await response.json()
-
-        if not is_hotkey_allowed:
+        if not await self.whitelist_checker.check(hotkey):
             # Ignore requests from unrecognized entities.
             bt.logging.trace(
                 f"Blacklisting unrecognized hotkey {hotkey}"
@@ -144,16 +175,16 @@ class MinerGenerationService(ForwardingValidatorServicer):
         )
 
         if not len(miner_uids):
-            raise NoMinersAvailableException(hotkey)
+            raise NoMinersAvailableException(request, hotkey)
 
         axons = [self.metagraph.axons[uid] for uid in miner_uids]
 
-        response_generator = self.get_forward_responses(
+        response_generator = get_forward_responses(
             axons,
             request.inputs,
         )
 
-        bad_responses: list[tuple[bytes, float | None]] = []
+        bad_responses: list[tuple[MinerResponse, float | None]] = []
 
         axon_uids = {
             axon.hotkey: uid.item()
@@ -161,23 +192,23 @@ class MinerGenerationService(ForwardingValidatorServicer):
         }
 
         async for response in response_generator:
-            if not response:
-                bad_responses.append((hotkey, None))
+            if not response.successful:
+                bad_responses.append((response, None))
                 continue
 
             async with self.gpu_semaphore:
-                if os.urandom(1)[0] / 255 < 0.5:
+                if os.urandom(1)[0] / 255 < RANDOM_OUTPUT_SCORE_CHANCE:
                     similarity_score, latents = await score_similarity(
                         self.pipeline,
-                        response,
+                        response.frames,
                         request.inputs,
                     )
 
                     if similarity_score < 0.85:
-                        bad_responses.append((hotkey, similarity_score))
+                        bad_responses.append((response, similarity_score))
                         continue
                 else:
-                    latents = load_tensor(response)[-1].to(self.pipeline.unet.device, self.pipeline.unet.dtype)
+                    latents = load_tensor(response.frames)[-1].to(self.pipeline.unet.device, self.pipeline.unet.dtype)
 
                 # make sure the VAE is in float32 mode, as it overflows in float16
                 needs_upcasting = self.pipeline.vae.dtype == torch.float16 and self.pipeline.vae.config.force_upcast
@@ -186,17 +217,26 @@ class MinerGenerationService(ForwardingValidatorServicer):
                     self.pipeline.upcast_vae()
                     latents = latents.to(next(iter(self.pipeline.vae.post_quant_conv.parameters())).dtype)
 
-                image = self.pipeline.vae.decode(latents / self.pipeline.vae.config.scaling_factor, return_dict=False)[
-                    0]
+                image = self.pipeline.vae.decode(
+                    latents / self.pipeline.vae.config.scaling_factor,
+                    return_dict=False,
+                )[0]
 
                 # cast back to fp16 if needed
                 if needs_upcasting:
                     self.pipeline.vae.to(dtype=torch.float16)
 
-                if self.is_unsafe_image(image):
-                    raise BadImagesDetected(request.inputs, response.dendrite, response.axon)
+                safety_checker_input = self.pipeline.image_processor(image, return_tensors="pt")
 
-                image = self.image_processor.postprocess(image, output_type="pil")
+                _, has_nsfw_concept = self.safety_checker(
+                    images=[image],
+                    clip_input=safety_checker_input.pixel_values.to(torch.float16),
+                )
+
+                if has_nsfw_concept[0]:
+                    raise BadImagesDetected(request.inputs, response.axon)
+
+                image = self.pipeline.image_processor.postprocess(image, output_type="pil")
 
             if request.watermark:
                 image = apply_watermark(image)
@@ -216,7 +256,6 @@ class MinerGenerationService(ForwardingValidatorServicer):
             return image
 
         bad_axons = [(response.axon, similarity_score) for response, similarity_score in bad_responses]
-        bad_dendrites = [response.dendrite for response, _ in bad_responses]
         bad_miner_uids = [(axon_uids[axon.hotkey], similarity_score) for axon, similarity_score in bad_axons]
 
         # All failed to response, punish them
@@ -227,7 +266,86 @@ class MinerGenerationService(ForwardingValidatorServicer):
             ]
         )
 
-        raise GetMinerResponseException(request.inputs, bad_dendrites, [axon for axon, _ in bad_axons])
+        raise GetMinerResponseException(request.inputs, [response for response, _ in bad_responses])
+
+    async def validate_user_request_responses(
+        self,
+        inputs: GenerationRequestInputs,
+        finished_response: MinerResponse,
+        miner_uids: Tensor,
+        axons: list[AxonInfo],
+        bad_responses: list[tuple[FailedMinerResponse, float | None]],
+        response_generator: AsyncGenerator[MinerResponse, None],
+    ):
+        axon_uids = {
+            axon.hotkey: uid.item()
+            for uid, axon in zip(miner_uids, axons)
+        }
+
+        working_miner_uids: list[int] = [axon_uids[finished_response.axon.hotkey]]
+        finished_responses: list[MinerResponse] = [finished_response]
+
+        async for response in response_generator:
+            if not response.successful:
+                bad_responses.append((response, None))
+                continue
+
+            async with self.gpu_semaphore:
+                similarity_score, _ = await score_similarity(
+                    self.pipeline,
+                    response.frames,
+                    inputs,
+                )
+
+            if similarity_score < 0.85:
+                bad_responses.append((response, similarity_score))
+                continue
+
+            working_miner_uids.append(axon_uids[response.axon.hotkey])
+            finished_responses.append(response)
+
+        if len(bad_responses):
+            bad_miner_uids = [
+                (axon_uids[response.axon.hotkey], similarity_score)
+                for response, similarity_score in bad_responses
+            ]
+
+            # Some failed to response, punish them
+            await asyncio.gather(
+                *[
+                    self.metric_manager.failed_user_request(uid, similarity_score)
+                    for uid, similarity_score in bad_miner_uids
+                ]
+            )
+
+            await self.redis.sadd("stress_test_queue", *[uid for uid, _ in bad_miner_uids])
+
+            bt.logging.info(
+                query_failure_error_message(inputs, [response for response, _ in bad_responses])
+            )
+
+        async def rank_response(uid: int, frames: bytes):
+            async with self.gpu_semaphore:
+                score, _ = await score_similarity(
+                    self.pipeline,
+                    frames,
+                    inputs,
+                )
+
+            await self.metric_manager.successful_user_request(uid, score)
+
+        # Some failed to response, punish them
+        await asyncio.gather(
+            *[
+                rank_response(uid, response.frames)
+                for response, uid in zip(finished_responses, working_miner_uids)
+            ]
+        )
+
+        if (os.urandom(1)[0] / 255) >= RANDOM_VALIDATION_CHANCE:
+            return
+
+        await self.redis.sadd("stress_test_queue", *working_miner_uids)
 
 
 def validator_forward_info():
@@ -235,48 +353,42 @@ def validator_forward_info():
 
 
 class NoMinersAvailableException(Exception):
-    def __init__(self, dendrite: TerminalInfo | None):
-        super().__init__(f"No miners available for {dendrite} query")
-        self.dendrite = dendrite
+    def __init__(self, inputs: ValidatorUserRequest, hotkey: str):
+        super().__init__(f"No miners available for {hotkey}'s query, input: {inputs}")
+
+        self.inputs = inputs
+        self.hotkey = hotkey
 
 
 def query_failure_error_message(
     inputs: GenerationRequestInputs,
-    bad_axons: list[TerminalInfo],
-    bad_dendrites: list[TerminalInfo],
+    responses: list[FailedMinerResponse],
 ):
-    axon_text = "\n".join([repr(axon) for axon in bad_axons])
-    dendrite_text = "\n".join([repr(dendrite) for dendrite in bad_dendrites])
+    response_text = "\n\t".join([repr(response) for response in responses])
 
     return (
-        f"Failed to query some miners with {repr(inputs)} for:\n"
-        f"\taxons: {axon_text}\n"
-        f"\tdendrites: {dendrite_text}"
+        f"Failed to query some miners with {repr(inputs)}:\n"
+        f"\t{response_text}\n"
     )
 
 
 class GetMinerResponseException(Exception):
-    def __init__(self, inputs: GenerationRequestInputs, dendrites: list[TerminalInfo], axons: list[TerminalInfo]):
-        super().__init__(query_failure_error_message(inputs, axons, dendrites))
+    def __init__(self, inputs: GenerationRequestInputs, responses: list[FailedMinerResponse]):
+        super().__init__(query_failure_error_message(inputs, responses))
 
-        self.dendrites = dendrites
-        self.axons = axons
+        self.responses = responses
 
 
 class BadImagesDetected(Exception):
-    def __init__(self, inputs: GenerationRequestInputs, dendrite: TerminalInfo, axon: TerminalInfo):
-        super().__init__(f"Bad/NSFW images have been detected for inputs: {inputs} with dendrite: {dendrite}")
+    def __init__(self, inputs: GenerationRequestInputs, axon: AxonInfo):
+        super().__init__(f"Bad/NSFW images have been detected for inputs: {inputs} with axon: {axon}")
 
         self.inputs = inputs
-        self.dendrite = dendrite
         self.axon = axon
 
 
 class UserRequestValidator(BaseValidator):
     axon: bt.axon
-
-    pending_requests_lock: Lock
-    pending_request_futures: list[Future[None]]
 
     security = HTTPBasic()
 
@@ -297,13 +409,10 @@ class UserRequestValidator(BaseValidator):
         self.last_neuron_info_block = self.block
         self.last_metagraph_sync = self.block
 
-        self.pending_requests_lock = Lock()
-        self.pending_request_futures = []
-
         self.gpu_semaphore, self.pipeline = get_pipeline(self.device)
 
-        self.image_processor = self.pipeline.feature_extractor or CLIPImageProcessor()
-        self.safety_checker = StableDiffusionSafetyChecker(CLIPConfig()).to(self.device)
+        self.pending_requests_lock = Lock()
+        self.pending_request_futures = []
 
     async def run(self):
         """
@@ -397,113 +506,3 @@ class UserRequestValidator(BaseValidator):
         add_args(parser)
 
         super().add_args(parser)
-
-    async def get_forward_responses(
-        self,
-        axons: list[AxonInfo],
-        inputs: GenerationRequestInputs,
-    ) -> AsyncGenerator[bytes, None]:
-
-        responses = asyncio.as_completed(
-            [
-                generate_miner_response(inputs, axon)
-                for axon in axons
-            ]
-        )
-
-        for response in responses:
-            response = await response
-            yield response[0] if response else None
-
-    async def validate_user_request_responses(
-        self,
-        inputs: GenerationRequestInputs,
-        finished_response: tuple[bytes | None, str],
-        miner_uids: Tensor,
-        axons: list[AxonInfo],
-        bad_responses: list[tuple[tuple[bytes | None, str], float | None]],
-        response_generator: AsyncGenerator[tuple[bytes | None, str], None],
-    ):
-        axon_uids = {
-            axon.hotkey: uid.item()
-            for uid, axon in zip(miner_uids, axons)
-        }
-
-        working_miner_uids: list[int] = [axon_uids[finished_response[1]]]
-        finished_responses: list[tuple[bytes | None, str]] = [finished_response]
-
-        async for response in response_generator:
-            if not response[0]:
-                bad_responses.append((response, None))
-                continue
-
-            async with self.gpu_semaphore:
-                similarity_score, _ = await score_similarity(
-                    self.pipeline,
-                    response[0],
-                    inputs,
-                )
-
-            if similarity_score < 0.85:
-                bad_responses.append((response, similarity_score))
-                continue
-
-            working_miner_uids.append(axon_uids[response[1]])
-            finished_responses.append(response)
-
-        if len(bad_responses):
-            bad_miner_uids = [
-                (axon_uids[response[1]], similarity_score)
-                for response, similarity_score in bad_responses
-            ]
-
-            # Some failed to response, punish them
-            await asyncio.gather(
-                *[
-                    self.metric_manager.failed_user_request(uid, similarity_score)
-                    for uid, similarity_score in bad_miner_uids
-                ]
-            )
-
-            await self.redis.sadd("stress_test_queue", *[uid for uid, _ in bad_miner_uids])
-
-            bt.logging.info(
-                query_failure_error_message(
-                    inputs,
-                    [axon for axon, _ in bad_axons],
-                    bad_dendrites,
-                )
-            )
-
-        async def rank_response(uid: int, frames: bytes):
-            async with self.gpu_semaphore:
-                score, _ = await score_similarity(
-                    self.pipeline,
-                    frames,
-                    inputs,
-                )
-
-            await self.metric_manager.successful_user_request(uid, score)
-
-        # Some failed to response, punish them
-        await asyncio.gather(
-            *[
-                rank_response(uid, response)
-                for response, uid in zip(finished_responses, working_miner_uids)
-            ]
-        )
-
-        if (os.urandom(1)[0] / 255) >= RANDOM_VALIDATION_CHANCE:
-            return
-
-        await self.redis.sadd("stress_test_queue", *working_miner_uids)
-
-    def is_unsafe_image(self, image: Tensor) -> bool:
-        safety_checker_input = self.image_processor(image, return_tensors="pt")
-
-        _, has_nsfw_concept = self.safety_checker(
-            images=[image],
-            clip_input=safety_checker_input.pixel_values.to(torch.float16),
-        )
-
-        return has_nsfw_concept[0]
