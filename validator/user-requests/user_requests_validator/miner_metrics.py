@@ -35,7 +35,7 @@ class MinerUserRequestMetricManager(MinerMetricManager):
 
         return self.send_metrics(
             self.validator.session,
-            self.validator.dendrite,
+            self.validator.wallet.hotkey,
             "user_requests",
             {
                 "miner_uid": uid,

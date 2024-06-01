@@ -26,10 +26,11 @@ from aiohttp import ClientSession, BasicAuth
 from substrateinterface import Keypair
 
 from neuron.select_endpoint import select_endpoint
+from validator.validator import BaseValidator
 
 
 class MinerMetricManager:
-    def __init__(self, validator):
+    def __init__(self, validator: BaseValidator):
         self.validator = validator
 
         self.data_endpoint = select_endpoint(

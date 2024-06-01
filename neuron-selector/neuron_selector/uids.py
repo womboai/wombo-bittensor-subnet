@@ -1,16 +1,20 @@
+import asyncio
 import random
 from bisect import bisect
 from itertools import accumulate
 from typing import Any, Callable, Sequence, TypeVar
 
-import bittensor
+import bittensor as bt
 import torch
 from bittensor import AxonInfo
+from google.protobuf.empty_pb2 import Empty
+from grpc.aio import insecure_channel
 from torch import Tensor
 
-from tensor.protocol import NeuronInfo
+from tensor.protos.inputs_pb2 import InfoResponse
+from tensor.protos.inputs_pb2_grpc import NeuronStub
 
-DEFAULT_NEURON_INFO = NeuronInfo(capabilities=set())
+DEFAULT_NEURON_INFO = InfoResponse(spec_version=-1, capabilities=set())
 
 T = TypeVar("T")
 
@@ -41,30 +45,38 @@ def weighted_sample(weighted_items: Sequence[tuple[float, T]], k=1):
     return result
 
 
-async def sync_neuron_info(self, dendrite: bittensor.dendrite):
+async def get_neuron_info(axon: AxonInfo) -> InfoResponse:
+    async with insecure_channel(f"{axon.ip}:{axon.port}") as channel:
+        return await NeuronStub(channel).Info(Empty())
+
+
+async def sync_neuron_info(metagraph: bt.metagraph, wallet: bt.wallet):
     uids: list[int] = [
         uid
-        for uid in range(self.metagraph.n.item())
-        if self.metagraph.axons[uid].is_serving
+        for uid in range(metagraph.n.item())
+        if metagraph.axons[uid].is_serving
     ]
 
     uid_by_hotkey: dict[str, int] = {
-        self.metagraph.axons[uid].hotkey: uid
+        metagraph.axons[uid].hotkey: uid
         for uid in uids
-        if self.metagraph.axons[uid].hotkey != self.wallet.hotkey.ss58_address
+        if metagraph.axons[uid].hotkey != wallet.hotkey.ss58_address
     }
 
     axon_by_hotkey: dict[str, AxonInfo] = {
-        self.metagraph.axons[uid].hotkey: self.metagraph.axons[uid]
+        metagraph.axons[uid].hotkey: metagraph.axons[uid]
         for uid in uids
     }
 
     axons = [axon_by_hotkey[hotkey] for hotkey in uid_by_hotkey.keys()]
 
-    neuron_info: list[NeuronInfo] = await dendrite(
-        axons=axons,
-        synapse=NeuronInfo(),
-        deserialize=False,
+    neuron_info: list[InfoResponse] = list(
+        await asyncio.gather(
+            *[
+                get_neuron_info(axon)
+                for axon in axons
+            ]
+        )
     )
 
     info_by_hotkey = {
@@ -72,7 +84,7 @@ async def sync_neuron_info(self, dendrite: bittensor.dendrite):
         for info in neuron_info
     }
 
-    self.neuron_info = {
+    return {
         uid_by_hotkey[hotkey]: info
         for hotkey, info in info_by_hotkey.items()
     }
@@ -80,10 +92,10 @@ async def sync_neuron_info(self, dendrite: bittensor.dendrite):
 
 def get_best_uids(
     blacklist: Any,
-    metagraph: bittensor.metagraph,
-    neuron_info: dict[int, NeuronInfo],
+    metagraph: bt.metagraph,
+    neuron_info: dict[int, InfoResponse],
     rank: Tensor,
-    condition: Callable[[int, NeuronInfo], bool],
+    condition: Callable[[int, InfoResponse], bool],
     k: int = 3,
 ) -> Tensor:
     available_uids = [
@@ -104,7 +116,7 @@ def get_best_uids(
         for uid in available_uids
     }
 
-    bittensor.logging.info(f"Neuron info found: {infos}")
+    bt.logging.info(f"Neuron info found: {infos}")
 
     available_uids = [
         uid

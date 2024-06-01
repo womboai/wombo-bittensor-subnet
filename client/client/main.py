@@ -13,13 +13,13 @@ from bittensor import SubnetsAPI, TerminalInfo, AxonInfo
 from fastapi import FastAPI, Body, HTTPException, status, File, Form
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 from pydantic import BaseModel, Json
+from tensor.protocol import ImageGenerationClientRequest, MinerGenerationOutput
 from torch import tensor
 
-from image_generation_protocol.io_protocol import ImageGenerationInputs
 from neuron_selector.uids import get_best_uids, sync_neuron_info
 from tensor.config import config, add_args
-from tensor.protocol import ImageGenerationClientRequest, MinerGenerationOutput
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 
 Axon: TypeAlias = AxonInfo | bt.axon
@@ -152,7 +152,7 @@ class WomboSubnetAPI(SubnetsAPI):
                 try:
                     # Sync the metagraph.
                     self.metagraph.sync(subtensor=self.subtensor)
-                    await sync_neuron_info(self, self.dendrite)
+                    self.neuron_info = await sync_neuron_info(self.metagraph, self.wallet, self.dendrite)
                 except Exception as _:
                     bt.logging.error("Failed to sync client metagraph, ", traceback.format_exc())
 

@@ -21,17 +21,22 @@
 import asyncio
 import traceback
 from asyncio import Semaphore
+from hashlib import sha256
+from uuid import uuid4, UUID
 
 import bittensor as bt
 import grpc
 from diffusers import StableDiffusionXLControlNetPipeline
+from google.protobuf.empty_pb2 import Empty
 from grpc import StatusCode
 from grpc.aio import ServicerContext
+from redis.asyncio import Redis
 
 from gpu_pipeline.pipeline import get_pipeline
 from miner.image_generator import generate
 from neuron.api_handler import request_error, RequestVerifier, HOTKEY_HEADER, serve_ip
 from neuron.neuron import BaseNeuron, SPEC_VERSION
+from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerServicer, add_MinerServicer_to_server
 from tensor.config import add_args, check_config
 from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoRequest, InfoResponse, NeuronCapabilities
@@ -52,6 +57,7 @@ class MinerGenerationService(MinerServicer):
         config: bt.config,
         metagraph: bt.metagraph,
         hotkey: str,
+        redis: Redis,
         gpu_semaphore: Semaphore,
         pipeline: StableDiffusionXLControlNetPipeline,
     ):
@@ -60,10 +66,11 @@ class MinerGenerationService(MinerServicer):
         self.config = config
         self.metagraph = metagraph
         self.verifier = RequestVerifier(hotkey)
+        self.redis = redis
         self.gpu_semaphore = gpu_semaphore
         self.pipeline = pipeline
 
-    async def Generate(self, request: GenerationRequestInputs, context: ServicerContext):
+    async def Generate(self, request: GenerationRequestInputs, context: ServicerContext) -> MinerGenerationResponse:
         verification_failure = await self.verifier.verify(context.invocation_metadata())
 
         if verification_failure:
@@ -101,7 +108,25 @@ class MinerGenerationService(MinerServicer):
             f"Not Blacklisting recognized hotkey {hotkey}"
         )
 
-        await generate(self.gpu_semaphore, self.pipeline, request)
+        frames = await generate(self.gpu_semaphore, self.pipeline, request)
+
+        generation_id = uuid4()
+        frames_hash = sha256(frames).digest()
+
+        await self.redis.set(generation_id.hex, frames)
+
+        return MinerGenerationResponse(
+            id=MinerGenerationIdentifier(id=generation_id.bytes),
+            hash=frames_hash,
+        )
+
+    async def Download(self, request: MinerGenerationIdentifier, context) -> MinerGenerationResult:
+        return MinerGenerationResult(frames=await self.redis.getdel(UUID(bytes=request.id).hex))
+
+    async def Delete(self, request: MinerGenerationIdentifier, context):
+        await self.redis.delete(UUID(bytes=request.id).hex)
+
+        return Empty()
 
 
 class Miner(BaseNeuron):

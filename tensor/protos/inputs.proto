@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package ai.wombo.tao.inputs;
+import "empty.proto";
 
-message Empty {}
+package ai.wombo.tao.inputs;
 
 message GenerationRequestInputs {
   string prompt = 1;
@@ -28,5 +28,5 @@ message InfoResponse {
 }
 
 service Neuron {
-  rpc Info(Empty) returns (InfoResponse);
+  rpc Info(google.protobuf.Empty) returns (InfoResponse);
 }

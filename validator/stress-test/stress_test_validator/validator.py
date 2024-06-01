@@ -171,10 +171,7 @@ class StressTestValidator(BaseValidator):
 
             await self.redis.srem("stress_test_queue", miner_uid)
 
-        await stress_test_miner(
-            self,
-            miner_uid,
-        )
+        await stress_test_miner(self, miner_uid)
 
         if hotkey:
             # Checked miners(with base scores) are pushed to the end of the queue
@@ -335,7 +332,7 @@ class StressTestValidator(BaseValidator):
             return
 
         bt.logging.info(
-            "Metagraph updated, re-syncing hotkeys, dendrite pool and moving averages"
+            "Metagraph updated, re-syncing hotkeys and moving averages"
         )
 
         # Zero out all hotkeys that have been replaced.

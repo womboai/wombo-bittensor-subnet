@@ -20,23 +20,28 @@
 
 import asyncio
 import os
+from hashlib import sha256
 from random import shuffle
 from typing import TypeAlias, Annotated
 
 import bittensor as bt
 import nltk
 import torch
-from grpc.aio import insecure_channel
+from grpc.aio import Channel
 from pydantic import BaseModel, Field
 
+from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
+from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron.redis import parse_redis_value
+from stress_test_validator.validator import StressTestValidator
 from tensor.protos.inputs_pb2 import GenerationRequestInputs
+from tensor.response import Response, axon_channel, SuccessfulResponse
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 from user_requests_validator.cryptographic_sample import cryptographic_sample
 from validator.miner_metrics import MinerMetricManager
 from validator.protos.scoring_pb2 import OutputScoreRequest, OutputScore
 from validator.protos.scoring_pb2_grpc import OutputScorerStub
-from validator.validator import MinerResponse, get_miner_response, SuccessfulMinerResponse
+from validator.validator import get_miner_response
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -57,7 +62,7 @@ The max percentage of failures acceptable before stopping
  and assuming we have reached the maximum viable RPS 
 """
 
-ValidatableResponse: TypeAlias = tuple[SuccessfulMinerResponse, GenerationRequestInputs]
+ValidatableResponse: TypeAlias = tuple[SuccessfulResponse[MinerGenerationResponse], GenerationRequestInputs]
 
 WORDS = [word for word, tag in pos_tag(words.words(), tagset='universal') if tag == "ADJ" or tag == "NOUN"]
 REQUEST_INCENTIVE = 0.0001
@@ -70,19 +75,22 @@ def generate_random_prompt():
     return ", ".join(words)
 
 
+async def download_output(identifier: MinerGenerationIdentifier, channel: Channel) -> bytes:
+    download_result: MinerGenerationResult = await MinerStub(channel).Download(identifier)
+
+    return download_result.frames
+
+
 async def score_output(
-    validator,
     inputs: GenerationRequestInputs,
     frames: bytes,
+    channel: Channel,
 ) -> float:
-    axon = validator.metagraph.axons[validator.uid]
+    response: OutputScore = await OutputScorerStub(channel).ScoreOutput(
+        OutputScoreRequest(inputs=inputs, frames=frames)
+    )
 
-    async with insecure_channel(f"{axon.ip}:{axon.port}") as channel:
-        response: OutputScore = await OutputScorerStub(channel).ScoreOutput(
-            OutputScoreRequest(inputs=inputs, frames=frames)
-        )
-
-        return response.score
+    return response.score
 
 
 class MinerMetrics(BaseModel):
@@ -186,7 +194,7 @@ class MinerStressTestMetricManager(MinerMetricManager):
 
         await self.send_metrics(
             self.validator.session,
-            self.validator.dendrite,
+            self.validator.wallet.hotkey,
             "success",
             {
                 "miner_uid": uid,
@@ -202,13 +210,13 @@ class MinerStressTestMetricManager(MinerMetricManager):
 
         await self.send_metrics(
             self.validator.session,
-            self.validator.dendrite,
+            self.validator.wallet.hotkey,
             "failure",
             uid,
         )
 
 
-async def stress_test_miner(validator, uid: int):
+async def stress_test_miner(validator: StressTestValidator, uid: int):
     blacklist = validator.config.blacklist
     axon = validator.metagraph.axons[uid]
 
@@ -223,7 +231,7 @@ async def stress_test_miner(validator, uid: int):
 
     finished_responses: list[ValidatableResponse] = []
 
-    async with insecure_channel(f"{axon.ip}:{axon.port}") as channel:
+    async with axon_channel(axon) as channel:
         while True:
             bt.logging.info(f"\tTesting {count} requests")
 
@@ -242,7 +250,7 @@ async def stress_test_miner(validator, uid: int):
                 for _ in range(count)
             ]
 
-            responses: list[MinerResponse] = list(
+            responses: list[Response[MinerGenerationResponse]] = list(
                 await asyncio.gather(
                     *[
                         get_miner_response(inputs, axon, channel)
@@ -292,19 +300,44 @@ async def stress_test_miner(validator, uid: int):
 
             count *= 2
 
-    check_count = max(1, int(len(finished_responses) * 0.0625))
+        check_count = max(1, int(len(finished_responses) * 0.0625))
+        sample = cryptographic_sample(finished_responses, check_count)
 
-    scores = await asyncio.gather(
-        *[
-            score_output(validator, inputs, response.frames)
-            for response, inputs in cryptographic_sample(finished_responses, check_count)
-        ]
-    )
+        input_responses: list[tuple[GenerationRequestInputs, bytes]] = []
 
-    if len(scores):
-        score = torch.tensor(scores).mean().item()
-    else:
+        cheater = False
+
+        for response, inputs in sample:
+            # Download sequentially, instead of concurrently to avoid overloading the network
+            frames = await download_output(response.data.id, channel)
+            detected_hash = sha256(frames).digest()
+
+            if response.data.hash != detected_hash:
+                bt.logging.info(
+                    f"Miner {uid} has been detected as a cheater, "
+                    f"as they declared the hash as {response.data.hash} while it was {detected_hash}"
+                )
+
+                cheater = True
+                break
+
+            input_responses.append((inputs, frames))
+
+    if cheater:
         score = 0.0
+    else:
+        async with axon_channel(validator.metagraph.axons[validator.uid]) as channel:
+            scores = await asyncio.gather(
+                *[
+                    score_output(inputs, frames, channel)
+                    for inputs, frames in input_responses
+                ]
+            )
+
+        if len(scores):
+            score = torch.tensor(scores).mean().item()
+        else:
+            score = 0.0
 
     await validator.metric_manager.successful_stress_test(
         uid,

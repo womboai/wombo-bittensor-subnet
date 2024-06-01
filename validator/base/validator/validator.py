@@ -19,14 +19,11 @@
 #
 
 import copy
-from time import perf_counter
-from typing import TypeAlias, Literal, cast, Annotated
+from typing import TypeVar
 
 import bittensor as bt
 from bittensor import AxonInfo
-from grpc import RpcError, StatusCode
-from grpc.aio import insecure_channel, Channel, AioRpcError
-from pydantic import BaseModel, Field
+from grpc.aio import Channel
 
 from neuron.neuron import BaseNeuron
 from neuron.protos.neuron_pb2 import MinerGenerationResponse
@@ -34,66 +31,29 @@ from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron_selector.uids import sync_neuron_info
 from tensor.config import check_config
 from tensor.protos.inputs_pb2 import InfoResponse, GenerationRequestInputs
+from tensor.response import SuccessfulResponseInfo, call_request, Response, axon_channel
+
+T = TypeVar("T")
 
 
-class SuccessfulMinerResponse(BaseModel):
-    frames: bytes
-    process_time: float
-    axon: AxonInfo
-    successful: Literal[True] = True
+class SuccessfulGenerationResponseInfo(SuccessfulResponseInfo):
+    similarity_score: float
 
 
-class FailedMinerResponse(BaseModel):
-    axon: AxonInfo
-    status: StatusCode
-    detail: str | None
-    successful: Literal[False] = False
+async def get_miner_response(
+    inputs: GenerationRequestInputs,
+    axon: AxonInfo,
+    channel: Channel,
+) -> Response[MinerGenerationResponse]:
+    return await call_request(axon, inputs, MinerStub(channel).Generate)
 
 
-MinerResponse: TypeAlias = Annotated[
-    SuccessfulMinerResponse | FailedMinerResponse,
-    Field(discriminator="successful"),
-]
-
-
-async def get_miner_response(inputs: GenerationRequestInputs, axon: AxonInfo, channel: Channel) -> MinerResponse:
-    try:
-        stub = MinerStub(channel)
-
-        start = perf_counter()
-        response: MinerGenerationResponse = await stub.Generate(inputs)
-
-        process_time = perf_counter() - start
-
-        return SuccessfulMinerResponse(
-            frames=response.frames,
-            process_time=process_time,
-            axon=axon,
-        )
-    except RpcError as error:
-        grpc_error = cast(AioRpcError, error)
-
-        return FailedMinerResponse(
-            axon=axon,
-            status=grpc_error.code(),
-            detail=grpc_error.details(),
-        )
-
-
-async def generate_miner_response(inputs: GenerationRequestInputs, axon: AxonInfo) -> MinerResponse:
-    async with insecure_channel(f"{axon.ip}:{axon.port}") as channel:
+async def generate_miner_response(inputs: GenerationRequestInputs, axon: AxonInfo) -> Response[MinerGenerationResponse]:
+    async with axon_channel(axon) as channel:
         return await get_miner_response(inputs, axon, channel)
 
 
 class BaseValidator(BaseNeuron):
-    """
-    Your validator neuron class. You should use this class to define your validator's behavior. In particular, you should replace the forward function with your own logic.
-
-    This class inherits from the BaseValidatorNeuron class, which in turn inherits from BaseNeuron. The BaseNeuron class takes care of routine tasks such as setting up wallet, subtensor, metagraph, logging directory, parsing config, etc. You can override any of the methods in BaseNeuron if you need to customize the behavior.
-
-    This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
-    """
-
     neuron_info: dict[int, InfoResponse]
 
     def __init__(self):
@@ -130,6 +90,6 @@ class BaseValidator(BaseNeuron):
         )
 
     async def sync_neuron_info(self):
-        await sync_neuron_info(self, self.dendrite)
+        self.neuron_info = await sync_neuron_info(self.metagraph, self.wallet)
 
         self.last_neuron_info_block = self.block
