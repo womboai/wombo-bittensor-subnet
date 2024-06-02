@@ -20,7 +20,6 @@
 
 import asyncio
 import os
-from hashlib import sha256
 from random import shuffle
 from typing import TypeAlias, Annotated
 
@@ -41,7 +40,7 @@ from user_requests_validator.cryptographic_sample import cryptographic_sample
 from validator.miner_metrics import MinerMetricManager
 from validator.protos.scoring_pb2 import OutputScoreRequest, OutputScore
 from validator.protos.scoring_pb2_grpc import OutputScorerStub
-from validator.validator import get_miner_response
+from validator.validator import get_miner_response, is_cheater
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -332,15 +331,7 @@ async def stress_test_miner(validator: "StressTestValidator", uid: int):
                 failed_downloads += 1
                 continue
 
-            detected_hash = sha256(frames).digest()
-
-            if response.data.hash != detected_hash:
-                bt.logging.info(
-                    f"Miner {uid} has been detected as a cheater, "
-                    f"as they declared the hash as {response.data.hash} while it was {detected_hash}"
-                )
-
-                cheater = True
+            if is_cheater(uid, frames, response.data.hash):
                 break
 
             input_responses.append((inputs, frames))

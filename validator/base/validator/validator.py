@@ -19,6 +19,7 @@
 #
 
 import copy
+from hashlib import sha256
 from typing import TypeVar
 
 import bittensor as bt
@@ -38,13 +39,15 @@ T = TypeVar("T")
 
 class SuccessfulGenerationResponseInfo(SuccessfulResponseInfo):
     similarity_score: float
+    cheater: bool
 
     @classmethod
-    def from_similarity_score(cls, info: SuccessfulResponseInfo, similarity_score: float):
+    def of(cls, info: SuccessfulResponseInfo, similarity_score: float, cheater: bool):
         return cls(
             axon=info.axon,
             process_time=info.process_time,
             similarity_score=similarity_score,
+            cheater=cheater,
         )
 
 
@@ -54,6 +57,20 @@ async def get_miner_response(
     channel: Channel,
 ) -> Response[MinerGenerationResponse]:
     return await call_request(axon, inputs, MinerStub(channel).Generate)
+
+
+def is_cheater(uid: int, frames: bytes, expected_hash: bytes):
+    detected_hash = sha256(frames).digest()
+
+    if expected_hash != detected_hash:
+        bt.logging.info(
+            f"Miner {uid} has been detected as a cheater, "
+            f"as they declared the hash as {expected_hash} while it was {detected_hash}"
+        )
+
+        return True
+
+    return False
 
 
 class BaseValidator(BaseNeuron):

@@ -82,14 +82,17 @@ class MinerUserRequestMetricManager(MinerMetricManager):
 
             await self.send_user_request_metric(uid, successful, failed, similarity_score)
 
-    async def failed_user_request(self, uid: int, similarity_score: Optional[float]):
+    async def failed_user_request(self, uid: int, similarity_score: Optional[float] = None, cheater: bool = False):
         async with self.validator.redis.pipeline() as pipeline:
             successful = await pipeline.get(f"successful_user_requests_{uid}")
-            failed = await pipeline.incr(f"failed_user_requests_{uid}"),
+            failed = await pipeline.incr(f"failed_user_requests_{uid}")
 
             if similarity_score:
                 old_similarity_score = await pipeline.set(f"similarity_score_{uid}", similarity_score, get=True)
                 similarity_score = min(old_similarity_score, similarity_score)
+
+            if cheater:
+                await pipeline.set(f"cheater_{uid}", True)
 
             await pipeline.execute()
 

@@ -65,7 +65,7 @@ from validator.protos.scoring_pb2_grpc import OutputScorerServicer, add_OutputSc
 from validator.validator import (
     BaseValidator,
     get_miner_response,
-    SuccessfulGenerationResponseInfo,
+    SuccessfulGenerationResponseInfo, is_cheater,
 )
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.35)))
@@ -221,6 +221,17 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                     await call_request(response.axon, response.data.id, MinerStub(channel).Download)
                 )
 
+                if is_cheater(axon_uids[response.axon.hotkey], download_result.data.frames, response.data.hash):
+                    bad_responses.append(
+                        SuccessfulGenerationResponseInfo.of(
+                            response.info,
+                            0.0,
+                            True,
+                        )
+                    )
+
+                    continue
+
                 async with self.gpu_semaphore:
                     frames_tensor = load_tensor(download_result.data.frames)
 
@@ -233,9 +244,10 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
                         if similarity_score < 0.85:
                             bad_responses.append(
-                                SuccessfulGenerationResponseInfo.from_similarity_score(
+                                SuccessfulGenerationResponseInfo.of(
                                     response.info,
                                     similarity_score,
+                                    False,
                                 )
                             )
 
@@ -306,7 +318,13 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
             # All failed to response, punish them
             await asyncio.gather(
                 *[
-                    self.metric_manager.failed_user_request(axon_uids[info.axon.hotkey], info.similarity_score)
+                    self.metric_manager.failed_user_request(
+                        axon_uids[info.axon.hotkey],
+                        info.similarity_score,
+                        info.cheater,
+                    )
+                    if isinstance(info, SuccessfulGenerationResponseInfo)
+                    else self.metric_manager.failed_user_request(axon_uids[info.axon.hotkey])
                     for info in bad_responses
                 ]
             )
@@ -341,6 +359,17 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                     download_result = await call_request(response.axon, response.data.id, MinerStub(channel).Download)
 
                     if download_result.successful:
+                        if is_cheater(axon_uids[response.axon.hotkey], download_result.data.frames, response.data.hash):
+                            bad_responses.append(
+                                SuccessfulGenerationResponseInfo.of(
+                                    response.info,
+                                    0.0,
+                                    True,
+                                )
+                            )
+
+                            continue
+
                         async with self.gpu_semaphore:
                             similarity_score = await score_similarity(
                                 self.pipeline,
@@ -352,9 +381,10 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
                     if similarity_score < 0.85:
                         bad_responses.append(
-                            SuccessfulGenerationResponseInfo.from_similarity_score(
+                            SuccessfulGenerationResponseInfo.of(
                                 response.info,
                                 similarity_score,
+                                False,
                             )
                         )
                         continue
@@ -368,7 +398,13 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                 # Some failed to response, punish them
                 await asyncio.gather(
                     *[
-                        self.metric_manager.failed_user_request(axon_uids[info.axon.hotkey], info.similarity_score)
+                        self.metric_manager.failed_user_request(
+                            axon_uids[info.axon.hotkey],
+                            info.similarity_score,
+                            info.cheater,
+                        )
+                        if isinstance(info, SuccessfulGenerationResponseInfo)
+                        else self.metric_manager.failed_user_request(axon_uids[info.axon.hotkey])
                         for info in bad_responses
                     ]
                 )
