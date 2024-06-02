@@ -28,10 +28,10 @@ import nltk
 import torch
 from bittensor import AxonInfo
 from grpc.aio import Channel
-from pydantic import BaseModel, Field
-
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerStub
+from pydantic import BaseModel, Field
+
 from neuron.redis import parse_redis_value
 from tensor.protos.inputs_pb2 import GenerationRequestInputs
 from tensor.response import Response, axon_channel, SuccessfulResponse, call_request
@@ -314,10 +314,28 @@ async def stress_test_miner(validator: "StressTestValidator", uid: int):
 
         cheater = False
 
+        sampled_response_ids = [
+            response.data.id.id
+            for response, _ in sample
+        ]
+
+        remaining_response_ids = [
+            response.data.id
+            for response, _ in finished_responses
+            if response.data.id.id not in sampled_response_ids
+        ]
+
         downloads = await asyncio.gather(
             *[
                 download_output(axon, response.data.id, channel)
                 for response, _ in sample
+            ]
+        )
+
+        await asyncio.gather(
+            *[
+                call_request(axon, response_id, MinerStub(channel).Delete)
+                for response_id in remaining_response_ids
             ]
         )
 
