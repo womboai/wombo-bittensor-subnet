@@ -29,6 +29,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
+bittensor = "6.12.2"
 
 [tool.poetry.dev-dependencies]
 mypy = ">=1.10"
