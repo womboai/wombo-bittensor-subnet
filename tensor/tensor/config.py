@@ -23,6 +23,8 @@ from typing import Callable
 
 import bittensor as bt
 
+SPEC_VERSION = 20
+
 
 def check_config(config: bt.config, name: str):
     r"""Checks/validates the config namespace object."""

@@ -35,22 +35,21 @@ from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from fastapi.security import HTTPBasic
 from grpc import StatusCode
 from grpc.aio import ServicerContext, Channel
+from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationResult
+from neuron.protos.neuron_pb2_grpc import MinerStub
 from torch import Tensor, tensor
 from transformers import CLIPConfig
 
 from gpu_pipeline.pipeline import get_pipeline
 from gpu_pipeline.tensor import load_tensor
 from neuron.api_handler import HOTKEY_HEADER, request_error, RequestVerifier, serve_ip, WhitelistChecker
-from neuron.neuron import SPEC_VERSION
-from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationResult
-from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron_selector.protos.forwarding_validator_pb2 import ValidatorUserRequest, ValidatorGenerationResponse
 from neuron_selector.protos.forwarding_validator_pb2_grpc import (
     ForwardingValidatorServicer,
     add_ForwardingValidatorServicer_to_server,
 )
 from neuron_selector.uids import get_best_uids
-from tensor.config import add_args
+from tensor.config import add_args, SPEC_VERSION
 from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoRequest, InfoResponse, NeuronCapabilities
 from tensor.protos.inputs_pb2_grpc import NeuronServicer, add_NeuronServicer_to_server
 from tensor.response import (

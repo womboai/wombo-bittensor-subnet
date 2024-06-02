@@ -10,6 +10,7 @@ from bittensor import AxonInfo
 from google.protobuf.empty_pb2 import Empty
 from torch import Tensor
 
+from tensor.config import SPEC_VERSION
 from tensor.protos.inputs_pb2 import InfoResponse
 from tensor.protos.inputs_pb2_grpc import NeuronStub
 from tensor.response import create_request, Response
@@ -120,7 +121,7 @@ def get_best_uids(
     available_uids = [
         uid
         for uid in available_uids
-        if condition(uid, infos[uid])
+        if infos[uid].spec_version == SPEC_VERSION and condition(uid, infos[uid])
     ]
 
     if not len(available_uids):

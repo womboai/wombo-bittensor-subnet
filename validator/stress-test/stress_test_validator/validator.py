@@ -31,7 +31,7 @@ from torch import tensor
 
 from neuron_selector.uids import DEFAULT_NEURON_INFO, weighted_sample
 from stress_test_validator.miner_metrics import MinerStressTestMetricManager, stress_test_miner
-from tensor.config import add_args
+from tensor.config import add_args, SPEC_VERSION
 from tensor.protos.inputs_pb2 import NeuronCapabilities
 from validator.validator import BaseValidator
 
@@ -106,7 +106,7 @@ class StressTestValidator(BaseValidator):
         invalid_miner_list = [
             hotkey
             for hotkey, uid in miners.items()
-            if NeuronCapabilities.MINER not in infos[uid].capabilities
+            if infos[uid].spec_version != SPEC_VERSION or NeuronCapabilities.MINER not in infos[uid].capabilities
         ]
 
         for hotkey in invalid_miner_list:
