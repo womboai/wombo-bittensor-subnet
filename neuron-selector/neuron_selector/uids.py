@@ -8,11 +8,11 @@ import bittensor as bt
 import torch
 from bittensor import AxonInfo
 from google.protobuf.empty_pb2 import Empty
-from grpc.aio import insecure_channel
 from torch import Tensor
 
 from tensor.protos.inputs_pb2 import InfoResponse
 from tensor.protos.inputs_pb2_grpc import NeuronStub
+from tensor.response import create_request, Response
 
 DEFAULT_NEURON_INFO = InfoResponse(spec_version=-1, capabilities=set())
 
@@ -45,9 +45,8 @@ def weighted_sample(weighted_items: Sequence[tuple[float, T]], k=1):
     return result
 
 
-async def get_neuron_info(axon: AxonInfo) -> InfoResponse:
-    async with insecure_channel(f"{axon.ip}:{axon.port}") as channel:
-        return await NeuronStub(channel).Info(Empty())
+async def get_neuron_info(axon: AxonInfo) -> Response[InfoResponse]:
+    return await create_request(axon, Empty(), lambda channel: NeuronStub(channel).Info)
 
 
 async def sync_neuron_info(metagraph: bt.metagraph, wallet: bt.wallet):
@@ -70,7 +69,7 @@ async def sync_neuron_info(metagraph: bt.metagraph, wallet: bt.wallet):
 
     axons = [axon_by_hotkey[hotkey] for hotkey in uid_by_hotkey.keys()]
 
-    neuron_info: list[InfoResponse] = list(
+    neuron_info: list[Response[InfoResponse]] = list(
         await asyncio.gather(
             *[
                 get_neuron_info(axon)
@@ -85,7 +84,7 @@ async def sync_neuron_info(metagraph: bt.metagraph, wallet: bt.wallet):
     }
 
     return {
-        uid_by_hotkey[hotkey]: info
+        uid_by_hotkey[hotkey]: info.data
         for hotkey, info in info_by_hotkey.items()
     }
 

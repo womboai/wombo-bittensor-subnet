@@ -29,7 +29,6 @@ from diffusers.utils.torch_utils import randn_tensor, is_compiled_module
 from torch import Tensor
 
 from gpu_pipeline.pipeline import parse_input_parameters
-from gpu_pipeline.tensor import load_tensor
 from tensor.protos.inputs_pb2 import GenerationRequestInputs
 from user_requests_validator.cryptographic_sample import cryptographic_sample
 
@@ -500,18 +499,16 @@ def __validate_internal_cn(
 
 async def score_similarity(
     pipeline: StableDiffusionXLControlNetPipeline,
-    frames: bytes,
+    frames_tensor: Tensor,
     inputs: GenerationRequestInputs,
-) -> tuple[float, Tensor]:
-    frames_tensor = load_tensor(frames)
-
+) -> float:
     if frames_tensor.shape[0] != inputs.num_inference_steps:
-        return 0.0, frames_tensor[-1]
+        return 0.0
 
     num_random_indices = min(3, inputs.num_inference_steps)
 
     if frames_tensor.shape[0] - 1 < num_random_indices:
-        return 0.0, frames_tensor[-1]
+        return 0.0
 
     random_indices = sorted(
         cryptographic_sample(
@@ -535,4 +532,4 @@ async def score_similarity(
         ]
     )
 
-    return max(similarities.min().item() * 0.5 + 0.5, 0.0), frames_tensor[-1]
+    return max(similarities.min().item() * 0.5 + 0.5, 0.0)

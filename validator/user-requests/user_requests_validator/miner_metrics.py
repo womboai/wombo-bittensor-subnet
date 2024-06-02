@@ -51,6 +51,7 @@ class MinerUserRequestMetricManager(MinerMetricManager):
         keys = [
             *[f"generation_count_{uid}" for uid in range(count)],
             *[f"generation_time_{uid}" for uid in range(count)],
+            *[f"cheater_{uid}" for uid in range(count)],
         ]
 
         values = await self.validator.redis.mget(keys)
@@ -63,9 +64,11 @@ class MinerUserRequestMetricManager(MinerMetricManager):
             dtype=torch.int32,
         )
 
-        times = tensor([parse_redis_value(time, float) for time in values[count:]])
+        times = tensor([parse_redis_value(time, float) for time in values[count:count * 2]])
 
-        return counts / times
+        cheaters = [parse_redis_value(cheater, bool) for cheater in values[count * 2:]]
+
+        return tensor([0.0 if cheaters[index] else rps for index, rps in enumerate((counts / times).tolist())])
 
     async def successful_user_request(self, uid: int, similarity_score: float):
         async with self.validator.redis.pipeline() as pipeline:

@@ -21,6 +21,7 @@
 import asyncio
 import traceback
 from asyncio import Semaphore
+from datetime import timedelta
 from hashlib import sha256
 from uuid import uuid4, UUID
 
@@ -34,13 +35,14 @@ from redis.asyncio import Redis
 
 from gpu_pipeline.pipeline import get_pipeline
 from miner.image_generator import generate
-from neuron.api_handler import request_error, RequestVerifier, HOTKEY_HEADER, serve_ip
+from neuron.api_handler import request_error, RequestVerifier, HOTKEY_HEADER, serve_ip, WhitelistChecker
 from neuron.neuron import BaseNeuron, SPEC_VERSION
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerServicer, add_MinerServicer_to_server
 from tensor.config import add_args, check_config
 from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoRequest, InfoResponse, NeuronCapabilities
-from tensor.protos.inputs_pb2_grpc import NeuronServicer
+from tensor.protos.inputs_pb2_grpc import NeuronServicer, add_NeuronServicer_to_server
+from tensor.response import axon_address
 
 
 class MinerInfoService(NeuronServicer):
@@ -57,6 +59,7 @@ class MinerGenerationService(MinerServicer):
         config: bt.config,
         metagraph: bt.metagraph,
         hotkey: str,
+        is_whitelisted_endpoint: str,
         redis: Redis,
         gpu_semaphore: Semaphore,
         pipeline: StableDiffusionXLControlNetPipeline,
@@ -66,6 +69,7 @@ class MinerGenerationService(MinerServicer):
         self.config = config
         self.metagraph = metagraph
         self.verifier = RequestVerifier(hotkey)
+        self.whitelist_checker = WhitelistChecker(is_whitelisted_endpoint)
         self.redis = redis
         self.gpu_semaphore = gpu_semaphore
         self.pipeline = pipeline
@@ -78,29 +82,23 @@ class MinerGenerationService(MinerServicer):
 
         hotkey = context.invocation_metadata()[HOTKEY_HEADER]
 
-        if not self.config.blacklist.allow_non_registered:
+        if not self.config.blacklist.allow_non_registered and not await self.whitelist_checker.check(hotkey):
             if hotkey not in self.metagraph.hotkeys:
                 # Ignore requests from unrecognized entities.
-                bt.logging.trace(
-                    f"Blacklisting unrecognized hotkey {hotkey}"
-                )
+                bt.logging.trace(f"Blacklisting unrecognized hotkey {hotkey}")
 
                 return request_error(StatusCode.PERMISSION_DENIED, "Unrecognized hotkey")
 
             uid = self.metagraph.hotkeys.index(hotkey)
 
             if self.config.blacklist.force_validator_permit and not self.metagraph.validator_permit[uid]:
-                bt.logging.trace(
-                    f"No validator permit for hotkey {hotkey}"
-                )
+                bt.logging.trace(f"No validator permit for hotkey {hotkey}")
 
                 return request_error(StatusCode.PERMISSION_DENIED, "No validator permit")
 
             if self.metagraph.stake[uid] < self.config.blacklist.validator_minimum_tao:
                 # Ignore requests from unrecognized entities.
-                bt.logging.trace(
-                    f"Not enough stake for hotkey {hotkey}"
-                )
+                bt.logging.trace(f"Not enough stake for hotkey {hotkey}")
 
                 return request_error(StatusCode.PERMISSION_DENIED, "Insufficient stake")
 
@@ -113,7 +111,7 @@ class MinerGenerationService(MinerServicer):
         generation_id = uuid4()
         frames_hash = sha256(frames).digest()
 
-        await self.redis.set(generation_id.hex, frames)
+        await self.redis.set(generation_id.hex, frames, ex=timedelta(minutes=15))
 
         return MinerGenerationResponse(
             id=MinerGenerationIdentifier(id=generation_id.bytes),
@@ -130,8 +128,6 @@ class MinerGenerationService(MinerServicer):
 
 
 class Miner(BaseNeuron):
-    nonces: dict[str, set[int]]
-    nonce_lock: asyncio.Lock
     last_metagraph_sync: int
 
     def __init__(self):
@@ -152,7 +148,6 @@ class Miner(BaseNeuron):
 
         self.pipeline.vae = None
 
-        # The axon handles request processing, allowing validators to send this miner requests.
         self.server = grpc.aio.server()
 
         add_MinerServicer_to_server(
@@ -160,13 +155,17 @@ class Miner(BaseNeuron):
                 self.config,
                 self.metagraph,
                 self.wallet.hotkey.ss58_address,
+                self.is_whitelisted_endpoint,
+                self.redis,
                 self.gpu_semaphore,
                 self.pipeline,
             ),
             self.server
         )
 
-        self.server.add_insecure_port(f"{self.config.axon.ip}:{self.config.axon.port}")
+        add_NeuronServicer_to_server(MinerInfoService(), self.server)
+
+        self.server.add_insecure_port(axon_address(self.config.axon))
 
         self.last_metagraph_sync = self.block
 
@@ -229,8 +228,8 @@ class Miner(BaseNeuron):
 
         # If someone intentionally stops the miner, it'll safely terminate operations.
         except KeyboardInterrupt:
-            await self.server.wait_for_termination()
             await self.server.stop()
+            await self.server.wait_for_termination()
             bt.logging.success("Miner killed by keyboard interrupt.")
             exit()
 

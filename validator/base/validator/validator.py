@@ -31,13 +31,21 @@ from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron_selector.uids import sync_neuron_info
 from tensor.config import check_config
 from tensor.protos.inputs_pb2 import InfoResponse, GenerationRequestInputs
-from tensor.response import SuccessfulResponseInfo, call_request, Response, axon_channel
+from tensor.response import SuccessfulResponseInfo, call_request, Response
 
 T = TypeVar("T")
 
 
 class SuccessfulGenerationResponseInfo(SuccessfulResponseInfo):
     similarity_score: float
+
+    @classmethod
+    def from_similarity_score(cls, info: SuccessfulResponseInfo, similarity_score: float):
+        return cls(
+            axon=info.axon,
+            process_time=info.process_time,
+            similarity_score=similarity_score,
+        )
 
 
 async def get_miner_response(
@@ -46,11 +54,6 @@ async def get_miner_response(
     channel: Channel,
 ) -> Response[MinerGenerationResponse]:
     return await call_request(axon, inputs, MinerStub(channel).Generate)
-
-
-async def generate_miner_response(inputs: GenerationRequestInputs, axon: AxonInfo) -> Response[MinerGenerationResponse]:
-    async with axon_channel(axon) as channel:
-        return await get_miner_response(inputs, axon, channel)
 
 
 class BaseValidator(BaseNeuron):

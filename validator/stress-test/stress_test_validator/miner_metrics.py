@@ -27,15 +27,15 @@ from typing import TypeAlias, Annotated
 import bittensor as bt
 import nltk
 import torch
+from bittensor import AxonInfo
 from grpc.aio import Channel
 from pydantic import BaseModel, Field
 
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron.redis import parse_redis_value
-from stress_test_validator.validator import StressTestValidator
 from tensor.protos.inputs_pb2 import GenerationRequestInputs
-from tensor.response import Response, axon_channel, SuccessfulResponse
+from tensor.response import Response, axon_channel, SuccessfulResponse, call_request
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 from user_requests_validator.cryptographic_sample import cryptographic_sample
 from validator.miner_metrics import MinerMetricManager
@@ -75,10 +75,15 @@ def generate_random_prompt():
     return ", ".join(words)
 
 
-async def download_output(identifier: MinerGenerationIdentifier, channel: Channel) -> bytes:
-    download_result: MinerGenerationResult = await MinerStub(channel).Download(identifier)
+async def download_output(axon: AxonInfo, identifier: MinerGenerationIdentifier, channel: Channel) -> bytes | None:
+    download_result: Response[MinerGenerationResult] = (
+        await call_request(axon, identifier, MinerStub(channel).Download)
+    )
 
-    return download_result.frames
+    if not download_result.successful:
+        return None
+
+    return download_result.data.frames
 
 
 async def score_output(
@@ -153,13 +158,14 @@ class MinerStressTestMetricManager(MinerMetricManager):
             failed_user_requests=max(0, failed_user_requests),
         )
 
-    async def failed_miner(self, uid: int):
+    async def failed_miner(self, uid: int, cheater: bool):
         await self.validator.redis.mset(
             {
                 f"generation_count_{uid}": 0,
                 f"generation_time_{uid}": 0.0,
                 f"similarity_score_{uid}": 0.0,
                 f"error_rate_{uid}": 0.0,
+                f"cheater_{uid}": cheater,
             }
         )
 
@@ -172,6 +178,7 @@ class MinerStressTestMetricManager(MinerMetricManager):
                 f"error_rate_{uid}": 0.0,
                 f"successful_user_requests_{uid}": 0,
                 f"failed_user_requests_{uid}": 0,
+                f"cheater_{uid}": False,
             }
         )
 
@@ -205,23 +212,26 @@ class MinerStressTestMetricManager(MinerMetricManager):
             },
         )
 
-    async def failed_stress_test(self, uid: int):
-        await self.failed_miner(uid)
+    async def failed_stress_test(self, uid: int, cheater: bool):
+        await self.failed_miner(uid, cheater)
 
         await self.send_metrics(
             self.validator.session,
             self.validator.wallet.hotkey,
             "failure",
-            uid,
+            {
+                "miner_uid": uid,
+                "cheater": cheater,
+            },
         )
 
 
-async def stress_test_miner(validator: StressTestValidator, uid: int):
+async def stress_test_miner(validator: "StressTestValidator", uid: int):
     blacklist = validator.config.blacklist
     axon = validator.metagraph.axons[uid]
 
     if blacklist and (axon.hotkey in blacklist.hotkeys or axon.coldkey in blacklist.coldkeys):
-        validator.metric_manager.failed_miner(uid)
+        validator.metric_manager.failed_miner(uid, False)
         return
 
     bt.logging.info(f"Measuring RPS of UID {uid} with Axon {axon}")
@@ -280,7 +290,7 @@ async def stress_test_miner(validator: StressTestValidator, uid: int):
                     break
                 else:
                     # Failed, mark as such
-                    await validator.metric_manager.failed_stress_test(uid)
+                    await validator.metric_manager.failed_stress_test(uid, False)
 
                     return
 
@@ -303,13 +313,25 @@ async def stress_test_miner(validator: StressTestValidator, uid: int):
         check_count = max(1, int(len(finished_responses) * 0.0625))
         sample = cryptographic_sample(finished_responses, check_count)
 
-        input_responses: list[tuple[GenerationRequestInputs, bytes]] = []
-
         cheater = False
 
-        for response, inputs in sample:
-            # Download sequentially, instead of concurrently to avoid overloading the network
-            frames = await download_output(response.data.id, channel)
+        downloads = await asyncio.gather(
+            *[
+                download_output(axon, response.data.id, channel)
+                for response, _ in sample
+            ]
+        )
+
+        input_responses: list[tuple[GenerationRequestInputs, bytes]] = []
+        failed_downloads = 0
+
+        for index, frames in enumerate(downloads):
+            response, inputs = sample[index]
+
+            if not frames:
+                failed_downloads += 1
+                continue
+
             detected_hash = sha256(frames).digest()
 
             if response.data.hash != detected_hash:
@@ -324,6 +346,9 @@ async def stress_test_miner(validator: StressTestValidator, uid: int):
             input_responses.append((inputs, frames))
 
     if cheater:
+        await validator.metric_manager.failed_stress_test(uid, True)
+        return
+    elif not len(input_responses):
         score = 0.0
     else:
         async with axon_channel(validator.metagraph.axons[validator.uid]) as channel:
@@ -335,7 +360,7 @@ async def stress_test_miner(validator: StressTestValidator, uid: int):
             )
 
         if len(scores):
-            score = torch.tensor(scores).mean().item()
+            score = (torch.tensor(scores).mean().item() * len(scores)) / (len(scores) + failed_downloads)
         else:
             score = 0.0
 

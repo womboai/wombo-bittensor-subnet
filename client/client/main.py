@@ -20,6 +20,7 @@ from torch import tensor
 
 from neuron_selector.uids import get_best_uids, sync_neuron_info
 from tensor.config import config, add_args
+from tensor.protos.inputs_pb2 import NeuronCapabilities
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 
 Axon: TypeAlias = AxonInfo | bt.axon
@@ -183,7 +184,10 @@ class WomboSubnetAPI(SubnetsAPI):
                 self.metagraph,
                 self.neuron_info,
                 self.metagraph.total_stake,
-                lambda uid, info: info.is_validator is True and self.metagraph.validator_permit[uid].item()
+                lambda uid, info: (
+                    NeuronCapabilities.FORWARDING_VALIDATOR in info.capbilities and
+                    self.metagraph.validator_permit[uid].item()
+                )
             )
             if input_parameters.validator_uid is None
             else tensor([input_parameters.validator_uid])

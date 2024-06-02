@@ -19,7 +19,7 @@
 #
 from asyncio import CancelledError
 from time import perf_counter
-from typing import Literal, TypeVar, Generic, TypeAlias, Annotated, Callable, cast, Awaitable
+from typing import Literal, TypeVar, Generic, TypeAlias, Annotated, Callable, cast
 
 from bittensor import AxonInfo
 from google.protobuf.message import Message
@@ -29,6 +29,23 @@ from pydantic import BaseModel, Field
 
 ResponseT = TypeVar("ResponseT")
 MessageT = TypeVar("MessageT", bound=Message)
+
+
+class Channels:
+    channels: list[Channel]
+
+    def __init__(self, channels: list[Channel]):
+        self.channels = channels
+
+    def __aenter__(self) -> list[Channel]:
+        for channel in self.channels:
+            channel.__aenter__()
+
+        return self.channels
+
+    def __aexit__(self, exc_type, exc_val, exc_tb):
+        for channel in self.channels:
+            channel.__aexit__(exc_type, exc_val, exc_tb)
 
 
 class SuccessfulResponseInfo(BaseModel):
@@ -62,20 +79,24 @@ class FailedResponse(FailedResponseInfo):
 ResponseInfo = SuccessfulResponseInfo | FailedResponseInfo
 
 Response: TypeAlias = Annotated[
-    SuccessfulResponse | FailedResponse,
+    SuccessfulResponse[ResponseT] | FailedResponse,
     Field(discriminator="successful"),
 ]
 
 
+def axon_address(axon: AxonInfo):
+    return f"{axon.ip}:{axon.port}"
+
+
 def axon_channel(axon: AxonInfo):
-    return insecure_channel(f"{axon.ip}:{axon.port}")
+    return insecure_channel(axon_address(axon))
 
 
 async def create_request(
     axon: AxonInfo,
     request: MessageT,
-    invoker: Callable[[Channel], Callable[[MessageT], Awaitable[ResponseT]]],
-) -> Response:
+    invoker: Callable[[Channel], Callable[[MessageT], UnaryUnaryCall[MessageT, ResponseT]]],
+) -> Response[ResponseT]:
     async with axon_channel(axon) as channel:
         return await call_request(axon, request, invoker(channel))
 
@@ -84,7 +105,7 @@ async def call_request(
     axon: AxonInfo,
     request: MessageT,
     invoker: Callable[[MessageT], UnaryUnaryCall[MessageT, ResponseT]],
-) -> Response:
+) -> Response[ResponseT]:
     try:
         start = perf_counter()
 
