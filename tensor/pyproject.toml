@@ -30,6 +30,8 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
 bittensor = "6.12.2"
+protobuf = ">=5.27"
+grpcio = ">=1.64"
 
 [tool.poetry.dev-dependencies]
 mypy = ">=1.10"
