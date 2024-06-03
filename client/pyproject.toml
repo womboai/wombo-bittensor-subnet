@@ -37,6 +37,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.build]
 script = "build.py"
-generate-setup-file = false
+generate-setup-file = true
 
 [tool.poetry-monorepo.deps]

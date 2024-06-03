@@ -17,6 +17,7 @@
 #  DEALINGS IN THE SOFTWARE.
 #
 #
+
 from itertools import chain
 from os import listdir, PathLike
 from os.path import isfile, join
@@ -28,8 +29,8 @@ import grpc_tools.protoc
 def list_all_files(directory: PathLike | str):
     return chain.from_iterable(
         [
-            [Path(join(directory, file)).absolute()]
-            if isfile(file)
+            [str(Path(join(directory, file)).absolute())]
+            if isfile(join(directory, file))
             else list_all_files(join(directory, file))
             for file in listdir(directory)
         ]
@@ -41,16 +42,19 @@ def build(_setup_kwargs):
     root_folder = project_folder.parent.absolute()
     protos_directory = project_folder / "protos"
 
+    google_std = Path(grpc_tools.__file__).parent / "_proto"
+
     args = [
-        "--proto_path",
-        root_folder,
+        grpc_tools.protoc.__file__,
+
+        "--proto_path", str(root_folder),
+        f"-I{google_std}",
+
+        "--python_out", str(project_folder),
+        "--pyi_out", str(project_folder),
+        "--grpc_python_out", str(project_folder),
+
         *list_all_files(protos_directory),
-        "--python_out",
-        project_folder,
-        "--pyi_out",
-        project_folder,
-        "--grpc_python_out",
-        project_folder,
     ]
 
     exit_code = grpc_tools.protoc.main(args)

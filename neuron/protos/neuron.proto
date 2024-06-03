@@ -3,7 +3,7 @@ syntax = "proto3";
 package ai.wombo.tao.neuron;
 
 import "tensor/protos/inputs.proto";
-import "empty.proto";
+import "google/protobuf/empty.proto";
 
 message MinerGenerationIdentifier {
   bytes id = 1;

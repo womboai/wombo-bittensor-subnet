@@ -29,9 +29,10 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
-bittensor = "6.12.2"
+bittensor = "7.0.1"
 protobuf = ">=5.27"
 grpcio = ">=1.64"
+grpcio-tools = "1.64.0"
 
 [tool.poetry.dev-dependencies]
 mypy = ">=1.10"
@@ -43,6 +44,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.build]
 script = "build.py"
-generate-setup-file = false
+generate-setup-file = true
 
 [tool.poetry-monorepo.deps]
