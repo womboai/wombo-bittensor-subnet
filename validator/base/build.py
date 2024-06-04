@@ -43,7 +43,7 @@ def list_all_files(directory: PathLike | str):
 class Build(build_py):
     def run(self):
         project_folder = Path(__file__).parent.absolute()
-        root_folder = project_folder.parent.absolute()
+        root_folder = project_folder.parent.parent.absolute()
         protos_directory = project_folder / "protos"
         build_directory = project_folder / "build" / "lib"
 
