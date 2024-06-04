@@ -32,11 +32,11 @@ from heapdict import heapdict
 from numpy import ndarray
 from tensor.protos.inputs_pb2 import NeuronCapabilities
 
-from stress_test_validator.miner_metrics import MinerStressTestMetricManager, stress_test_miner
 from tensor.config import add_args, SPEC_VERSION
 from tensor.neuron_info import DEFAULT_NEURON_INFO
 from tensor.sample import weighted_sample
 from validator.validator import BaseValidator
+from .miner_metrics import MinerStressTestMetricManager, stress_test_miner
 
 
 class StressTestValidator(BaseValidator):
