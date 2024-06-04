@@ -29,7 +29,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
-wombo-bittensor-subnet-validator = { path = "../base", develop = true }
+wombo-bittensor-subnet-validator = { path = "../base" }
 nltk = "3.8.1"
 heapdict = "1.0.1"
 

@@ -380,14 +380,14 @@ class StressTestValidator(BaseValidator):
                 "hotkeys": self.hotkeys,
                 "miner_heap": self.miner_heap,
             },
-            self.config.neuron.full_path + "/state.pt",
+            self.config.neuron.full_path + "/state.bin",
         )
 
     def load_state(self):
         """Loads the state of the validator from a file."""
         bt.logging.info("Loading validator state.")
 
-        path = self.config.neuron.full_path + "/state.pt"
+        path = self.config.neuron.full_path + "/state.bin"
 
         if not os.path.isfile(path):
             return

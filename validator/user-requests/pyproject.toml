@@ -29,9 +29,9 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
-wombo-bittensor-subnet-validator = { path = "../base", develop = true }
+wombo-bittensor-subnet-validator = { path = "../base" }
 wombo-bittensor-subnet-gpu-pipeline = { path = "../../gpu-pipeline", develop = true }
-wombo-bittensor-subnet-neuron-selector = { path = "../../neuron-selector", develop = true }
+wombo-bittensor-subnet-neuron-selector = { path = "../../neuron-selector" }
 pillow = "10.2.0"
 
 [build-system]
