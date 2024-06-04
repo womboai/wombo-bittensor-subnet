@@ -22,8 +22,10 @@ from itertools import chain
 from os import listdir, PathLike
 from os.path import isfile, join
 from pathlib import Path
+from typing import Any
 
 import grpc_tools.protoc
+from setuptools.command.build_py import build_py
 
 
 def list_all_files(directory: PathLike | str):
@@ -37,27 +39,43 @@ def list_all_files(directory: PathLike | str):
     )
 
 
-def build(_setup_kwargs):
-    project_folder = Path(__file__).parent.absolute()
-    root_folder = project_folder.parent.absolute()
-    protos_directory = project_folder / "protos"
+class Build(build_py):
+    def run(self):
+        project_folder = Path(__file__).parent.absolute()
+        root_folder = project_folder.parent.absolute()
+        protos_directory = project_folder / "protos"
+        build_directory = project_folder / "build" / "lib"
 
-    google_std = Path(grpc_tools.__file__).parent / "_proto"
+        build_directory.mkdir(parents=True, exist_ok=True)
 
-    args = [
-        grpc_tools.protoc.__file__,
+        google_std = Path(grpc_tools.__file__).parent / "_proto"
 
-        "--proto_path", str(root_folder),
-        f"-I{google_std}",
+        args = [
+            grpc_tools.protoc.__file__,
 
-        "--python_out", str(project_folder),
-        "--pyi_out", str(project_folder),
-        "--grpc_python_out", str(project_folder),
+            "--proto_path", str(root_folder),
+            f"-I{google_std}",
 
-        *list_all_files(protos_directory),
-    ]
+            "--python_out", str(build_directory),
+            "--pyi_out", str(build_directory),
+            "--grpc_python_out", str(build_directory),
 
-    exit_code = grpc_tools.protoc.main(args)
+            *list_all_files(protos_directory),
+        ]
 
-    if exit_code:
-        raise RuntimeError(f"grpc_tools.protoc returned exit code {exit_code}")
+        exit_code = grpc_tools.protoc.main(args)
+
+        if exit_code:
+            raise RuntimeError(f"grpc_tools.protoc returned exit code {exit_code}")
+
+        super().run()
+
+
+def build(setup_kwargs: dict[str, Any]):
+    setup_kwargs.update(
+        {
+            "cmdclass": {
+                "build_py": Build
+            }
+        }
+    )

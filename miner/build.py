@@ -17,43 +17,65 @@
 #  DEALINGS IN THE SOFTWARE.
 #
 #
+
 from itertools import chain
 from os import listdir, PathLike
 from os.path import isfile, join
 from pathlib import Path
+from typing import Any
 
 import grpc_tools.protoc
+from setuptools.command.build_py import build_py
 
 
 def list_all_files(directory: PathLike | str):
     return chain.from_iterable(
         [
-            [Path(join(directory, file)).absolute()]
-            if isfile(file)
+            [str(Path(join(directory, file)).absolute())]
+            if isfile(join(directory, file))
             else list_all_files(join(directory, file))
             for file in listdir(directory)
         ]
     )
 
 
-def build(_setup_kwargs):
-    project_folder = Path(__file__).parent.absolute()
-    root_folder = project_folder.parent.absolute()
-    protos_directory = project_folder / "protos"
+class Build(build_py):
+    def run(self):
+        project_folder = Path(__file__).parent.absolute()
+        root_folder = project_folder.parent.absolute()
+        protos_directory = project_folder / "protos"
+        build_directory = project_folder / "build" / "lib"
 
-    args = [
-        "--proto_path",
-        root_folder,
-        *list_all_files(protos_directory),
-        "--python_out",
-        project_folder,
-        "--pyi_out",
-        project_folder,
-        "--grpc_python_out",
-        project_folder,
-    ]
+        build_directory.mkdir(parents=True, exist_ok=True)
 
-    exit_code = grpc_tools.protoc.main(args)
+        google_std = Path(grpc_tools.__file__).parent / "_proto"
 
-    if exit_code:
-        raise RuntimeError(f"grpc_tools.protoc returned exit code {exit_code}")
+        args = [
+            grpc_tools.protoc.__file__,
+
+            "--proto_path", str(root_folder),
+            f"-I{google_std}",
+
+            "--python_out", str(build_directory),
+            "--pyi_out", str(build_directory),
+            "--grpc_python_out", str(build_directory),
+
+            *list_all_files(protos_directory),
+        ]
+
+        exit_code = grpc_tools.protoc.main(args)
+
+        if exit_code:
+            raise RuntimeError(f"grpc_tools.protoc returned exit code {exit_code}")
+
+        super().run()
+
+
+def build(setup_kwargs: dict[str, Any]):
+    setup_kwargs.update(
+        {
+            "cmdclass": {
+                "build_py": Build
+            }
+        }
+    )
