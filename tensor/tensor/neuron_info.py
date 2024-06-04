@@ -22,12 +22,13 @@ import asyncio
 import bittensor as bt
 from bittensor import AxonInfo
 from google.protobuf.empty_pb2 import Empty
-
 from tensor.protos.inputs_pb2 import InfoResponse
 from tensor.protos.inputs_pb2_grpc import NeuronStub
+
+from tensor.config import SPEC_VERSION
 from tensor.response import Response, create_request
 
-DEFAULT_NEURON_INFO = InfoResponse(spec_version=-1, capabilities=set())
+DEFAULT_NEURON_INFO = InfoResponse(spec_version=SPEC_VERSION, capabilities=set())
 
 
 async def get_neuron_info(axon: AxonInfo) -> Response[InfoResponse]:
