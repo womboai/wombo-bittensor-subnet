@@ -44,9 +44,6 @@ class Build(build_py):
         project_folder = Path(__file__).parent.absolute()
         root_folder = project_folder.parent.absolute()
         protos_directory = project_folder / "protos"
-        build_directory = project_folder / "build" / "lib"
-
-        build_directory.mkdir(parents=True, exist_ok=True)
 
         google_std = Path(grpc_tools.__file__).parent / "_proto"
 
@@ -56,9 +53,9 @@ class Build(build_py):
             "--proto_path", str(root_folder),
             f"-I{google_std}",
 
-            "--python_out", str(build_directory),
-            "--pyi_out", str(build_directory),
-            "--grpc_python_out", str(build_directory),
+            "--python_out", str(project_folder),
+            "--pyi_out", str(project_folder),
+            "--grpc_python_out", str(project_folder),
 
             *list_all_files(protos_directory),
         ]

@@ -29,7 +29,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
-wombo-bittensor-subnet-tensor = { path = "../tensor" }
+wombo-bittensor-subnet-tensor = { path = "../tensor", develop = true }
 
 [build-system]
 requires = ["poetry-core", "setuptools", "grpcio-tools==1.64.0"]

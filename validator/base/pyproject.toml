@@ -29,7 +29,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
-wombo-bittensor-subnet-neuron = { path = "../../neuron" }
+wombo-bittensor-subnet-neuron = { path = "../../neuron", develop = true }
 pillow = "10.2.0"
 redis = { version = "5.0.4", extras = ["hiredis", "asyncio"] }
 

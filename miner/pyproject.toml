@@ -30,7 +30,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
 wombo-bittensor-subnet-gpu-pipeline = { path = "../gpu-pipeline", develop = true }
-wombo-bittensor-subnet-neuron = { path = "../neuron" }
+wombo-bittensor-subnet-neuron = { path = "../neuron", develop = true }
 
 [build-system]
 requires = ["poetry-core"]
