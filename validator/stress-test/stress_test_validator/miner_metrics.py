@@ -36,7 +36,7 @@ from tensor.protos.inputs_pb2 import GenerationRequestInputs
 from neuron.redis import parse_redis_value
 from tensor.response import Response, axon_channel, SuccessfulResponse, call_request
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
-from user_requests_validator.cryptographic_sample import cryptographic_sample
+from validator.cryptographic_sample import cryptographic_sample
 from validator.miner_metrics import MinerMetricManager
 from validator.protos.scoring_pb2 import OutputScoreRequest, OutputScore
 from validator.protos.scoring_pb2_grpc import OutputScorerStub
