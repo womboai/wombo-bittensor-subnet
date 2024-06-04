@@ -29,10 +29,11 @@ import torch
 from heapdict import heapdict
 from torch import tensor
 
-from neuron_selector.uids import DEFAULT_NEURON_INFO, weighted_sample
 from stress_test_validator.miner_metrics import MinerStressTestMetricManager, stress_test_miner
 from tensor.config import add_args, SPEC_VERSION
+from tensor.neuron_info import DEFAULT_NEURON_INFO
 from tensor.protos.inputs_pb2 import NeuronCapabilities
+from tensor.sample import weighted_sample
 from validator.validator import BaseValidator
 
 

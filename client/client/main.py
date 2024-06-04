@@ -18,8 +18,9 @@ from pydantic import BaseModel, Json
 from tensor.protocol import ImageGenerationClientRequest, MinerGenerationOutput
 from torch import tensor
 
-from neuron_selector.uids import get_best_uids, sync_neuron_info
+from neuron_selector.uids import get_best_uids
 from tensor.config import config, add_args
+from tensor.neuron_info import sync_neuron_info
 from tensor.protos.inputs_pb2 import NeuronCapabilities
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 

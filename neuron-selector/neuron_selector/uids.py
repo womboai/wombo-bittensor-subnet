@@ -1,93 +1,13 @@
-import asyncio
-import random
-from bisect import bisect
-from itertools import accumulate
-from typing import Any, Callable, Sequence, TypeVar
+from typing import Any, Callable
 
 import bittensor as bt
 import torch
-from bittensor import AxonInfo
-from google.protobuf.empty_pb2 import Empty
 from torch import Tensor
 
 from tensor.config import SPEC_VERSION
+from tensor.neuron_info import DEFAULT_NEURON_INFO
 from tensor.protos.inputs_pb2 import InfoResponse
-from tensor.protos.inputs_pb2_grpc import NeuronStub
-from tensor.response import create_request, Response
-
-DEFAULT_NEURON_INFO = InfoResponse(spec_version=-1, capabilities=set())
-
-T = TypeVar("T")
-
-
-def weighted_sample(weighted_items: Sequence[tuple[float, T]], k=1):
-    k = min(k, len(weighted_items))
-
-    enumerated_population: list[tuple[int, T]] = list([(index, item) for index, (_, item) in enumerate(weighted_items)])
-    cumulative_weights: list[float] = list(accumulate([weight for weight, _ in weighted_items]))
-    population_size = len(enumerated_population)
-    total = cumulative_weights[-1]
-
-    result: list[T] = []
-
-    while len(result) < k:
-        index, item = enumerated_population[bisect(
-            cumulative_weights,
-            random.random() * total,
-            0,
-            population_size - 1,
-        )]
-
-        if item in result:
-            continue
-
-        result.append(item)
-
-    return result
-
-
-async def get_neuron_info(axon: AxonInfo) -> Response[InfoResponse]:
-    return await create_request(axon, Empty(), lambda channel: NeuronStub(channel).Info)
-
-
-async def sync_neuron_info(metagraph: bt.metagraph, wallet: bt.wallet):
-    uids: list[int] = [
-        uid
-        for uid in range(metagraph.n.item())
-        if metagraph.axons[uid].is_serving
-    ]
-
-    uid_by_hotkey: dict[str, int] = {
-        metagraph.axons[uid].hotkey: uid
-        for uid in uids
-        if metagraph.axons[uid].hotkey != wallet.hotkey.ss58_address
-    }
-
-    axon_by_hotkey: dict[str, AxonInfo] = {
-        metagraph.axons[uid].hotkey: metagraph.axons[uid]
-        for uid in uids
-    }
-
-    axons = [axon_by_hotkey[hotkey] for hotkey in uid_by_hotkey.keys()]
-
-    neuron_info: list[Response[InfoResponse]] = list(
-        await asyncio.gather(
-            *[
-                get_neuron_info(axon)
-                for axon in axons
-            ]
-        )
-    )
-
-    info_by_hotkey = {
-        info.axon.hotkey: info
-        for info in neuron_info
-    }
-
-    return {
-        uid_by_hotkey[hotkey]: info.data
-        for hotkey, info in info_by_hotkey.items()
-    }
+from tensor.sample import weighted_sample
 
 
 def get_best_uids(

@@ -50,6 +50,7 @@ from neuron_selector.protos.forwarding_validator_pb2_grpc import (
 )
 from neuron_selector.uids import get_best_uids
 from tensor.config import add_args, SPEC_VERSION
+from tensor.input_sanitization import sanitize_inputs
 from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoRequest, InfoResponse, NeuronCapabilities
 from tensor.protos.inputs_pb2_grpc import NeuronServicer, add_NeuronServicer_to_server
 from tensor.response import (
@@ -177,6 +178,8 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
             )
 
             return request_error(StatusCode.PERMISSION_DENIED, "Unrecognized hotkey")
+
+        sanitize_inputs(request.inputs)
 
         bt.logging.trace(
             f"Not Blacklisting recognized hotkey {hotkey}"
