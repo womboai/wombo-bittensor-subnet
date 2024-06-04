@@ -21,18 +21,20 @@
 import asyncio
 import copy
 import os
+import pickle
 import random
 import traceback
 
 import bittensor as bt
-import torch
+import numpy
+from bittensor.utils.weight_utils import process_weights_for_netuid, convert_weights_and_uids_for_emit
 from heapdict import heapdict
-from torch import tensor
+from numpy import ndarray
+from tensor.protos.inputs_pb2 import NeuronCapabilities
 
 from stress_test_validator.miner_metrics import MinerStressTestMetricManager, stress_test_miner
 from tensor.config import add_args, SPEC_VERSION
 from tensor.neuron_info import DEFAULT_NEURON_INFO
-from tensor.protos.inputs_pb2 import NeuronCapabilities
 from tensor.sample import weighted_sample
 from validator.validator import BaseValidator
 
@@ -258,7 +260,7 @@ class StressTestValidator(BaseValidator):
 
         metrics = await asyncio.gather(*[self.metric_manager.get(uid) for uid in range(self.metagraph.n.item())])
 
-        scores = tensor(
+        scores = ndarray(
             [
                 miner_metrics.get_weight() if miner_metrics else 0.0
                 for miner_metrics in metrics
@@ -266,24 +268,23 @@ class StressTestValidator(BaseValidator):
         )
 
         # Check if self.scores contains any NaN values and log a warning if it does.
-        if torch.isnan(scores).any():
+        if numpy.isnan(scores).any():
             bt.logging.warning(
                 f"Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
 
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
-        raw_weights = torch.nn.functional.normalize(
-            scores, p=1, dim=0
-        )
+        raw_weights = scores / numpy.linalg.norm(scores, ord=1, axis=0, keepdims=True)
 
         bt.logging.debug("raw_weights", raw_weights)
         bt.logging.debug("raw_weight_uids", self.metagraph.uids.to("cpu"))
         # Process the raw weights to final_weights via subtensor limitations.
+
         (
             processed_weight_uids,
             processed_weights,
-        ) = bt.utils.weight_utils.process_weights_for_netuid(
+        ) = process_weights_for_netuid(
             uids=self.metagraph.uids.to("cpu"),
             weights=raw_weights.to("cpu"),
             netuid=self.config.netuid,
@@ -297,7 +298,7 @@ class StressTestValidator(BaseValidator):
         (
             uint_uids,
             uint_weights,
-        ) = bt.utils.weight_utils.convert_weights_and_uids_for_emit(
+        ) = convert_weights_and_uids_for_emit(
             uids=processed_weight_uids, weights=processed_weights
         )
         bt.logging.debug("uint_weights", uint_weights)
@@ -311,7 +312,7 @@ class StressTestValidator(BaseValidator):
             weights=uint_weights,
             wait_for_finalization=False,
             wait_for_inclusion=False,
-            version_key=self.spec_version,
+            version_key=SPEC_VERSION,
         )
 
         if result:
@@ -373,7 +374,7 @@ class StressTestValidator(BaseValidator):
         bt.logging.info("Saving validator state.")
 
         # Save the state of the validator to file.
-        torch.save(
+        pickle.dump(
             {
                 "step": self.step,
                 "hotkeys": self.hotkeys,
@@ -392,7 +393,7 @@ class StressTestValidator(BaseValidator):
             return
 
         # Load the state of the validator from file.
-        state = torch.load(path)
+        state = pickle.load(path)
         self.step = state["step"]
         self.hotkeys = state["hotkeys"]
         self.miner_heap = state.get("miner_heap", self.miner_heap)

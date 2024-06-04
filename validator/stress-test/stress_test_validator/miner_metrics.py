@@ -25,15 +25,15 @@ from typing import TypeAlias, Annotated
 
 import bittensor as bt
 import nltk
-import torch
 from bittensor import AxonInfo
 from grpc.aio import Channel
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerStub
+from numpy import mean
 from pydantic import BaseModel, Field
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
 from neuron.redis import parse_redis_value
-from tensor.protos.inputs_pb2 import GenerationRequestInputs
 from tensor.response import Response, axon_channel, SuccessfulResponse, call_request
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 from user_requests_validator.cryptographic_sample import cryptographic_sample
@@ -369,7 +369,7 @@ async def stress_test_miner(validator: "StressTestValidator", uid: int):
             )
 
         if len(scores):
-            score = (torch.tensor(scores).mean().item() * len(scores)) / (len(scores) + failed_downloads)
+            score = (mean(scores) * len(scores)) / (len(scores) + failed_downloads)
         else:
             score = 0.0
 
