@@ -124,7 +124,7 @@ async def call_request(
 
         process_time = perf_counter() - start
 
-        bt.logging.trace(f"Successful request {type(request).name} -> {axon.hotkey}")
+        bt.logging.trace(f"Successful request {type(request).__name__} -> {axon.hotkey}")
 
         return SuccessfulResponse(
             data=response,
@@ -135,7 +135,7 @@ async def call_request(
         grpc_error = cast(AioRpcError, error)
 
         bt.logging.trace(
-            f"Failed request {type(request).name} -> {axon.hotkey}, "
+            f"Failed request {type(request).__name__} -> {axon.hotkey}, "
             f"status code {grpc_error.code()} with error {grpc_error.details()}"
         )
 
