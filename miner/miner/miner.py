@@ -31,14 +31,14 @@ from diffusers import StableDiffusionXLControlNetPipeline
 from google.protobuf.empty_pb2 import Empty
 from grpc import StatusCode
 from grpc.aio import ServicerContext
-from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
-from neuron.protos.neuron_pb2_grpc import MinerServicer, add_MinerServicer_to_server
 from redis.asyncio import Redis
 
 from gpu_pipeline.pipeline import get_pipeline
-from miner.image_generator import generate
+from image_generator import generate
 from neuron.api_handler import request_error, RequestVerifier, HOTKEY_HEADER, serve_ip, WhitelistChecker
 from neuron.neuron import BaseNeuron
+from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
+from neuron.protos.neuron_pb2_grpc import MinerServicer, add_MinerServicer_to_server
 from tensor.config import add_args, check_config, SPEC_VERSION
 from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoRequest, InfoResponse, NeuronCapabilities
 from tensor.protos.inputs_pb2_grpc import NeuronServicer, add_NeuronServicer_to_server
