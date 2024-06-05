@@ -22,7 +22,6 @@ from itertools import chain
 from os import listdir, PathLike
 from os.path import isfile, join
 from pathlib import Path
-from shutil import move
 from typing import Any
 
 import grpc_tools.protoc
@@ -43,7 +42,7 @@ def list_all_files(directory: PathLike | str):
 class Build(build_py):
     def run(self):
         project_folder = Path(__file__).parent.absolute()
-        root_folder = project_folder.parent.parent.absolute()
+        root_folder = project_folder.parent.absolute()
         protos_directory = project_folder / "protos"
 
         google_std = Path(grpc_tools.__file__).parent / "_proto"
@@ -65,13 +64,6 @@ class Build(build_py):
 
         if exit_code:
             raise RuntimeError(f"grpc_tools.protoc returned exit code {exit_code}")
-
-        print(project_folder / project_folder.relative_to(root_folder) / "protos")
-
-        move(
-            project_folder / project_folder.relative_to(root_folder) / "protos",
-            project_folder / "base_validator" / "protos",
-        )
 
         super().run()
 

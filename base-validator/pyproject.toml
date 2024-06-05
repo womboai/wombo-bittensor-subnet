@@ -1,15 +1,15 @@
 [tool.poetry]
-name = "wombo-bittensor-subnet-user-requests-validator"
+name = "wombo-bittensor-subnet-validator"
 
 version = "1.0.0"
 
-description = "The portion of the validator used for forwarding user requests to miners."
+description = "The base of the validator, with everything used for sending requests to miners."
 
 license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]
 
-packages = [{ include = "user_requests_validator" }]
+packages = [{ include = "base_validator" }]
 
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -29,13 +29,16 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
-wombo-bittensor-subnet-validator = { path = "../base", develop = true }
-wombo-bittensor-subnet-gpu-pipeline = { path = "../../gpu-pipeline", develop = true }
-wombo-bittensor-subnet-neuron-selector = { path = "../../neuron-selector", develop = true }
+wombo-bittensor-subnet-neuron = { path = "../neuron", develop = true }
 pillow = "10.2.0"
+redis = { version = "5.0.4", extras = ["hiredis"] }
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core", "setuptools", "grpcio-tools==1.64.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.build]
+script = "build.py"
+generate-setup-file = true
 
 [tool.poetry-monorepo.deps]
