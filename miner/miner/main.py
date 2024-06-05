@@ -18,8 +18,7 @@
 
 import asyncio
 
-from miner.miner import Miner
-
+from miner.miner_neuron import Miner
 
 # This is the main function, which runs the miner.
 if __name__ == "__main__":

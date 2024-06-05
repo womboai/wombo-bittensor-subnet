@@ -34,7 +34,7 @@ from grpc.aio import ServicerContext
 from redis.asyncio import Redis
 
 from gpu_pipeline.pipeline import get_pipeline
-from image_generator import generate
+from miner.image_generator import generate
 from neuron.api_handler import request_error, RequestVerifier, HOTKEY_HEADER, serve_ip, WhitelistChecker
 from neuron.neuron import BaseNeuron
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
