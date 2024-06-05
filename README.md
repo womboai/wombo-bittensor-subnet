@@ -150,8 +150,6 @@ The responsibility of keeping the miner/repo up-to-date falls on you, hence you 
 
 ### Running a validator
 
-Running a validator with PM2 is similar to running a miner:
-
 #### Requirements
 
 - Minimum: 1 GPU with 24GB of VRAM

@@ -31,7 +31,6 @@ classifiers = [
 python = ">=3.10,<3.11"
 wombo-bittensor-subnet-neuron = { path = "../neuron", develop = true }
 pillow = "10.2.0"
-redis = { version = "5.0.4", extras = ["hiredis"] }
 
 [build-system]
 requires = ["poetry-core", "setuptools", "grpcio-tools==1.64.0"]
