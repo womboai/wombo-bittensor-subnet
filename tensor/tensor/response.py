@@ -21,6 +21,7 @@ from asyncio import CancelledError
 from time import perf_counter
 from typing import Literal, TypeVar, Generic, Callable, cast, TypeAlias, Annotated
 
+import bittensor as bt
 from bittensor import AxonInfo
 from google.protobuf.message import Message
 from grpc import StatusCode, RpcError
@@ -123,6 +124,8 @@ async def call_request(
 
         process_time = perf_counter() - start
 
+        bt.logging.trace(f"Successful request {type(request).name} -> {axon.wallet.hotkey}")
+
         return SuccessfulResponse(
             data=response,
             process_time=process_time,
@@ -130,6 +133,11 @@ async def call_request(
         )
     except RpcError as error:
         grpc_error = cast(AioRpcError, error)
+
+        bt.logging.trace(
+            f"Failed request {type(request).name} -> {axon.wallet.hotkey},"
+            f"status code {grpc_error.code()} with error {grpc_error.details()}"
+        )
 
         return FailedResponse(
             axon=axon,
