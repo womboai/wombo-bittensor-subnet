@@ -30,7 +30,7 @@ from tensor.protos.inputs_pb2 import GenerationRequestInputs
 from torch import Tensor
 
 from gpu_pipeline.pipeline import parse_input_parameters
-from validator.cryptographic_sample import cryptographic_sample
+from base_validator.cryptographic_sample import cryptographic_sample
 
 
 # Credits to Huggingface for the SDXL pipeline code

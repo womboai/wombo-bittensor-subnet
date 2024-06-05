@@ -5,7 +5,6 @@ import torch
 from torch import Tensor
 
 from tensor.config import SPEC_VERSION
-from tensor.neuron_info import DEFAULT_NEURON_INFO
 from tensor.protos.inputs_pb2 import InfoResponse
 from tensor.sample import weighted_sample
 
@@ -32,7 +31,7 @@ def get_best_uids(
     ]
 
     infos = {
-        uid: neuron_info.get(uid, DEFAULT_NEURON_INFO)
+        uid: neuron_info.get(uid)
         for uid in available_uids
     }
 
@@ -41,7 +40,7 @@ def get_best_uids(
     available_uids = [
         uid
         for uid in available_uids
-        if infos[uid].spec_version == SPEC_VERSION and condition(uid, infos[uid])
+        if infos[uid] and infos[uid].spec_version == SPEC_VERSION and condition(uid, infos[uid])
     ]
 
     if not len(available_uids):

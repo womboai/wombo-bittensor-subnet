@@ -19,16 +19,16 @@
 #
 from asyncio import CancelledError
 from time import perf_counter
-from typing import Literal, TypeVar, Generic, TypeAlias, Annotated, Callable, cast
+from typing import Literal, TypeVar, Generic, Callable, cast, TypeAlias, Annotated
 
 from bittensor import AxonInfo
 from google.protobuf.message import Message
-from grpc import StatusCode, insecure_channel, RpcError
-from grpc.aio import Channel, AioRpcError, UnaryUnaryCall
-from pydantic import BaseModel, Field
+from grpc import StatusCode, RpcError
+from grpc.aio import Channel, insecure_channel, AioRpcError, UnaryUnaryCall
+from pydantic import BaseModel, ConfigDict, RootModel, Field
 
-ResponseT = TypeVar("ResponseT")
-MessageT = TypeVar("MessageT", bound=Message)
+ResponseT = TypeVar("ResponseT", bound=Message)
+RequestT = TypeVar("RequestT", bound=Message)
 
 
 class Channels:
@@ -59,9 +59,11 @@ class FailedResponseInfo(BaseModel):
     detail: str | None
 
 
-class SuccessfulResponse(Generic[ResponseT], SuccessfulResponseInfo):
+class SuccessfulResponse(SuccessfulResponseInfo, Generic[ResponseT]):
     data: ResponseT
     successful: Literal[True] = True
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @property
     def info(self):
@@ -78,9 +80,11 @@ class FailedResponse(FailedResponseInfo):
 
 ResponseInfo = SuccessfulResponseInfo | FailedResponseInfo
 
-Response: TypeAlias = Annotated[
-    SuccessfulResponse[ResponseT] | FailedResponse,
-    Field(discriminator="successful"),
+Response: TypeAlias = RootModel[
+    Annotated[
+        SuccessfulResponse[ResponseT] | FailedResponse,
+        Field(discriminator="successful"),
+    ]
 ]
 
 
@@ -94,8 +98,8 @@ def axon_channel(axon: AxonInfo):
 
 async def create_request(
     axon: AxonInfo,
-    request: MessageT,
-    invoker: Callable[[Channel], Callable[[MessageT], UnaryUnaryCall[MessageT, ResponseT]]],
+    request: RequestT,
+    invoker: Callable[[Channel], Callable[[RequestT], UnaryUnaryCall[RequestT, ResponseT]]],
 ) -> Response[ResponseT]:
     async with axon_channel(axon) as channel:
         return await call_request(axon, request, invoker(channel))
@@ -103,8 +107,8 @@ async def create_request(
 
 async def call_request(
     axon: AxonInfo,
-    request: MessageT,
-    invoker: Callable[[MessageT], UnaryUnaryCall[MessageT, ResponseT]],
+    request: RequestT,
+    invoker: Callable[[RequestT], UnaryUnaryCall[RequestT, ResponseT]],
 ) -> Response[ResponseT]:
     try:
         start = perf_counter()

@@ -29,14 +29,12 @@ import bittensor as bt
 import numpy
 from bittensor.utils.weight_utils import process_weights_for_netuid, convert_weights_and_uids_for_emit
 from heapdict import heapdict
-from numpy import ndarray
-from tensor.protos.inputs_pb2 import NeuronCapabilities
 
+from base_validator.validator import BaseValidator
 from stress_test_validator.miner_metrics import MinerStressTestMetricManager, stress_test_miner
 from tensor.config import add_args, SPEC_VERSION
-from tensor.neuron_info import DEFAULT_NEURON_INFO
+from tensor.protos.inputs_pb2 import NeuronCapabilities
 from tensor.sample import weighted_sample
-from validator.validator import BaseValidator
 
 
 class StressTestValidator(BaseValidator):
@@ -92,7 +90,7 @@ class StressTestValidator(BaseValidator):
         # Always save state.
         self.save_state()
 
-    def get_next_uid(self) -> tuple[int, str]:
+    def get_next_uid(self) -> tuple[int, str] | None:
         miners = {
             self.metagraph.axons[uid].hotkey: uid
             for uid in range(self.metagraph.n.item())
@@ -100,7 +98,7 @@ class StressTestValidator(BaseValidator):
         }
 
         infos = {
-            uid: self.neuron_info.get(uid, DEFAULT_NEURON_INFO)
+            uid: self.neuron_info.get(uid)
             for uid in miners.values()
         }
 
@@ -109,7 +107,11 @@ class StressTestValidator(BaseValidator):
         invalid_miner_list = [
             hotkey
             for hotkey, uid in miners.items()
-            if infos[uid].spec_version != SPEC_VERSION or NeuronCapabilities.MINER not in infos[uid].capabilities
+            if (
+                not infos[uid] or
+                infos[uid].spec_version != SPEC_VERSION or
+                NeuronCapabilities.MINER not in infos[uid].capabilities
+            )
         ]
 
         for hotkey in invalid_miner_list:
@@ -137,7 +139,7 @@ class StressTestValidator(BaseValidator):
         for hotkey in disconnected_miner_list:
             self.miner_heap.pop(hotkey)
 
-        if len(self.miner_heap):
+        if sum(self.miner_heap.values()):
             last_block = max(self.miner_heap.values())
 
             weighted_choices = [(last_block - block, hotkey) for hotkey, block in self.miner_heap.items()]
@@ -146,8 +148,10 @@ class StressTestValidator(BaseValidator):
                 hotkey = weighted_sample(weighted_choices, k=1)[0]
             else:
                 hotkey = random.choice(list(self.miner_heap.keys()))
-        else:
+        elif len(self.miner_heap):
             hotkey = random.choice(list(self.miner_heap.keys()))
+        else:
+            return None
 
         self.miner_heap.pop(hotkey)
 
@@ -167,11 +171,16 @@ class StressTestValidator(BaseValidator):
             miner_uid = await self.redis.spop("stress_test_queue")
 
             if miner_uid is None:
-                miner_uid, hotkey = self.get_next_uid()
+                return
             else:
                 hotkey = None
         else:
-            miner_uid, hotkey = self.get_next_uid()
+            next_miner = self.get_next_uid()
+
+            if not next_miner:
+                return
+
+            miner_uid, hotkey = next_miner
 
             await self.redis.srem("stress_test_queue", miner_uid)
 
@@ -260,7 +269,7 @@ class StressTestValidator(BaseValidator):
 
         metrics = await asyncio.gather(*[self.metric_manager.get(uid) for uid in range(self.metagraph.n.item())])
 
-        scores = ndarray(
+        scores = numpy.array(
             [
                 miner_metrics.get_weight() if miner_metrics else 0.0
                 for miner_metrics in metrics
@@ -273,20 +282,23 @@ class StressTestValidator(BaseValidator):
                 f"Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
 
+        if numpy.sum(scores) == 0.0:
+            return
+
         # Calculate the average reward for each uid across non-zero values.
-        # Replace any NaN values with 0.
+        # Replace any NaN values with 0
         raw_weights = scores / numpy.linalg.norm(scores, ord=1, axis=0, keepdims=True)
 
         bt.logging.debug("raw_weights", raw_weights)
-        bt.logging.debug("raw_weight_uids", self.metagraph.uids.to("cpu"))
+        bt.logging.debug("raw_weight_uids", self.metagraph.uids)
         # Process the raw weights to final_weights via subtensor limitations.
 
         (
             processed_weight_uids,
             processed_weights,
         ) = process_weights_for_netuid(
-            uids=self.metagraph.uids.to("cpu"),
-            weights=raw_weights.to("cpu"),
+            uids=self.metagraph.uids,
+            weights=raw_weights,
             netuid=self.config.netuid,
             subtensor=self.subtensor,
             metagraph=self.metagraph,
@@ -301,6 +313,7 @@ class StressTestValidator(BaseValidator):
         ) = convert_weights_and_uids_for_emit(
             uids=processed_weight_uids, weights=processed_weights
         )
+
         bt.logging.debug("uint_weights", uint_weights)
         bt.logging.debug("uint_uids", uint_uids)
 
@@ -374,14 +387,15 @@ class StressTestValidator(BaseValidator):
         bt.logging.info("Saving validator state.")
 
         # Save the state of the validator to file.
-        pickle.dump(
-            {
-                "step": self.step,
-                "hotkeys": self.hotkeys,
-                "miner_heap": self.miner_heap,
-            },
-            self.config.neuron.full_path + "/state.bin",
-        )
+        with open(self.config.neuron.full_path + "/state.bin", "wb") as state:
+            pickle.dump(
+                {
+                    "step": self.step,
+                    "hotkeys": self.hotkeys,
+                    "miner_heap": self.miner_heap,
+                },
+                state,
+            )
 
     def load_state(self):
         """Loads the state of the validator from a file."""
@@ -393,7 +407,9 @@ class StressTestValidator(BaseValidator):
             return
 
         # Load the state of the validator from file.
-        state = pickle.load(path)
+        with open(path, "rb") as state_file:
+            state = pickle.load(state_file)
+
         self.step = state["step"]
         self.hotkeys = state["hotkeys"]
         self.miner_heap = state.get("miner_heap", self.miner_heap)

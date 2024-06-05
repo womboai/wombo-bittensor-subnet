@@ -18,7 +18,7 @@
 
 import asyncio
 
-from user_requests_validator.user_requests_validator import UserRequestValidator
+from user_requests_validator.validator import UserRequestValidator
 
 if __name__ == "__main__":
     asyncio.run(UserRequestValidator().run())

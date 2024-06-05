@@ -66,9 +66,11 @@ class Build(build_py):
         if exit_code:
             raise RuntimeError(f"grpc_tools.protoc returned exit code {exit_code}")
 
+        print(project_folder / project_folder.relative_to(root_folder) / "protos")
+
         move(
             project_folder / project_folder.relative_to(root_folder) / "protos",
-            project_folder / "validator" / "protos",
+            project_folder / "base_validator" / "protos",
         )
 
         super().run()

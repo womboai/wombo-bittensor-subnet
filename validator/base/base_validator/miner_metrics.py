@@ -25,8 +25,8 @@ import bittensor as bt
 from aiohttp import ClientSession, BasicAuth
 from substrateinterface import Keypair
 
+from base_validator.validator import BaseValidator
 from neuron.select_endpoint import select_endpoint
-from validator.validator import BaseValidator
 
 
 class MinerMetricManager:

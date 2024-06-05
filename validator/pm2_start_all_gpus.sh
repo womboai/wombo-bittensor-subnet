@@ -28,6 +28,7 @@ sudo apt-get install redis npm
 sudo npm install -g pm2
 
 PORT=$1
+OLD_DIRECTORY=$(pwd)
 DIRECTORY=$(dirname $(realpath $0))
 GPU_COUNT=$((nvidia-smi -L || true) | wc -l)
 
@@ -37,31 +38,39 @@ http {
 " > $DIRECTORY/nginx.conf
 
 for i in "$(seq $GPU_COUNT)"; do
-  echo "  server localhost:$(($PORT + $i))" >> $DIRECTORY/nginx.conf
+  echo "  server localhost:$(($PORT + $i));" >> $DIRECTORY/nginx.conf
 done
 
 echo "
   }
 
   server {
-    listen $PORT
+    listen $PORT http2;
 
     location / {
-      proxy_pass http://validator
+      proxy_pass grpc://validator;
     }
   }
 }
 " >> $DIRECTORY/nginx.conf
 
-pm2 start nginx --name wombo-validator-nginx -- -c $DIRECTORY/nginx.conf
-pm2 start $DIRECTORY/stress-test/run.sh --name wombo-stress-test-validator -- ${@:2}
+pm2 start nginx --name wombo-validator-nginx --interpreter none -- -c $DIRECTORY/nginx.conf
+
+cd $DIRECTORY/stress-test
+pm2 start poetry --name wombo-stress-test-validator --interpreter none -- run python stress_test_validator/main.py ${@:2}
+
+cd $DIRECTORY/user-requests
 
 for i in "$(seq $GPU_COUNT)"; do
-  pm2 start \
-    $DIRECTORY/user-requests/run.sh \
-    --name wombo-user-requests-validator-$i -- \
+  pm2 start poetry \
+    --name wombo-user-requests-validator \
+    --interpreter none -- \
+    run python \
+    user_requests_validator/main.py \
     --neuron.device "cuda:$(($i - 1))" \
     --axon.port $(($PORT + $i)) \
     --axon.external_port $PORT \
     ${@:2}
 done
+
+cd OLD_DIRECTORY

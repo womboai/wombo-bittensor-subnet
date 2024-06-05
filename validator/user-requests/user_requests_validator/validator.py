@@ -33,16 +33,24 @@ from bittensor import AxonInfo
 from diffusers import StableDiffusionXLControlNetPipeline
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from fastapi.security import HTTPBasic
+from google.protobuf.empty_pb2 import Empty
 from grpc import StatusCode
 from grpc.aio import ServicerContext, Channel
-from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationResult
-from neuron.protos.neuron_pb2_grpc import MinerStub
 from torch import Tensor, tensor
 from transformers import CLIPConfig
 
+from base_validator.protos.scoring_pb2 import OutputScoreRequest
+from base_validator.protos.scoring_pb2_grpc import OutputScorerServicer, add_OutputScorerServicer_to_server
+from base_validator.validator import (
+    BaseValidator,
+    get_miner_response,
+    SuccessfulGenerationResponseInfo, is_cheater,
+)
 from gpu_pipeline.pipeline import get_pipeline
 from gpu_pipeline.tensor import load_tensor
 from neuron.api_handler import HOTKEY_HEADER, request_error, RequestVerifier, serve_ip, WhitelistChecker
+from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationResult
+from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron_selector.protos.forwarding_validator_pb2 import ValidatorUserRequest, ValidatorGenerationResponse
 from neuron_selector.protos.forwarding_validator_pb2_grpc import (
     ForwardingValidatorServicer,
@@ -51,7 +59,7 @@ from neuron_selector.protos.forwarding_validator_pb2_grpc import (
 from neuron_selector.uids import get_best_uids
 from tensor.config import add_args, SPEC_VERSION
 from tensor.input_sanitization import sanitize_inputs
-from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoRequest, InfoResponse, NeuronCapabilities
+from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoResponse, NeuronCapabilities
 from tensor.protos.inputs_pb2_grpc import NeuronServicer, add_NeuronServicer_to_server
 from tensor.response import (
     Response, axon_address, axon_channel, Channels, FailedResponseInfo, SuccessfulResponse,
@@ -60,13 +68,6 @@ from tensor.response import (
 from user_requests_validator.miner_metrics import MinerUserRequestMetricManager
 from user_requests_validator.similarity_score_pipeline import score_similarity
 from user_requests_validator.watermark import apply_watermark
-from validator.protos.scoring_pb2 import OutputScoreRequest
-from validator.protos.scoring_pb2_grpc import OutputScorerServicer, add_OutputScorerServicer_to_server
-from validator.validator import (
-    BaseValidator,
-    get_miner_response,
-    SuccessfulGenerationResponseInfo, is_cheater,
-)
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.35)))
 
@@ -101,7 +102,7 @@ async def get_forward_responses(
 
 
 class ValidatorInfoService(NeuronServicer):
-    def Info(self, request: InfoRequest, context: ServicerContext):
+    def Info(self, request: Empty, context: ServicerContext):
         return InfoResponse(
             spec_version=SPEC_VERSION,
             capabilities=[NeuronCapabilities.MINER]

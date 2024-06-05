@@ -24,8 +24,8 @@ import torch
 from aiohttp import ClientSession
 from torch import tensor
 
+from base_validator.miner_metrics import MinerMetricManager
 from neuron.redis import parse_redis_value
-from validator.miner_metrics import MinerMetricManager
 
 
 class MinerUserRequestMetricManager(MinerMetricManager):
