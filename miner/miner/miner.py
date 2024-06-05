@@ -40,13 +40,13 @@ from neuron.neuron import BaseNeuron
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerServicer, add_MinerServicer_to_server
 from tensor.config import add_args, check_config, SPEC_VERSION
-from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoRequest, InfoResponse, NeuronCapabilities
+from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoResponse, NeuronCapabilities
 from tensor.protos.inputs_pb2_grpc import NeuronServicer, add_NeuronServicer_to_server
 from tensor.response import axon_address
 
 
 class MinerInfoService(NeuronServicer):
-    def Info(self, request: InfoRequest, context: ServicerContext):
+    def Info(self, request: Empty, context: ServicerContext):
         return InfoResponse(
             spec_version=SPEC_VERSION,
             capabilities=[NeuronCapabilities.MINER],
