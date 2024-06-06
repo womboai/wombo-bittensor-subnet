@@ -95,6 +95,7 @@ def parse_input_parameters(inputs: GenerationRequestInputs, device) -> dict[str,
         "guidance_scale": inputs.guidance_scale,
         "negative_prompt": inputs.negative_prompt,
         "negative_prompt_2": inputs.negative_prompt_2,
+        "controlnet_conditioning_scale": inputs.controlnet_conditioning_scale,
         "image": get_tao_img(inputs.width, inputs.height),
         "output_type": "latent",
     }
