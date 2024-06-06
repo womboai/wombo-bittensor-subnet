@@ -92,7 +92,7 @@ class MinerUserRequestMetricManager(MinerMetricManager):
                 similarity_score = min(old_similarity_score, similarity_score)
 
             if cheater:
-                await pipeline.set(f"cheater_{uid}", True)
+                await pipeline.set(f"cheater_{uid}", int(True))
 
             await pipeline.execute()
 

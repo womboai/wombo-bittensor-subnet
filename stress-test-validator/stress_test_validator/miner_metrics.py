@@ -164,7 +164,7 @@ class MinerStressTestMetricManager(MinerMetricManager):
                 f"generation_time_{uid}": 0.0,
                 f"similarity_score_{uid}": 0.0,
                 f"error_rate_{uid}": 0.0,
-                f"cheater_{uid}": cheater,
+                f"cheater_{uid}": int(cheater),
             }
         )
 
@@ -177,7 +177,7 @@ class MinerStressTestMetricManager(MinerMetricManager):
                 f"error_rate_{uid}": 0.0,
                 f"successful_user_requests_{uid}": 0,
                 f"failed_user_requests_{uid}": 0,
-                f"cheater_{uid}": False,
+                f"cheater_{uid}": int(False),
             }
         )
 
