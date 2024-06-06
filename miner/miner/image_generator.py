@@ -51,7 +51,7 @@ async def generate(
 
         return callback_kwargs
 
-    input_kwargs = parse_input_parameters(inputs)
+    input_kwargs = parse_input_parameters(inputs, pipeline.device)
 
     async with gpu_semaphore:
         pipeline(

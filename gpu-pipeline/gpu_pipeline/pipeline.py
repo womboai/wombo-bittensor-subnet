@@ -85,7 +85,7 @@ def replace_keywords_with_tau_symbol(input_string):
     return replaced_string
 
 
-def parse_input_parameters(inputs: GenerationRequestInputs) -> dict[str, Any]:
+def parse_input_parameters(inputs: GenerationRequestInputs, device) -> dict[str, Any]:
     input_kwargs = {
         "prompt": replace_keywords_with_tau_symbol(inputs.prompt),
         "prompt_2": inputs.prompt_2,
@@ -100,7 +100,7 @@ def parse_input_parameters(inputs: GenerationRequestInputs) -> dict[str, Any]:
     }
 
     if inputs.seed:
-        input_kwargs["generator"] = torch.Generator().manual_seed(inputs.seed)
+        input_kwargs["generator"] = torch.Generator(device).manual_seed(inputs.seed)
 
     return input_kwargs
 

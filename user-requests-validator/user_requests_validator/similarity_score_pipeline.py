@@ -26,11 +26,11 @@ from diffusers import StableDiffusionXLControlNetPipeline, ControlNetModel
 from diffusers.pipelines.controlnet import MultiControlNetModel
 from diffusers.utils import is_torch_version
 from diffusers.utils.torch_utils import randn_tensor, is_compiled_module
-from tensor.protos.inputs_pb2 import GenerationRequestInputs
 from torch import Tensor
 
-from gpu_pipeline.pipeline import parse_input_parameters
 from base_validator.cryptographic_sample import cryptographic_sample
+from gpu_pipeline.pipeline import parse_input_parameters
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
 
 # Credits to Huggingface for the SDXL pipeline code
@@ -517,7 +517,7 @@ async def score_similarity(
         )
     )
 
-    input_kwargs = parse_input_parameters(inputs)
+    input_kwargs = parse_input_parameters(inputs, pipeline.device)
     frames_tensor = frames_tensor.to(pipeline.unet.device, pipeline.unet.dtype)
 
     similarities = torch.tensor(
