@@ -46,6 +46,9 @@ from base_validator.validator import (
     get_miner_response,
     SuccessfulGenerationResponseInfo, is_cheater,
 )
+from forwarding_validator.miner_metrics import MinerUserRequestMetricManager
+from forwarding_validator.similarity_score_pipeline import score_similarity
+from forwarding_validator.watermark import apply_watermark
 from gpu_pipeline.pipeline import get_pipeline
 from gpu_pipeline.tensor import load_tensor
 from neuron.api_handler import HOTKEY_HEADER, request_error, RequestVerifier, serve_ip, WhitelistChecker, get_metadata
@@ -66,9 +69,6 @@ from tensor.response import (
     Response, axon_address, axon_channel, Channels, FailedResponseInfo, SuccessfulResponse,
     call_request,
 )
-from user_requests_validator.miner_metrics import MinerUserRequestMetricManager
-from user_requests_validator.similarity_score_pipeline import score_similarity
-from user_requests_validator.watermark import apply_watermark
 
 RANDOM_VALIDATION_CHANCE = float(os.getenv("RANDOM_VALIDATION_CHANCE", str(0.35)))
 
@@ -148,7 +148,7 @@ class OutputScoreService(OutputScorerServicer):
 class ValidatorGenerationService(ForwardingValidatorServicer):
     def __init__(
         self,
-        validator: "UserRequestValidator",
+        validator: "ForwardingValidator",
         gpu_semaphore: Semaphore,
         pipeline: StableDiffusionXLControlNetPipeline,
     ):
@@ -486,7 +486,7 @@ class BadImagesDetected(Exception):
         self.axon = axon
 
 
-class UserRequestValidator(BaseValidator):
+class ForwardingValidator(BaseValidator):
     axon: bt.axon
 
     security = HTTPBasic()

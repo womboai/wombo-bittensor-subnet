@@ -1,9 +1,9 @@
 [tool.poetry]
-name = "wombo-bittensor-subnet-user-requests-validator"
+name = "wombo-bittensor-subnet-forwarding-validator"
 
 version = "1.0.0"
 
-description = "The portion of the validator used for forwarding user requests to miners."
+description = "The portion of the validator used for forwarding user requests to miners or handle stress test scoring."
 
 license = "MIT"
 
