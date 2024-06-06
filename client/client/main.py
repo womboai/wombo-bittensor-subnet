@@ -7,7 +7,6 @@ from typing import AsyncGenerator
 import bittensor as bt
 import grpc
 from bittensor import AxonInfo
-from fastapi import HTTPException, status
 from grpc.aio import ServicerContext
 from torch import tensor
 
@@ -161,10 +160,7 @@ class ClientRequestService(ClientServicer):
         )
 
         if not len(validator_uids):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="No suitable validators found",
-            )
+            raise RuntimeError("No suitable validators found")
 
         axons: list[AxonInfo] = [self.api.metagraph.axons[uid.item()] for uid in validator_uids]
 
