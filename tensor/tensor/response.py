@@ -18,15 +18,17 @@
 #
 #
 from asyncio import CancelledError
-from time import perf_counter
-from typing import Literal, TypeVar, Generic, Callable, cast, TypeAlias, Annotated, Sequence
+from time import perf_counter, monotonic_ns
+from typing import Literal, TypeVar, Generic, Callable, cast, TypeAlias, Annotated
 
 import bittensor as bt
 from bittensor import AxonInfo
 from google.protobuf.message import Message
 from grpc import StatusCode, RpcError
-from grpc.aio import Channel, insecure_channel, AioRpcError, UnaryUnaryCall
+from grpc.aio import Channel, insecure_channel, AioRpcError, UnaryUnaryMultiCallable
 from pydantic import BaseModel, ConfigDict, RootModel, Field
+
+from neuron.api_handler import NONCE_HEADER, HOTKEY_HEADER, SIGNATURE_HEADER
 
 ResponseT = TypeVar("ResponseT", bound=Message)
 RequestT = TypeVar("RequestT", bound=Message)
@@ -88,8 +90,6 @@ Response: TypeAlias = RootModel[
     ]
 ]
 
-CallInvoker: TypeAlias = Callable[[RequestT, Sequence[tuple[str, str | bytes]]], UnaryUnaryCall[RequestT, ResponseT]]
-
 
 def axon_address(axon: AxonInfo):
     return f"{axon.ip}:{axon.port}"
@@ -99,10 +99,23 @@ def axon_channel(axon: AxonInfo):
     return insecure_channel(axon_address(axon))
 
 
+def create_metadata(axon: AxonInfo, wallet: bt.wallet):
+    nonce = monotonic_ns()
+    hotkey = wallet.hotkey.ss58_address
+    message = f"{nonce}.{hotkey}.{axon.hotkey}"
+    signature = f"0x{wallet.hotkey.sign(message).hex()}"
+
+    return [
+        (NONCE_HEADER, nonce),
+        (HOTKEY_HEADER, hotkey),
+        (SIGNATURE_HEADER, signature),
+    ]
+
+
 async def create_request(
     axon: AxonInfo,
     request: RequestT,
-    invoker: Callable[[Channel], CallInvoker],
+    invoker: Callable[[Channel], UnaryUnaryMultiCallable[RequestT, ResponseT]],
     wallet: bt.wallet | None = None,
 ) -> Response[ResponseT]:
     async with axon_channel(axon) as channel:
@@ -112,19 +125,15 @@ async def create_request(
 async def call_request(
     axon: AxonInfo,
     request: RequestT,
-    invoker: CallInvoker,
+    invoker: UnaryUnaryMultiCallable[RequestT, ResponseT],
     wallet: bt.wallet | None = None,
 ) -> Response[ResponseT]:
     try:
         start = perf_counter()
 
-        metadata = [
-            (NONCE_HEADER),
-            (HOTKEY_HEADER),
-            (SIGNATURE_HEADER),
-        ] if wallet else None
+        metadata = create_metadata(axon, wallet) if wallet else None
 
-        call = invoker(request, [])
+        call = invoker(request, metadata=metadata)
 
         try:
             response = await call
