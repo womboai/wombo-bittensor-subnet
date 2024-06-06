@@ -34,8 +34,8 @@ from diffusers import StableDiffusionXLControlNetPipeline
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from fastapi.security import HTTPBasic
 from google.protobuf.empty_pb2 import Empty
-from grpc import StatusCode
-from grpc.aio import ServicerContext, Channel
+from grpc import StatusCode, HandlerCallDetails
+from grpc.aio import Channel, Metadata
 from torch import Tensor, tensor
 from transformers import CLIPConfig
 
@@ -103,7 +103,7 @@ async def get_forward_responses(
 
 
 class ValidatorInfoService(NeuronServicer):
-    def Info(self, request: Empty, context: ServicerContext):
+    def Info(self, request: Empty, context: HandlerCallDetails):
         return InfoResponse(
             spec_version=SPEC_VERSION,
             capabilities=[NeuronCapabilities.MINER]
@@ -124,13 +124,14 @@ class OutputScoreService(OutputScorerServicer):
         self.gpu_semaphore = gpu_semaphore
         self.pipeline = pipeline
 
-    async def ScoreOutput(self, request: OutputScoreRequest, context: ServicerContext):
-        verification_failure = await self.verifier.verify(context.invocation_metadata())
+    async def ScoreOutput(self, request: OutputScoreRequest, context: HandlerCallDetails):
+        invocation_metadata = Metadata.from_tuple(context.invocation_metadata)
+        verification_failure = await self.verifier.verify(invocation_metadata)
 
         if verification_failure:
             return verification_failure
 
-        hotkey = context.invocation_metadata()[HOTKEY_HEADER]
+        hotkey = invocation_metadata[HOTKEY_HEADER]
 
         if hotkey != self.hotkey:
             return True, "Mismatching hotkey"
@@ -165,13 +166,14 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
         self.metric_manager = MinerUserRequestMetricManager(validator)
         self.redis = validator.redis
 
-    async def Generate(self, request: ValidatorUserRequest, context: ServicerContext):
-        verification_failure = await self.verifier.verify(context.invocation_metadata())
+    async def Generate(self, request: ValidatorUserRequest, context: HandlerCallDetails):
+        invocation_metadata = Metadata.from_tuple(context.invocation_metadata)
+        verification_failure = await self.verifier.verify(invocation_metadata)
 
         if verification_failure:
             return verification_failure
 
-        hotkey = context.invocation_metadata()[HOTKEY_HEADER]
+        hotkey = invocation_metadata[HOTKEY_HEADER]
 
         if not await self.whitelist_checker.check(hotkey):
             # Ignore requests from unrecognized entities.

@@ -28,8 +28,8 @@ import bittensor as bt
 import grpc
 from diffusers import StableDiffusionXLControlNetPipeline
 from google.protobuf.empty_pb2 import Empty
-from grpc import StatusCode
-from grpc.aio import ServicerContext
+from grpc import StatusCode, HandlerCallDetails
+from grpc.aio import Metadata
 from redis.asyncio import Redis
 
 from gpu_pipeline.pipeline import get_pipeline
@@ -46,7 +46,7 @@ from tensor.response import axon_address
 
 
 class MinerInfoService(NeuronServicer):
-    def Info(self, request: Empty, context: ServicerContext):
+    def Info(self, request: Empty, context: HandlerCallDetails):
         return InfoResponse(
             spec_version=SPEC_VERSION,
             capabilities=[NeuronCapabilities.MINER],
@@ -74,13 +74,14 @@ class MinerGenerationService(MinerServicer):
         self.gpu_semaphore = gpu_semaphore
         self.pipeline = pipeline
 
-    async def Generate(self, request: GenerationRequestInputs, context: ServicerContext) -> MinerGenerationResponse:
-        verification_failure = await self.verifier.verify(context.invocation_metadata())
+    async def Generate(self, request: GenerationRequestInputs, context: HandlerCallDetails) -> MinerGenerationResponse:
+        invocation_metadata = Metadata.from_tuple(context.invocation_metadata)
+        verification_failure = await self.verifier.verify(invocation_metadata)
 
         if verification_failure:
             return verification_failure
 
-        hotkey = context.invocation_metadata()[HOTKEY_HEADER]
+        hotkey = invocation_metadata[HOTKEY_HEADER]
 
         if not self.config.blacklist.allow_non_registered and not await self.whitelist_checker.check(hotkey):
             if hotkey not in self.metagraph.hotkeys:
