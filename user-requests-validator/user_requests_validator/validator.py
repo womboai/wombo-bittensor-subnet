@@ -183,7 +183,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                 f"Blacklisting unrecognized hotkey {hotkey}"
             )
 
-            return request_error(context, StatusCode.PERMISSION_DENIED, "Unrecognized hotkey")
+            return await request_error(context, StatusCode.PERMISSION_DENIED, "Unrecognized hotkey")
 
         sanitize_inputs(request.inputs)
 

@@ -35,8 +35,8 @@ HOTKEY_HEADER = "bt_header_dendrite_hotkey"
 SIGNATURE_HEADER = "bt_header_dendrite_signature"
 
 
-def request_error(context: ServicerContext, status_code: StatusCode, detail: str):
-    return context.abort(status_code, detail)
+async def request_error(context: ServicerContext, status_code: StatusCode, detail: str):
+    return await context.abort(status_code, detail)
 
 
 def serve_ip(config: bt.config, subtensor: bt.subtensor, wallet: bt.wallet):
@@ -78,7 +78,7 @@ class RequestVerifier:
         message = f"{nonce}.{hotkey}.{self.hotkey}"
 
         if not keypair.verify(message, signature):
-            return request_error(
+            return await request_error(
                 context,
                 StatusCode.UNAUTHENTICATED,
                 f"Signature mismatch with {message} and {signature}",
@@ -90,13 +90,13 @@ class RequestVerifier:
             # Ensure this is not a repeated request.
             if nonces:
                 if nonce in nonces:
-                    return request_error(context, StatusCode.UNAUTHENTICATED, "Duplicate nonce")
+                    return await request_error(context, StatusCode.UNAUTHENTICATED, "Duplicate nonce")
             else:
                 nonces = set[int]()
                 self.nonces[hotkey] = nonces
 
             if monotonic_ns() - nonce > _MAX_ALLOWED_NONCE_DELTA:
-                return request_error(context, StatusCode.UNAUTHENTICATED, "Nonce is too old")
+                return await request_error(context, StatusCode.UNAUTHENTICATED, "Nonce is too old")
 
             nonces.add(nonce)
 

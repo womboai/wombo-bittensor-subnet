@@ -88,20 +88,20 @@ class MinerGenerationService(MinerServicer):
                 # Ignore requests from unrecognized entities.
                 bt.logging.trace(f"Blacklisting unrecognized hotkey {hotkey}")
 
-                return request_error(context, StatusCode.PERMISSION_DENIED, "Unrecognized hotkey")
+                return await request_error(context, StatusCode.PERMISSION_DENIED, "Unrecognized hotkey")
 
             uid = self.metagraph.hotkeys.index(hotkey)
 
             if self.config.blacklist.force_validator_permit and not self.metagraph.validator_permit[uid]:
                 bt.logging.trace(f"No validator permit for hotkey {hotkey}")
 
-                return request_error(context, StatusCode.PERMISSION_DENIED, "No validator permit")
+                return await request_error(context, StatusCode.PERMISSION_DENIED, "No validator permit")
 
             if self.metagraph.stake[uid] < self.config.blacklist.validator_minimum_tao:
                 # Ignore requests from unrecognized entities.
                 bt.logging.trace(f"Not enough stake for hotkey {hotkey}")
 
-                return request_error(context, StatusCode.PERMISSION_DENIED, "Insufficient stake")
+                return await request_error(context, StatusCode.PERMISSION_DENIED, "Insufficient stake")
 
         bt.logging.trace(
             f"Not Blacklisting recognized hotkey {hotkey}"
