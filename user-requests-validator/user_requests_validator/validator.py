@@ -39,7 +39,7 @@ from grpc.aio import Channel, ServicerContext
 from torch import Tensor, tensor
 from transformers import CLIPConfig
 
-from base_validator.protos.scoring_pb2 import OutputScoreRequest
+from base_validator.protos.scoring_pb2 import OutputScoreRequest, OutputScore
 from base_validator.protos.scoring_pb2_grpc import OutputScorerServicer, add_OutputScorerServicer_to_server
 from base_validator.validator import (
     BaseValidator,
@@ -136,10 +136,12 @@ class OutputScoreService(OutputScorerServicer):
             return True, "Mismatching hotkey"
 
         async with self.gpu_semaphore:
-            return await score_similarity(
-                self.pipeline,
-                load_tensor(request.frames),
-                request.inputs,
+            return OutputScore(
+                score=await score_similarity(
+                    self.pipeline,
+                    load_tensor(request.frames),
+                    request.inputs,
+                )
             )
 
 
