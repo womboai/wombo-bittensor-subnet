@@ -76,8 +76,14 @@ class RequestVerifier:
         self.hotkey = hotkey
 
     async def verify(self, context: ServicerContext, invocation_metadata: Metadata):
-        hotkey = invocation_metadata[HOTKEY_HEADER]
         nonce = int(invocation_metadata[NONCE_HEADER])
+
+        nonce_delta = time_ns() - nonce
+
+        if nonce_delta > _MAX_ALLOWED_NONCE_DELTA:
+            return await request_error(context, StatusCode.UNAUTHENTICATED, "Nonce is too old")
+
+        hotkey = invocation_metadata[HOTKEY_HEADER]
         signature = invocation_metadata[SIGNATURE_HEADER]
 
         # Build the keypair from the dendrite_hotkey
@@ -103,9 +109,6 @@ class RequestVerifier:
             else:
                 nonces = set[int]()
                 self.nonces[hotkey] = nonces
-
-            if time_ns() - nonce > _MAX_ALLOWED_NONCE_DELTA:
-                return await request_error(context, StatusCode.UNAUTHENTICATED, "Nonce is too old")
 
             nonces.add(nonce)
 
