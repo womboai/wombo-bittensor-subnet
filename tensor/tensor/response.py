@@ -19,13 +19,13 @@
 #
 from asyncio import CancelledError
 from time import perf_counter, time_ns
-from typing import Literal, TypeVar, Generic, Callable, cast, TypeAlias, Annotated
+from typing import Literal, TypeVar, Generic, Callable, TypeAlias, Annotated
 
 import bittensor as bt
 from bittensor import AxonInfo
 from google.protobuf.message import Message
 from grpc import StatusCode, RpcError
-from grpc.aio import Channel, insecure_channel, AioRpcError, UnaryUnaryMultiCallable
+from grpc.aio import Channel, insecure_channel, UnaryUnaryMultiCallable
 from pydantic import BaseModel, ConfigDict, RootModel, Field
 
 from neuron.api_handler import NONCE_HEADER, HOTKEY_HEADER, SIGNATURE_HEADER
@@ -128,13 +128,14 @@ async def call_request(
     invoker: UnaryUnaryMultiCallable[RequestT, ResponseT],
     wallet: bt.wallet | None = None,
 ) -> Response[ResponseT]:
+    start = perf_counter()
+
+    method = invoker._method
+    metadata = create_metadata(axon, wallet) if wallet else None
+
+    call = invoker(request, metadata=metadata)
+
     try:
-        start = perf_counter()
-
-        metadata = create_metadata(axon, wallet) if wallet else None
-
-        call = invoker(request, metadata=metadata)
-
         try:
             response = await call
         except CancelledError:
@@ -143,23 +144,24 @@ async def call_request(
 
         process_time = perf_counter() - start
 
-        bt.logging.trace(f"Successful request {type(request).__name__} -> {axon.hotkey}")
+        bt.logging.trace(
+            f"Successful request {method} -> {axon.hotkey}"
+            f"status code {call.code()} with details {call.details()}"
+        )
 
         return SuccessfulResponse(
             data=response,
             process_time=process_time,
             axon=axon,
         )
-    except RpcError as error:
-        grpc_error = cast(AioRpcError, error)
-
+    except RpcError:
         bt.logging.trace(
-            f"Failed request {type(request).__name__} -> {axon.hotkey}, "
-            f"status code {grpc_error.code()} with error {grpc_error.details()}"
+            f"Failed request {method} -> {axon.hotkey}, "
+            f"status code {call.code()} with error {call.details()}"
         )
 
         return FailedResponse(
             axon=axon,
-            status=grpc_error.code(),
-            detail=grpc_error.details(),
+            status=call.code(),
+            detail=call.details(),
         )
