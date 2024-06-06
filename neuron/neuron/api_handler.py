@@ -17,7 +17,7 @@
 #  DEALINGS IN THE SOFTWARE.
 #
 #
-
+import os
 from asyncio import Lock
 from time import time_ns
 
@@ -28,6 +28,7 @@ from grpc import StatusCode, HandlerCallDetails
 from grpc.aio import Metadata, ServicerContext
 from substrateinterface import Keypair
 
+_CHECK_NONCE_DELTA = os.getenv("CHECK_NONCE_DELTA", str(False)).lower() == str(True).lower()
 _MAX_ALLOWED_NONCE_DELTA = 4_000_000
 
 NONCE_HEADER = "bt_header_dendrite_nonce"
@@ -78,10 +79,11 @@ class RequestVerifier:
     async def verify(self, context: ServicerContext, invocation_metadata: Metadata):
         nonce = int(invocation_metadata[NONCE_HEADER])
 
-        nonce_delta = time_ns() - nonce
+        if _CHECK_NONCE_DELTA:
+            nonce_delta = time_ns() - nonce
 
-        if nonce_delta > _MAX_ALLOWED_NONCE_DELTA:
-            return await request_error(context, StatusCode.UNAUTHENTICATED, "Nonce is too old")
+            if nonce_delta > _MAX_ALLOWED_NONCE_DELTA:
+                return await request_error(context, StatusCode.UNAUTHENTICATED, "Nonce is too old")
 
         hotkey = invocation_metadata[HOTKEY_HEADER]
         signature = invocation_metadata[SIGNATURE_HEADER]
