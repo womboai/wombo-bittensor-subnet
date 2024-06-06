@@ -43,8 +43,10 @@ class LoggingInterceptor(ServerInterceptor):
             except Exception:
                 bt.logging.trace(
                     f"Failed request {handler_call_details.method} <- {hotkey}, "
-                    f"status code {context.code()} with error {context.details()}"
+                    f"status code {context.code()} with error {context.details()}",
+                    exc_info=True,
                 )
+
                 raise
 
             bt.logging.trace(f"Successful request {handler_call_details.method} <- {hotkey}")
