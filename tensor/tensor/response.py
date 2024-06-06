@@ -19,7 +19,7 @@
 #
 from asyncio import CancelledError
 from time import perf_counter
-from typing import Literal, TypeVar, Generic, Callable, cast, TypeAlias, Annotated
+from typing import Literal, TypeVar, Generic, Callable, cast, TypeAlias, Annotated, Sequence
 
 import bittensor as bt
 from bittensor import AxonInfo
@@ -88,6 +88,8 @@ Response: TypeAlias = RootModel[
     ]
 ]
 
+CallInvoker: TypeAlias = Callable[[RequestT, Sequence[tuple[str, str | bytes]]], UnaryUnaryCall[RequestT, ResponseT]]
+
 
 def axon_address(axon: AxonInfo):
     return f"{axon.ip}:{axon.port}"
@@ -100,21 +102,29 @@ def axon_channel(axon: AxonInfo):
 async def create_request(
     axon: AxonInfo,
     request: RequestT,
-    invoker: Callable[[Channel], Callable[[RequestT], UnaryUnaryCall[RequestT, ResponseT]]],
+    invoker: Callable[[Channel], CallInvoker],
+    wallet: bt.wallet | None = None,
 ) -> Response[ResponseT]:
     async with axon_channel(axon) as channel:
-        return await call_request(axon, request, invoker(channel))
+        return await call_request(axon, request, invoker(channel), wallet)
 
 
 async def call_request(
     axon: AxonInfo,
     request: RequestT,
-    invoker: Callable[[RequestT], UnaryUnaryCall[RequestT, ResponseT]],
+    invoker: CallInvoker,
+    wallet: bt.wallet | None = None,
 ) -> Response[ResponseT]:
     try:
         start = perf_counter()
 
-        call = invoker(request)
+        metadata = [
+            (NONCE_HEADER),
+            (HOTKEY_HEADER),
+            (SIGNATURE_HEADER),
+        ] if wallet else None
+
+        call = invoker(request, [])
 
         try:
             response = await call

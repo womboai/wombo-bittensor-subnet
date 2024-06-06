@@ -83,17 +83,19 @@ async def get_miner_response_with_channel(
     inputs: GenerationRequestInputs,
     axon: AxonInfo,
     channel: Channel,
+    wallet: bt.wallet,
 ):
-    return await get_miner_response(inputs, axon, channel), channel
+    return await get_miner_response(inputs, axon, channel, wallet), channel
 
 
 async def get_forward_responses(
     channels: list[tuple[Channel, AxonInfo]],
     inputs: GenerationRequestInputs,
+    wallet: bt.wallet,
 ) -> AsyncGenerator[tuple[Response[MinerGenerationResponse], Channel], None]:
     responses = asyncio.as_completed(
         [
-            get_miner_response_with_channel(inputs, axon, channel)
+            get_miner_response_with_channel(inputs, axon, channel, wallet)
             for channel, axon in channels
         ]
     )
@@ -209,7 +211,11 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
         channels = Channels([axon_channel(axon) for axon in axons])
 
         try:
-            response_generator = get_forward_responses(zip(channels.channels, axons), request.inputs)
+            response_generator = get_forward_responses(
+                zip(channels.channels, axons),
+                request.inputs,
+                self.validator.wallet,
+            )
 
             bad_responses: list[MinerResponseFailureInfo] = []
 

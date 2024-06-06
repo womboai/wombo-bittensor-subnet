@@ -87,15 +87,20 @@ async def download_output(axon: AxonInfo, identifier: MinerGenerationIdentifier,
 
 
 async def score_output(
+    axon: AxonInfo,
     inputs: GenerationRequestInputs,
     frames: bytes,
     channel: Channel,
+    wallet: bt.wallet,
 ) -> float:
-    response: OutputScore = await OutputScorerStub(channel).ScoreOutput(
-        OutputScoreRequest(inputs=inputs, frames=frames)
+    response: Response[OutputScore] = await call_request(
+        axon,
+        OutputScoreRequest(inputs=inputs, frames=frames),
+        OutputScorerStub(channel).ScoreOutput,
+        wallet,
     )
 
-    return response.score
+    return response.data.score
 
 
 class MinerMetrics(BaseModel):
@@ -269,7 +274,7 @@ async def stress_test_miner(validator: "StressTestValidator", uid: int):
             responses: list[Response[MinerGenerationResponse]] = list(
                 await asyncio.gather(
                     *[
-                        get_miner_response(inputs, axon, channel)
+                        get_miner_response(inputs, axon, channel, validator.wallet)
                         for inputs in request_inputs
                     ]
                 )
@@ -370,7 +375,13 @@ async def stress_test_miner(validator: "StressTestValidator", uid: int):
         async with axon_channel(validator.metagraph.axons[validator.uid]) as channel:
             scores = await asyncio.gather(
                 *[
-                    score_output(inputs, frames, channel)
+                    score_output(
+                        axon,
+                        inputs,
+                        frames,
+                        channel,
+                        validator.wallet,
+                    )
                     for inputs, frames in input_responses
                 ]
             )

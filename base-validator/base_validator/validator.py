@@ -25,10 +25,10 @@ from typing import TypeVar
 import bittensor as bt
 from bittensor import AxonInfo
 from grpc.aio import Channel
-from neuron.protos.neuron_pb2 import MinerGenerationResponse
-from neuron.protos.neuron_pb2_grpc import MinerStub
 
 from neuron.neuron import BaseNeuron
+from neuron.protos.neuron_pb2 import MinerGenerationResponse
+from neuron.protos.neuron_pb2_grpc import MinerStub
 from tensor.config import check_config
 from tensor.neuron_info import sync_neuron_info
 from tensor.protos.inputs_pb2 import InfoResponse, GenerationRequestInputs
@@ -55,8 +55,9 @@ async def get_miner_response(
     inputs: GenerationRequestInputs,
     axon: AxonInfo,
     channel: Channel,
+    wallet: bt.wallet,
 ) -> Response[MinerGenerationResponse]:
-    return await call_request(axon, inputs, MinerStub(channel).Generate)
+    return await call_request(axon, inputs, MinerStub(channel).Generate, wallet)
 
 
 def is_cheater(uid: int, frames: bytes, expected_hash: bytes):
