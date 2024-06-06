@@ -25,6 +25,7 @@ from typing import TypeAlias, Annotated
 
 import bittensor as bt
 import nltk
+from aiohttp import ClientSession
 from bittensor import AxonInfo
 from grpc.aio import Channel
 from numpy import mean
@@ -198,6 +199,9 @@ class MinerStressTestMetricManager(MinerMetricManager):
             }
         )
 
+        if not self.validator.session:
+            self.validator.session = ClientSession()
+
         await self.send_metrics(
             self.validator.session,
             self.validator.wallet.hotkey,
@@ -213,6 +217,9 @@ class MinerStressTestMetricManager(MinerMetricManager):
 
     async def failed_stress_test(self, uid: int, cheater: bool):
         await self.failed_miner(uid, cheater)
+
+        if not self.validator.session:
+            self.validator.session = ClientSession()
 
         await self.send_metrics(
             self.validator.session,

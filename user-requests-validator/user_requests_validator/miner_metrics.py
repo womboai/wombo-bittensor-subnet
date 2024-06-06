@@ -29,11 +29,11 @@ from neuron.redis import parse_redis_value
 
 
 class MinerUserRequestMetricManager(MinerMetricManager):
-    def send_user_request_metric(self, uid: int, successful: int, failed: int, similarity_score: float | None):
+    async def send_user_request_metric(self, uid: int, successful: int, failed: int, similarity_score: float | None):
         if not self.validator.session:
             self.validator.session = ClientSession()
 
-        return self.send_metrics(
+        return await self.send_metrics(
             self.validator.session,
             self.validator.wallet.hotkey,
             "user_requests",
