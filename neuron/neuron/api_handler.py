@@ -24,8 +24,8 @@ from time import monotonic_ns
 import bittensor as bt
 from aiohttp import ClientSession
 from bittensor.utils.networking import get_external_ip
-from grpc import unary_unary_rpc_method_handler, StatusCode
-from grpc.aio import Metadata
+from grpc import StatusCode
+from grpc.aio import Metadata, ServicerContext
 from substrateinterface import Keypair
 
 _MAX_ALLOWED_NONCE_DELTA = 4_000_000
@@ -35,8 +35,8 @@ HOTKEY_HEADER = "bt_header_dendrite_hotkey"
 SIGNATURE_HEADER = "bt_header_dendrite_signature"
 
 
-def request_error(status_code: StatusCode, detail: str):
-    return unary_unary_rpc_method_handler(lambda _, context: context.abort(status_code, detail))
+def request_error(context: ServicerContext, status_code: StatusCode, detail: str):
+    return context.abort(status_code, detail)
 
 
 def serve_ip(config: bt.config, subtensor: bt.subtensor, wallet: bt.wallet):
@@ -66,7 +66,7 @@ class RequestVerifier:
         self.nonce_lock = Lock()
         self.hotkey = hotkey
 
-    async def verify(self, invocation_metadata: Metadata):
+    async def verify(self, context: ServicerContext, invocation_metadata: Metadata):
         hotkey = invocation_metadata[HOTKEY_HEADER]
         nonce = int(invocation_metadata[NONCE_HEADER])
         signature = invocation_metadata[SIGNATURE_HEADER]
@@ -79,6 +79,7 @@ class RequestVerifier:
 
         if not keypair.verify(message, signature):
             return request_error(
+                context,
                 StatusCode.UNAUTHENTICATED,
                 f"Signature mismatch with {message} and {signature}",
             )
@@ -89,13 +90,13 @@ class RequestVerifier:
             # Ensure this is not a repeated request.
             if nonces:
                 if nonce in nonces:
-                    return request_error(StatusCode.UNAUTHENTICATED, "Duplicate nonce")
+                    return request_error(context, StatusCode.UNAUTHENTICATED, "Duplicate nonce")
             else:
                 nonces = set[int]()
                 self.nonces[hotkey] = nonces
 
             if monotonic_ns() - nonce > _MAX_ALLOWED_NONCE_DELTA:
-                return request_error(StatusCode.UNAUTHENTICATED, "Nonce is too old")
+                return request_error(context, StatusCode.UNAUTHENTICATED, "Nonce is too old")
 
             nonces.add(nonce)
 

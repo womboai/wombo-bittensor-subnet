@@ -48,8 +48,6 @@ class StressTestValidator(BaseValidator):
 
         self.miner_heap = heapdict()
 
-        self.last_miner_check = self.block
-
         bt.logging.info("load_state()")
         self.load_state()
 
@@ -221,29 +219,16 @@ class StressTestValidator(BaseValidator):
 
                 try:
                     neuron_refresh_blocks = 25
-                    check_blocks = 5
 
                     blocks_since_neuron_refresh = self.block - self.last_neuron_info_block
-                    blocks_since_check = self.block - self.last_miner_check
-
-                    sleep = True
 
                     if blocks_since_neuron_refresh > neuron_refresh_blocks:
                         await self.sync_neuron_info()
-                        sleep = False
 
-                    if blocks_since_check > check_blocks:
-                        await self.check_next_miner()
-                        sleep = False
+                    await self.check_next_miner()
 
                     # Sync metagraph and potentially set weights.
                     await self.sync()
-
-                    if sleep:
-                        neuron_refresh_in = neuron_refresh_blocks - blocks_since_neuron_refresh
-                        check_in = check_blocks - blocks_since_check
-
-                        await asyncio.sleep(max(min(neuron_refresh_in, check_in), 0) * 12)
 
                     self.step += 1
                 except Exception as exception:

@@ -128,7 +128,7 @@ class OutputScoreService(OutputScorerServicer):
 
     async def ScoreOutput(self, request: OutputScoreRequest, context: HandlerCallDetails):
         invocation_metadata = Metadata.from_tuple(context.invocation_metadata())
-        verification_failure = await self.verifier.verify(invocation_metadata)
+        verification_failure = await self.verifier.verify(context, invocation_metadata)
 
         if verification_failure:
             return verification_failure
@@ -170,7 +170,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
     async def Generate(self, request: ValidatorUserRequest, context: HandlerCallDetails):
         invocation_metadata = Metadata.from_tuple(context.invocation_metadata())
-        verification_failure = await self.verifier.verify(invocation_metadata)
+        verification_failure = await self.verifier.verify(context, invocation_metadata)
 
         if verification_failure:
             return verification_failure
@@ -183,7 +183,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                 f"Blacklisting unrecognized hotkey {hotkey}"
             )
 
-            return request_error(StatusCode.PERMISSION_DENIED, "Unrecognized hotkey")
+            return request_error(context, StatusCode.PERMISSION_DENIED, "Unrecognized hotkey")
 
         sanitize_inputs(request.inputs)
 
