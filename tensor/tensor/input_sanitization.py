@@ -38,7 +38,7 @@ def sanitize_inputs(inputs: GenerationRequestInputs):
         inputs.width = DEFAULT_WIDTH
 
     if not inputs.height or inputs.height < MIN_SIZE or inputs.height > MAX_SIZE:
-        inputs.width = DEFAULT_HEIGHT
+        inputs.height = DEFAULT_HEIGHT
 
     if not inputs.num_inference_steps or inputs.num_inference_steps > MAX_STEPS:
         inputs.num_inference_steps = DEFAULT_STEPS
