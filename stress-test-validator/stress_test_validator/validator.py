@@ -78,13 +78,13 @@ class StressTestValidator(BaseValidator):
         try:
             self.resync_metagraph()
         except Exception as exception:
-            bt.logging.error("Failed to resync metagraph", exec_info=exception)
+            bt.logging.error("Failed to resync metagraph", exc_info=exception)
 
         try:
             if self.should_set_weights():
                 await self.set_weights()
         except Exception as exception:
-            bt.logging.error("Failed to set validator weights", exec_info=exception)
+            bt.logging.error("Failed to set validator weights", exc_info=exception)
 
         # Always save state.
         self.save_state()
@@ -247,7 +247,7 @@ class StressTestValidator(BaseValidator):
 
                     self.step += 1
                 except Exception as exception:
-                    bt.logging.error("Failed to forward to miners", exec_info=exception)
+                    bt.logging.error("Failed to forward to miners", exc_info=exception)
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -256,7 +256,7 @@ class StressTestValidator(BaseValidator):
 
         # In case of unforeseen errors, the validator will log the error and continue operations.
         except Exception as err:
-            bt.logging.error("Error during validation", exec_info=err)
+            bt.logging.error("Error during validation", exc_info=err)
 
     async def set_weights(self):
         """

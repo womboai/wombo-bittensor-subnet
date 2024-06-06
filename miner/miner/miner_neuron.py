@@ -236,7 +236,7 @@ class Miner(BaseNeuron):
 
         # In case of unforeseen errors, the miner will log the error and continue operations.
         except Exception as exception:
-            bt.logging.error("Caught exception in miner loop", exec_info=exception)
+            bt.logging.error("Caught exception in miner loop", exc_info=exception)
 
     def sync(self):
         # Ensure miner hotkey is still registered on the network.
@@ -245,7 +245,7 @@ class Miner(BaseNeuron):
         try:
             self.resync_metagraph()
         except Exception as exception:
-            bt.logging.error("Failed to resync metagraph", exec_info=exception)
+            bt.logging.error("Failed to resync metagraph", exc_info=exception)
 
     def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""

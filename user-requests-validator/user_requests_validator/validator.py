@@ -607,7 +607,7 @@ class UserRequestValidator(BaseValidator):
 
                         self.pending_request_futures = remaining_futures
                 except Exception as exception:
-                    bt.logging.error("Failed to forward to miners", exec_info=exception)
+                    bt.logging.error("Failed to forward to miners", exc_info=exception)
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -618,7 +618,7 @@ class UserRequestValidator(BaseValidator):
 
         # In case of unforeseen errors, the validator will log the error and continue operations.
         except Exception as err:
-            bt.logging.error("Error during validation", exec_info=err)
+            bt.logging.error("Error during validation", exc_info=err)
 
     @classmethod
     def add_args(cls, parser):

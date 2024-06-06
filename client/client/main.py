@@ -155,7 +155,7 @@ class WomboSubnetAPI(SubnetsAPI):
                     self.metagraph.sync(subtensor=self.subtensor)
                     self.neuron_info = await sync_neuron_info(self.metagraph, self.wallet, self.dendrite)
                 except Exception as exception:
-                    bt.logging.error("Failed to sync client metagraph", exec_info=exception)
+                    bt.logging.error("Failed to sync client metagraph", exc_info=exception)
 
                 await asyncio.sleep(1200)
 
