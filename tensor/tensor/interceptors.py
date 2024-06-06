@@ -49,7 +49,10 @@ class LoggingInterceptor(ServerInterceptor):
 
                 raise
 
-            bt.logging.trace(f"Successful request {handler_call_details.method} <- {hotkey}")
+            bt.logging.trace(
+                f"Successful request {handler_call_details.method} <- {hotkey}, "
+                f"status code {context.code()} with details {context.details()}"
+            )
 
             return response
 
