@@ -32,7 +32,7 @@ from grpc import StatusCode, HandlerCallDetails
 from grpc.aio import Metadata
 from redis.asyncio import Redis
 
-from gpu_pipeline.pipeline import get_pipeline
+from gpu_pipeline.pipeline import get_pipeline, get_tao_img
 from miner.image_generator import generate
 from neuron.api_handler import request_error, RequestVerifier, HOTKEY_HEADER, serve_ip, WhitelistChecker
 from neuron.neuron import BaseNeuron
@@ -153,6 +153,9 @@ class Miner(BaseNeuron):
         bt.logging.info("Running warmup for pipeline")
         self.pipeline(
             prompt="Warmup",
+            width=1024,
+            height=1024,
+            image=get_tao_img(1024, 1024),
             output_type="latents",
         )
 

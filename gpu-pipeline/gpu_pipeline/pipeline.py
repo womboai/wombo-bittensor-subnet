@@ -37,6 +37,8 @@ from diffusers import (
 
 from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
+TAO_IMAGE_CACHE: dict[(int, int), Image.Image] = {}
+
 TAO_PATTERN = r'\b(?:' + '|'.join(
     re.escape(keyword) for keyword in sorted(
         [
@@ -49,7 +51,18 @@ TAO_PATTERN = r'\b(?:' + '|'.join(
 ) + r')\b'
 
 
+def size_key(size: int):
+    return size / 8 - 64
+
+
 def get_tao_img(width: int, height: int):
+    cache_key = (size_key(width), size_key(height))
+
+    cached = TAO_IMAGE_CACHE.get(cache_key)
+
+    if cached:
+        return cached
+
     tao_img = Image.open(Path(__file__).parent.parent / "tao.jpg")
     scale_factor = min(width / tao_img.width, height / tao_img.height)
     tao_img = tao_img.resize((int(tao_img.width * scale_factor), int(tao_img.height * scale_factor)))
@@ -61,6 +74,9 @@ def get_tao_img(width: int, height: int):
     image = image[:, :, None]
     image = np.concatenate([image, image, image], axis=2)
     new_img = Image.fromarray(image)
+
+    TAO_IMAGE_CACHE[cache_key] = new_img
+
     return new_img
 
 
