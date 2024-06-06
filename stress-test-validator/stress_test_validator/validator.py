@@ -228,11 +228,11 @@ class StressTestValidator(BaseValidator):
 
                     sleep = True
 
-                    if blocks_since_neuron_refresh > neuron_refresh_blocks:
+                    if blocks_since_neuron_refresh >= neuron_refresh_blocks:
                         await self.sync_neuron_info()
                         sleep = False
 
-                    if blocks_since_check > check_blocks:
+                    if blocks_since_check >= check_blocks:
                         await self.check_next_miner()
                         sleep = False
 
