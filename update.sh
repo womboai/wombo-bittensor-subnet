@@ -36,4 +36,4 @@ fi
 
 echo "Got an update, restarting all WOMBO neurons"
 
-pm2 restart wombo-*
+cat $HOME/.pm2/dump.pm2 | jq -r ".[].name" | grep "wombo-" | xargs -- pm2 restart
