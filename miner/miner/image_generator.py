@@ -24,6 +24,7 @@ from io import BytesIO
 import torch
 from PIL import Image
 from diffusers import StableDiffusionXLControlNetPipeline
+from torch import Tensor
 
 from gpu_pipeline.pipeline import parse_input_parameters
 from gpu_pipeline.tensor import save_tensor
@@ -43,7 +44,7 @@ async def generate(
     pipeline: StableDiffusionXLControlNetPipeline,
     inputs: GenerationRequestInputs,
 ) -> bytes:
-    frames = []
+    frames: list[Tensor] = []
 
     def save_frames(_pipe, _step_index, _timestep, callback_kwargs):
         frames.append(callback_kwargs["latents"])

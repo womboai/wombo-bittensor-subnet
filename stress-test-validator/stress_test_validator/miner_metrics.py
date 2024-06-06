@@ -268,11 +268,6 @@ async def stress_test_miner(validator: "StressTestValidator", uid: int):
                 )
             )
 
-            slowest_response = max(
-                responses,
-                key=lambda response: response.process_time if response.output else -1
-            )
-
             finished_responses.extend(
                 [
                     (response, inputs)
@@ -292,6 +287,11 @@ async def stress_test_miner(validator: "StressTestValidator", uid: int):
                     await validator.metric_manager.failed_stress_test(uid, False)
 
                     return
+
+            slowest_response = max(
+                responses,
+                key=lambda response: response.process_time if response.successful else -1
+            )
 
             error_rate = error_count / len(responses)
 
