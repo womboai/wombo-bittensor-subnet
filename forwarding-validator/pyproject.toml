@@ -9,7 +9,7 @@ license = "MIT"
 
 authors = ["WOMBO <hello@w.ai>"]
 
-packages = [{ include = "user_requests_validator" }]
+packages = [{ include = "forwarding_validator" }]
 
 classifiers = [
     "Development Status :: 3 - Alpha",
