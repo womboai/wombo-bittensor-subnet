@@ -32,6 +32,7 @@ from numpy import mean
 from pydantic import BaseModel, Field
 
 from base_validator.cryptographic_sample import cryptographic_sample
+from base_validator.input_sanitization import sanitize_inputs
 from base_validator.miner_metrics import MinerMetricManager
 from base_validator.protos.scoring_pb2 import OutputScoreRequest, OutputScore
 from base_validator.protos.scoring_pb2_grpc import OutputScorerStub
@@ -39,7 +40,6 @@ from base_validator.validator import get_miner_response, is_cheater
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron.redis import parse_redis_value
-from tensor.input_sanitization import sanitize_inputs
 from tensor.protos.inputs_pb2 import GenerationRequestInputs
 from tensor.response import Response, axon_channel, SuccessfulResponse, call_request
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT

@@ -39,6 +39,7 @@ from grpc.aio import Channel, ServicerContext
 from torch import Tensor, tensor
 from transformers import CLIPConfig
 
+from base_validator.input_sanitization import sanitize_inputs
 from base_validator.protos.scoring_pb2 import OutputScoreRequest, OutputScore
 from base_validator.protos.scoring_pb2_grpc import OutputScorerServicer, add_OutputScorerServicer_to_server
 from base_validator.validator import (
@@ -61,7 +62,6 @@ from neuron_selector.protos.forwarding_validator_pb2_grpc import (
 )
 from neuron_selector.uids import get_best_uids
 from tensor.config import add_args, SPEC_VERSION
-from tensor.input_sanitization import sanitize_inputs
 from tensor.interceptors import LoggingInterceptor
 from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoResponse, NeuronCapabilities
 from tensor.protos.inputs_pb2_grpc import NeuronServicer, add_NeuronServicer_to_server
