@@ -39,6 +39,7 @@ from base_validator.validator import get_miner_response, is_cheater
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron.redis import parse_redis_value
+from tensor.input_sanitization import sanitize_inputs
 from tensor.protos.inputs_pb2 import GenerationRequestInputs
 from tensor.response import Response, axon_channel, SuccessfulResponse, call_request
 from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
@@ -257,13 +258,12 @@ async def stress_test_miner(validator: "StressTestValidator", uid: int):
             bt.logging.info(f"\tTesting {count} requests")
 
             def get_inputs():
-                return GenerationRequestInputs(
-                    prompt=generate_random_prompt(),
-                    negative_prompt="blurry, nude, (out of focus), JPEG artifacts",
-                    width=1024,
-                    height=1024,
-                    num_inference_steps=30,
-                    controlnet_conditioning_scale=0.5,
+                return sanitize_inputs(
+                    GenerationRequestInputs(
+                        prompt=generate_random_prompt(),
+                        negative_prompt="blurry, nude, (out of focus), JPEG artifacts",
+                        controlnet_conditioning_scale=0.5,
+                    )
                 )
 
             request_inputs = [

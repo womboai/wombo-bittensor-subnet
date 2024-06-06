@@ -39,6 +39,7 @@ from neuron.neuron import BaseNeuron
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerServicer, add_MinerServicer_to_server
 from tensor.config import add_args, check_config, SPEC_VERSION
+from tensor.input_sanitization import DEFAULT_HEIGHT, DEFAULT_WIDTH, DEFAULT_STEPS, DEFAULT_GUIDANCE
 from tensor.interceptors import LoggingInterceptor
 from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoResponse, NeuronCapabilities
 from tensor.protos.inputs_pb2_grpc import NeuronServicer, add_NeuronServicer_to_server
@@ -153,9 +154,11 @@ class Miner(BaseNeuron):
         bt.logging.info("Running warmup for pipeline")
         self.pipeline(
             prompt="Warmup",
-            width=1024,
-            height=1024,
-            image=get_tao_img(1024, 1024),
+            width=DEFAULT_WIDTH,
+            height=DEFAULT_HEIGHT,
+            num_inference_steps=DEFAULT_STEPS,
+            image=get_tao_img(DEFAULT_WIDTH, DEFAULT_HEIGHT),
+            guidance_scale=DEFAULT_GUIDANCE,
             output_type="latents",
         )
 
