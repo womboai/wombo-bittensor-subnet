@@ -145,9 +145,16 @@ class Miner(BaseNeuron):
                 "You are allowing non-registered entities to send requests to your miner. This is a security risk."
             )
 
+        bt.logging.info("Loading pipeline")
         self.gpu_semaphore, self.pipeline = get_pipeline(self.device)
 
         self.pipeline.vae = None
+
+        bt.logging.info("Running warmup for pipeline")
+        self.pipeline(
+            prompt="Warmup",
+            output_type="latents",
+        )
 
         self.server = grpc.aio.server(interceptors=[LoggingInterceptor()])
 
