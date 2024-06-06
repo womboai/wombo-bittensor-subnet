@@ -146,7 +146,7 @@ async def call_request(
 
         bt.logging.trace(
             f"Successful request {method} -> {axon.hotkey}"
-            f"status code {call.code()} with details {call.details()}"
+            f"status code {await call.code()} with details {await call.details()}"
         )
 
         return SuccessfulResponse(
@@ -157,11 +157,11 @@ async def call_request(
     except RpcError:
         bt.logging.trace(
             f"Failed request {method} -> {axon.hotkey}, "
-            f"status code {call.code()} with error {call.details()}"
+            f"status code {await call.code()} with error {await call.details()}"
         )
 
         return FailedResponse(
             axon=axon,
-            status=call.code(),
-            detail=call.details(),
+            status=await call.code(),
+            detail=await call.details(),
         )
