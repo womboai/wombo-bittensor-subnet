@@ -28,13 +28,13 @@ import bittensor as bt
 import grpc
 from diffusers import StableDiffusionXLControlNetPipeline
 from google.protobuf.empty_pb2 import Empty
-from grpc import StatusCode, HandlerCallDetails
-from grpc.aio import Metadata
+from grpc import StatusCode
+from grpc.aio import ServicerContext
 from redis.asyncio import Redis
 
 from gpu_pipeline.pipeline import get_pipeline, get_tao_img
 from miner.image_generator import generate
-from neuron.api_handler import request_error, RequestVerifier, HOTKEY_HEADER, serve_ip, WhitelistChecker
+from neuron.api_handler import request_error, RequestVerifier, HOTKEY_HEADER, serve_ip, WhitelistChecker, get_metadata
 from neuron.neuron import BaseNeuron
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerServicer, add_MinerServicer_to_server
@@ -47,7 +47,7 @@ from tensor.response import axon_address
 
 
 class MinerInfoService(NeuronServicer):
-    def Info(self, request: Empty, context: HandlerCallDetails):
+    def Info(self, request: Empty, context: ServicerContext):
         return InfoResponse(
             spec_version=SPEC_VERSION,
             capabilities=[NeuronCapabilities.MINER],
@@ -75,12 +75,9 @@ class MinerGenerationService(MinerServicer):
         self.gpu_semaphore = gpu_semaphore
         self.pipeline = pipeline
 
-    async def Generate(self, request: GenerationRequestInputs, context: HandlerCallDetails) -> MinerGenerationResponse:
-        invocation_metadata = Metadata.from_tuple(context.invocation_metadata())
-        verification_failure = await self.verifier.verify(context, invocation_metadata)
-
-        if verification_failure:
-            return verification_failure
+    async def Generate(self, request: GenerationRequestInputs, context: ServicerContext) -> MinerGenerationResponse:
+        invocation_metadata = get_metadata(context)
+        await self.verifier.verify(context, invocation_metadata)
 
         hotkey = invocation_metadata[HOTKEY_HEADER]
 

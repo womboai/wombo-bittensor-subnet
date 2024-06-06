@@ -24,7 +24,7 @@ from time import time_ns
 import bittensor as bt
 from aiohttp import ClientSession
 from bittensor.utils.networking import get_external_ip
-from grpc import StatusCode
+from grpc import StatusCode, HandlerCallDetails
 from grpc.aio import Metadata, ServicerContext
 from substrateinterface import Keypair
 
@@ -54,6 +54,15 @@ def serve_ip(config: bt.config, subtensor: bt.subtensor, wallet: bt.wallet):
         protocol=4,
         netuid=config.netuid,
     )
+
+
+def get_metadata(context: ServicerContext | HandlerCallDetails):
+    metadata = context.invocation_metadata()
+
+    if metadata is Metadata:
+        return metadata
+
+    return Metadata.from_tuple(metadata)
 
 
 class RequestVerifier:

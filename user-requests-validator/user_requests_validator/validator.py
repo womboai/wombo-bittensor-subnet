@@ -34,8 +34,8 @@ from diffusers import StableDiffusionXLControlNetPipeline
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
 from fastapi.security import HTTPBasic
 from google.protobuf.empty_pb2 import Empty
-from grpc import StatusCode, HandlerCallDetails
-from grpc.aio import Channel, Metadata
+from grpc import StatusCode
+from grpc.aio import Channel, ServicerContext
 from torch import Tensor, tensor
 from transformers import CLIPConfig
 
@@ -48,7 +48,7 @@ from base_validator.validator import (
 )
 from gpu_pipeline.pipeline import get_pipeline
 from gpu_pipeline.tensor import load_tensor
-from neuron.api_handler import HOTKEY_HEADER, request_error, RequestVerifier, serve_ip, WhitelistChecker
+from neuron.api_handler import HOTKEY_HEADER, request_error, RequestVerifier, serve_ip, WhitelistChecker, get_metadata
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron_selector.protos.forwarding_validator_pb2 import ValidatorUserRequest, ValidatorGenerationResponse
@@ -105,7 +105,7 @@ async def get_forward_responses(
 
 
 class ValidatorInfoService(NeuronServicer):
-    def Info(self, request: Empty, context: HandlerCallDetails):
+    def Info(self, request: Empty, context: ServicerContext):
         return InfoResponse(
             spec_version=SPEC_VERSION,
             capabilities=[NeuronCapabilities.MINER]
@@ -126,12 +126,9 @@ class OutputScoreService(OutputScorerServicer):
         self.gpu_semaphore = gpu_semaphore
         self.pipeline = pipeline
 
-    async def ScoreOutput(self, request: OutputScoreRequest, context: HandlerCallDetails):
-        invocation_metadata = Metadata.from_tuple(context.invocation_metadata())
-        verification_failure = await self.verifier.verify(context, invocation_metadata)
-
-        if verification_failure:
-            return verification_failure
+    async def ScoreOutput(self, request: OutputScoreRequest, context: ServicerContext):
+        invocation_metadata = get_metadata(context)
+        await self.verifier.verify(context, invocation_metadata)
 
         hotkey = invocation_metadata[HOTKEY_HEADER]
 
@@ -168,12 +165,9 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
         self.metric_manager = MinerUserRequestMetricManager(validator)
         self.redis = validator.redis
 
-    async def Generate(self, request: ValidatorUserRequest, context: HandlerCallDetails):
-        invocation_metadata = Metadata.from_tuple(context.invocation_metadata())
-        verification_failure = await self.verifier.verify(context, invocation_metadata)
-
-        if verification_failure:
-            return verification_failure
+    async def Generate(self, request: ValidatorUserRequest, context: ServicerContext):
+        invocation_metadata = get_metadata(context)
+        await self.verifier.verify(context, invocation_metadata)
 
         hotkey = invocation_metadata[HOTKEY_HEADER]
 

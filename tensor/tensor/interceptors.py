@@ -20,8 +20,11 @@
 from typing import Callable, Awaitable
 
 import bittensor as bt
-from grpc import HandlerCallDetails, RpcMethodHandler
-from grpc.aio import ServerInterceptor
+from grpc import HandlerCallDetails, RpcMethodHandler, unary_unary_rpc_method_handler
+from grpc.aio import ServerInterceptor, ServicerContext
+
+from neuron.api_handler import get_metadata, HOTKEY_HEADER
+from tensor.response import RequestT, ResponseT
 
 
 class LoggingInterceptor(ServerInterceptor):
@@ -30,9 +33,26 @@ class LoggingInterceptor(ServerInterceptor):
         continuation: Callable[[HandlerCallDetails], Awaitable[RpcMethodHandler]],
         handler_call_details: HandlerCallDetails,
     ) -> RpcMethodHandler:
-        try:
-            return await continuation(handler_call_details)
-        except Exception:
-            bt.logging.exception(f"Request {handler_call_details.method()} failed")
+        handler = await continuation(handler_call_details)
 
-            raise
+        async def invoke_and_log(request: RequestT, context: ServicerContext):
+            hotkey = get_metadata(context).get(HOTKEY_HEADER)
+
+            try:
+                response: ResponseT = await handler.unary_unary(request, context)
+            except Exception:
+                bt.logging.trace(
+                    f"Failed request {handler_call_details.method} <- {hotkey}, "
+                    f"status code {context.code()} with error {context.details()}"
+                )
+                raise
+
+            bt.logging.trace(f"Successful request {handler_call_details.method} <- {hotkey}")
+
+            return response
+
+        return unary_unary_rpc_method_handler(
+            invoke_and_log,
+            request_deserializer=handler.request_deserializer,
+            response_serializer=handler.response_serializer,
+        )
