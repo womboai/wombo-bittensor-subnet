@@ -59,6 +59,7 @@ from neuron_selector.protos.forwarding_validator_pb2_grpc import (
 from neuron_selector.uids import get_best_uids
 from tensor.config import add_args, SPEC_VERSION
 from tensor.input_sanitization import sanitize_inputs
+from tensor.interceptors import LoggingInterceptor
 from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoResponse, NeuronCapabilities
 from tensor.protos.inputs_pb2_grpc import NeuronServicer, add_NeuronServicer_to_server
 from tensor.response import (
@@ -496,7 +497,7 @@ class UserRequestValidator(BaseValidator):
 
         gpu_semaphore, pipeline = get_pipeline(self.device)
 
-        self.server = grpc.aio.server()
+        self.server = grpc.aio.server(interceptors=[LoggingInterceptor()])
 
         add_ForwardingValidatorServicer_to_server(
             ValidatorGenerationService(
@@ -597,8 +598,8 @@ class UserRequestValidator(BaseValidator):
                                 bt.logging.error(f"Error in validation coroutine: {e}\n{error_traceback}")
 
                         self.pending_request_futures = remaining_futures
-                except Exception as _:
-                    bt.logging.error("Failed to forward to miners, ", traceback.format_exc())
+                except Exception as exception:
+                    bt.logging.error("Failed to forward to miners", exec_info=exception)
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -609,10 +610,7 @@ class UserRequestValidator(BaseValidator):
 
         # In case of unforeseen errors, the validator will log the error and continue operations.
         except Exception as err:
-            bt.logging.error("Error during validation", str(err))
-            bt.logging.debug(
-                traceback.print_exception(type(err), err, err.__traceback__)
-            )
+            bt.logging.error("Error during validation", exec_info=err)
 
     @classmethod
     def add_args(cls, parser):

@@ -18,7 +18,6 @@
 #
 #
 
-import traceback
 from typing import Any
 
 import bittensor as bt
@@ -62,5 +61,5 @@ class MinerMetricManager:
                 json=data,
             ):
                 pass
-        except Exception as _:
-            bt.logging.warning("Failed to export metrics, ", traceback.format_exc())
+        except Exception as exception:
+            bt.logging.warning("Failed to export metrics", exc_info=exception)

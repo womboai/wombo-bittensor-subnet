@@ -19,7 +19,6 @@
 #
 
 import asyncio
-import traceback
 from asyncio import Semaphore
 from datetime import timedelta
 from hashlib import sha256
@@ -40,6 +39,7 @@ from neuron.neuron import BaseNeuron
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerServicer, add_MinerServicer_to_server
 from tensor.config import add_args, check_config, SPEC_VERSION
+from tensor.interceptors import LoggingInterceptor
 from tensor.protos.inputs_pb2 import GenerationRequestInputs, InfoResponse, NeuronCapabilities
 from tensor.protos.inputs_pb2_grpc import NeuronServicer, add_NeuronServicer_to_server
 from tensor.response import axon_address
@@ -148,7 +148,7 @@ class Miner(BaseNeuron):
 
         self.pipeline.vae = None
 
-        self.server = grpc.aio.server()
+        self.server = grpc.aio.server(interceptors=[LoggingInterceptor()])
 
         add_MinerServicer_to_server(
             MinerGenerationService(
@@ -234,8 +234,8 @@ class Miner(BaseNeuron):
             exit()
 
         # In case of unforeseen errors, the miner will log the error and continue operations.
-        except Exception as _:
-            bt.logging.error(traceback.format_exc())
+        except Exception as exception:
+            bt.logging.error("Caught exception in miner loop", exec_info=exception)
 
     def sync(self):
         # Ensure miner hotkey is still registered on the network.
@@ -243,8 +243,8 @@ class Miner(BaseNeuron):
 
         try:
             self.resync_metagraph()
-        except Exception as _:
-            bt.logging.error("Failed to resync metagraph, ", traceback.format_exc())
+        except Exception as exception:
+            bt.logging.error("Failed to resync metagraph", exec_info=exception)
 
     def resync_metagraph(self):
         """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""

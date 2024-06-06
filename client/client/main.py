@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import os
-import traceback
 from argparse import ArgumentParser
 from asyncio import Task
 from datetime import datetime
@@ -155,8 +154,8 @@ class WomboSubnetAPI(SubnetsAPI):
                     # Sync the metagraph.
                     self.metagraph.sync(subtensor=self.subtensor)
                     self.neuron_info = await sync_neuron_info(self.metagraph, self.wallet, self.dendrite)
-                except Exception as _:
-                    bt.logging.error("Failed to sync client metagraph, ", traceback.format_exc())
+                except Exception as exception:
+                    bt.logging.error("Failed to sync client metagraph", exec_info=exception)
 
                 await asyncio.sleep(1200)
 

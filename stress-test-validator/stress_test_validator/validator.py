@@ -23,7 +23,6 @@ import copy
 import os
 import pickle
 import random
-import traceback
 
 import bittensor as bt
 import numpy
@@ -78,14 +77,14 @@ class StressTestValidator(BaseValidator):
 
         try:
             self.resync_metagraph()
-        except Exception as _:
-            bt.logging.error("Failed to resync metagraph, ", traceback.format_exc())
+        except Exception as exception:
+            bt.logging.error("Failed to resync metagraph", exec_info=exception)
 
         try:
             if self.should_set_weights():
                 await self.set_weights()
-        except Exception as _:
-            bt.logging.error("Failed to set validator weights, ", traceback.format_exc())
+        except Exception as exception:
+            bt.logging.error("Failed to set validator weights", exec_info=exception)
 
         # Always save state.
         self.save_state()
@@ -247,8 +246,8 @@ class StressTestValidator(BaseValidator):
                         await asyncio.sleep(max(min(neuron_refresh_in, check_in), 0) * 12)
 
                     self.step += 1
-                except Exception as _:
-                    bt.logging.error("Failed to forward to miners, ", traceback.format_exc())
+                except Exception as exception:
+                    bt.logging.error("Failed to forward to miners", exec_info=exception)
 
         # If someone intentionally stops the validator, it'll safely terminate operations.
         except KeyboardInterrupt:
@@ -257,10 +256,7 @@ class StressTestValidator(BaseValidator):
 
         # In case of unforeseen errors, the validator will log the error and continue operations.
         except Exception as err:
-            bt.logging.error("Error during validation", str(err))
-            bt.logging.debug(
-                traceback.print_exception(type(err), err, err.__traceback__)
-            )
+            bt.logging.error("Error during validation", exec_info=err)
 
     async def set_weights(self):
         """
