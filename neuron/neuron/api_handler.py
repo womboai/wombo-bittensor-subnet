@@ -19,7 +19,7 @@
 #
 
 from asyncio import Lock
-from time import monotonic_ns
+from time import time_ns
 
 import bittensor as bt
 from aiohttp import ClientSession
@@ -95,7 +95,7 @@ class RequestVerifier:
                 nonces = set[int]()
                 self.nonces[hotkey] = nonces
 
-            if monotonic_ns() - nonce > _MAX_ALLOWED_NONCE_DELTA:
+            if time_ns() - nonce > _MAX_ALLOWED_NONCE_DELTA:
                 return await request_error(context, StatusCode.UNAUTHENTICATED, "Nonce is too old")
 
             nonces.add(nonce)

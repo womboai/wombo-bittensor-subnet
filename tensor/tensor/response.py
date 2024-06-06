@@ -18,7 +18,7 @@
 #
 #
 from asyncio import CancelledError
-from time import perf_counter, monotonic_ns
+from time import perf_counter, time_ns
 from typing import Literal, TypeVar, Generic, Callable, cast, TypeAlias, Annotated
 
 import bittensor as bt
@@ -100,7 +100,7 @@ def axon_channel(axon: AxonInfo):
 
 
 def create_metadata(axon: AxonInfo, wallet: bt.wallet):
-    nonce = str(monotonic_ns())
+    nonce = str(time_ns())
     hotkey = wallet.hotkey.ss58_address
     message = f"{nonce}.{hotkey}.{axon.hotkey}"
     signature = f"0x{wallet.hotkey.sign(message).hex()}"
