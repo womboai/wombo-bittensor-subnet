@@ -33,6 +33,6 @@ class LoggingInterceptor(ServerInterceptor):
         try:
             return await continuation(handler_call_details)
         except Exception:
-            bt.logging.exception(f"Request {handler_call_details.method} failed")
+            bt.logging.exception(f"Request {handler_call_details.method()} failed")
 
             raise

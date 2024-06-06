@@ -75,7 +75,7 @@ class MinerGenerationService(MinerServicer):
         self.pipeline = pipeline
 
     async def Generate(self, request: GenerationRequestInputs, context: HandlerCallDetails) -> MinerGenerationResponse:
-        invocation_metadata = Metadata.from_tuple(context.invocation_metadata)
+        invocation_metadata = Metadata.from_tuple(context.invocation_metadata())
         verification_failure = await self.verifier.verify(invocation_metadata)
 
         if verification_failure:

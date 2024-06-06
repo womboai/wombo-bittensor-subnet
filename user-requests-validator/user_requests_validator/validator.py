@@ -125,7 +125,7 @@ class OutputScoreService(OutputScorerServicer):
         self.pipeline = pipeline
 
     async def ScoreOutput(self, request: OutputScoreRequest, context: HandlerCallDetails):
-        invocation_metadata = Metadata.from_tuple(context.invocation_metadata)
+        invocation_metadata = Metadata.from_tuple(context.invocation_metadata())
         verification_failure = await self.verifier.verify(invocation_metadata)
 
         if verification_failure:
@@ -167,7 +167,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
         self.redis = validator.redis
 
     async def Generate(self, request: ValidatorUserRequest, context: HandlerCallDetails):
-        invocation_metadata = Metadata.from_tuple(context.invocation_metadata)
+        invocation_metadata = Metadata.from_tuple(context.invocation_metadata())
         verification_failure = await self.verifier.verify(invocation_metadata)
 
         if verification_failure:
