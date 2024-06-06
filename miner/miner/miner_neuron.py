@@ -159,7 +159,7 @@ class Miner(BaseNeuron):
             num_inference_steps=DEFAULT_STEPS,
             image=get_tao_img(DEFAULT_WIDTH, DEFAULT_HEIGHT),
             guidance_scale=DEFAULT_GUIDANCE,
-            output_type="latents",
+            output_type="latent",
         )
 
         self.server = grpc.aio.server(interceptors=[LoggingInterceptor()])
