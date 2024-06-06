@@ -96,6 +96,7 @@ def parse_input_parameters(inputs: GenerationRequestInputs) -> dict[str, Any]:
         "negative_prompt": inputs.negative_prompt,
         "negative_prompt_2": inputs.negative_prompt_2,
         "image": get_tao_img(inputs.width, inputs.height),
+        "output_type": "latent",
     }
 
     if inputs.seed:
