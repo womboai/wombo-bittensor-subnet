@@ -372,11 +372,13 @@ async def stress_test_miner(validator: "StressTestValidator", uid: int):
     elif not len(input_responses):
         score = 0.0
     else:
-        async with axon_channel(validator.metagraph.axons[validator.uid]) as channel:
+        validator_axon = validator.metagraph.axons[validator.uid]
+
+        async with axon_channel(validator_axon) as channel:
             scores = await asyncio.gather(
                 *[
                     score_output(
-                        axon,
+                        validator_axon,
                         inputs,
                         frames,
                         channel,
