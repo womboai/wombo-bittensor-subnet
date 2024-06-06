@@ -17,6 +17,7 @@
 #  DEALINGS IN THE SOFTWARE.
 #
 #
+from asyncio import iscoroutinefunction
 from typing import Callable, Awaitable
 
 import bittensor as bt
@@ -39,7 +40,10 @@ class LoggingInterceptor(ServerInterceptor):
             hotkey = get_metadata(context).get(HOTKEY_HEADER)
 
             try:
-                response: ResponseT = handler.unary_unary(request, context)
+                if iscoroutinefunction(handler.unary_unary):
+                    response: ResponseT = await handler.unary_unary(request, context)
+                else:
+                    response: ResponseT = handler.unary_unary(request, context)
             except Exception:
                 bt.logging.trace(
                     f"Failed request {handler_call_details.method} <- {hotkey}, "
