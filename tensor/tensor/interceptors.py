@@ -39,7 +39,7 @@ class LoggingInterceptor(ServerInterceptor):
             hotkey = get_metadata(context).get(HOTKEY_HEADER)
 
             try:
-                response: ResponseT = await handler.unary_unary(request, context)
+                response: ResponseT = handler.unary_unary(request, context)
             except Exception:
                 bt.logging.trace(
                     f"Failed request {handler_call_details.method} <- {hotkey}, "
