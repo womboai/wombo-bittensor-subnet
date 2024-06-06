@@ -1,57 +1,67 @@
 import asyncio
-import logging
 import os
 from argparse import ArgumentParser
 from asyncio import Task
-from datetime import datetime
-from typing import Annotated, AsyncGenerator, cast, TypeAlias
+from typing import AsyncGenerator
 
 import bittensor as bt
-import uvicorn
-from bittensor import SubnetsAPI, TerminalInfo, AxonInfo
-from fastapi import FastAPI, Body, HTTPException, status, File, Form
-from fastapi.requests import Request
-from fastapi.responses import JSONResponse
-from image_generation_protocol.io_protocol import ImageGenerationInputs
-from pydantic import BaseModel, Json
-from tensor.protocol import ImageGenerationClientRequest, MinerGenerationOutput
+import grpc
+from bittensor import AxonInfo
+from fastapi import HTTPException, status
+from grpc.aio import ServicerContext
 from torch import tensor
 
+from client.protos.client_pb2 import UserRequest, GenerationResponse, NeuronInfo
+from client.protos.client_pb2_grpc import ClientServicer, add_ClientServicer_to_server
+from neuron_selector.protos.forwarding_validator_pb2 import ValidatorGenerationResponse
+from neuron_selector.protos.forwarding_validator_pb2_grpc import ForwardingValidatorStub
 from neuron_selector.uids import get_best_uids
 from tensor.config import config, add_args
+from tensor.interceptors import LoggingInterceptor
 from tensor.neuron_info import sync_neuron_info
 from tensor.protos.inputs_pb2 import NeuronCapabilities
-from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
-
-Axon: TypeAlias = AxonInfo | bt.axon
+from tensor.response import FailedResponse, create_request, Response, SuccessfulResponse
 
 
 class ValidatorQueryException(Exception):
-    def __init__(self, queried_axons: list[TerminalInfo], dendrite_responses: list[TerminalInfo]):
-        super().__init__(f"Failed to query subnetwork, dendrites {dendrite_responses}")
-        self.queried_axons = queried_axons
-        self.dendrite_responses = dendrite_responses
+    def __init__(
+        self,
+        failed_responses: list[FailedResponse[ValidatorGenerationResponse]],
+    ):
+        super().__init__(f"Failed to query subnetwork, responses {failed_responses}")
+        self.failed_responses = failed_responses
 
 
-class NeuronGenerationInfo(BaseModel):
-    process_time: float
-    uid: int
-    hotkey: str
+async def get_responses(
+    axons: list[AxonInfo],
+    inputs: UserRequest,
+) -> AsyncGenerator[Response[ValidatorGenerationResponse], None]:
+    responses = asyncio.as_completed(
+        [
+            create_request(axon, inputs.inputs, lambda channel: ForwardingValidatorStub(channel).Generate)
+            for axon in axons
+        ]
+    )
+
+    for future in responses:
+        yield await future
 
 
-class ImageGenerationResult(BaseModel):
-    image: Annotated[bytes, File(media_type="image/jpeg")]
-    validator_info: Annotated[Json[NeuronGenerationInfo], Form(media_type="application/json")]
-    miner_info: Annotated[Json[NeuronGenerationInfo], Form(media_type="application/json")]
+async def process_responses(
+    responses: AsyncGenerator[Response[ValidatorGenerationResponse], None],
+) -> SuccessfulResponse[ValidatorGenerationResponse]:
+    bad_responses: list[FailedResponse[ValidatorGenerationResponse]] = []
+
+    async for response in responses:
+        if response.successful:
+            return response
+        else:
+            bad_responses.append(response)
+
+    raise ValidatorQueryException(bad_responses)
 
 
-class ImageGenerationClientInputs(ImageGenerationInputs):
-    watermark: bool = True
-    miner_uid: int | None
-    validator_uid: int | None
-
-
-class WomboSubnetAPI(SubnetsAPI):
+class WomboSubnetAPI:
     def __init__(self):
         client_config = self.client_config()
 
@@ -64,7 +74,7 @@ class WomboSubnetAPI(SubnetsAPI):
         # Log the configuration for reference.
         bt.logging.info(client_config)
 
-        super().__init__(bt.wallet(config=client_config))
+        self.wallet = bt.wallet(config=client_config)
 
         self.subtensor = bt.subtensor(config=client_config)
         bt.logging.info(f"Subtensor: {self.subtensor}")
@@ -73,98 +83,26 @@ class WomboSubnetAPI(SubnetsAPI):
         self.metagraph = self.subtensor.metagraph(client_config.netuid)
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
-        self.metagraph.sync(subtensor=self.subtensor)
-        asyncio.get_event_loop().run_until_complete(sync_neuron_info(self, self.dendrite))
+        self.server = grpc.aio.server(interceptors=[LoggingInterceptor()])
+
+        add_ClientServicer_to_server(ClientRequestService(self), self.server)
+
+        self.server.add_insecure_port(f"0.0.0.0:{os.getenv('PORT', str(8000))}")
+
+        self.last_metagraph_sync = self.subtensor.get_current_block()
 
         self.periodic_metagraph_resync: Task
         self.neuron_info = {}
 
-    def prepare_synapse(self, inputs: ImageGenerationClientInputs) -> ImageGenerationClientRequest:
-        return ImageGenerationClientRequest(
-            inputs=inputs,
-            watermark=inputs.watermark,
-            miner_uid=inputs.miner_uid,
-        )
+    async def resync_metagraph(self):
+        bt.logging.info("resync_metagraph()")
 
-    async def process_responses(
-        self,
-        responses: AsyncGenerator[ImageGenerationClientRequest, None],
-    ) -> ImageGenerationClientRequest:
-        bad_responses = []
-
-        async for response in responses:
-            if response.output:
-                return response
-            else:
-                bad_responses.append(response)
-
-        bad_axons = [response.axon for response in bad_responses]
-        bad_dendrites = [response.dendrite for response in bad_responses]
-
-        raise ValidatorQueryException(bad_axons, bad_dendrites)
-
-    async def get_responses(
-        self,
-        axons: bt.axon | list[bt.axon],
-        synapse: ImageGenerationClientRequest,
-        timeout: int,
-    ) -> AsyncGenerator[ImageGenerationClientRequest, None]:
-        if isinstance(axons, list):
-            responses = asyncio.as_completed(
-                [
-                    self.dendrite.forward(
-                        axons=axon,
-                        synapse=synapse,
-                        deserialize=False,
-                        timeout=timeout,
-                    )
-                    for axon in axons
-                ]
-            )
-
-            for future in responses:
-                yield await future
-        else:
-            yield await self.dendrite(
-                axons=axons,
-                synapse=synapse,
-                deserialize=False,
-                timeout=timeout,
-            )
-
-    # noinspection PyMethodOverriding
-    async def query_api(
-        self,
-        inputs: ImageGenerationClientInputs,
-        axons: Axon | list[Axon],
-        timeout: int = CLIENT_REQUEST_TIMEOUT,
-    ) -> ImageGenerationClientRequest:
-        synapse = self.prepare_synapse(inputs)
-        bt.logging.debug(f"Querying validator axons with synapse {synapse.name}...")
-
-        return await self.process_responses(self.get_responses(axons, synapse, timeout))
-
-    async def __aenter__(self):
-        async def resync_metagraph():
-            while True:
-                """Resyncs the metagraph and updates the hotkeys and moving averages based on the new metagraph."""
-                bt.logging.info("resync_metagraph()")
-
-                try:
-                    # Sync the metagraph.
-                    self.metagraph.sync(subtensor=self.subtensor)
-                    self.neuron_info = await sync_neuron_info(self.metagraph, self.wallet, self.dendrite)
-                except Exception as exception:
-                    bt.logging.error("Failed to sync client metagraph", exc_info=exception)
-
-                await asyncio.sleep(1200)
-
-        self.periodic_metagraph_resync = asyncio.get_event_loop().create_task(resync_metagraph())
-
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        self.periodic_metagraph_resync.cancel()
+        try:
+            # Sync the metagraph.
+            self.metagraph.sync(subtensor=self.subtensor)
+            self.neuron_info = await sync_neuron_info(self.metagraph, self.wallet)
+        except Exception as exception:
+            bt.logging.error("Failed to sync client metagraph", exc_info=exception)
 
     @classmethod
     def add_args(cls, parser: ArgumentParser):
@@ -174,23 +112,52 @@ class WomboSubnetAPI(SubnetsAPI):
     def client_config(cls):
         return config(cls.add_args)
 
-    async def generate(
-        self,
-        input_parameters: ImageGenerationClientInputs,
-    ) -> ImageGenerationResult:
+    async def run(self):
+        await self.resync_metagraph()
+
+        bt.logging.info("Started")
+        await self.server.start()
+
+        try:
+            while True:
+                block = self.subtensor.get_current_block()
+
+                if block - self.last_metagraph_sync <= self.config.neuron.epoch_length:
+                    await asyncio.sleep(max(self.config.neuron.epoch_length - block + self.last_metagraph_sync, 0) * 12)
+                    continue
+
+                await self.resync_metagraph()
+
+        # If someone intentionally stops the client, it'll safely terminate operations.
+        except KeyboardInterrupt:
+            await self.server.stop()
+            await self.server.wait_for_termination()
+            bt.logging.success("Client killed by keyboard interrupt.")
+            exit()
+
+        # In case of unforeseen errors, the miner will log the error and continue operations.
+        except Exception as exception:
+            bt.logging.error("Caught exception in client loop", exc_info=exception)
+
+
+class ClientRequestService(ClientServicer):
+    def __init__(self, api: WomboSubnetAPI):
+        self.api = api
+
+    async def Generate(self, request: UserRequest, context: ServicerContext):
         validator_uids = (
             get_best_uids(
-                self.config.blacklist,
-                self.metagraph,
-                self.neuron_info,
-                self.metagraph.total_stake,
+                self.api.config.blacklist,
+                self.api.metagraph,
+                self.api.neuron_info,
+                self.api.metagraph.total_stake,
                 lambda uid, info: (
                     NeuronCapabilities.FORWARDING_VALIDATOR in info.capbilities and
-                    self.metagraph.validator_permit[uid].item()
+                    self.api.metagraph.validator_permit[uid].item()
                 )
             )
-            if input_parameters.validator_uid is None
-            else tensor([input_parameters.validator_uid])
+            if request.validator_uid is None
+            else tensor([request.validator_uid])
         )
 
         if not len(validator_uids):
@@ -199,63 +166,31 @@ class WomboSubnetAPI(SubnetsAPI):
                 detail="No suitable validators found",
             )
 
-        axons: list[AxonInfo] = [self.metagraph.axons[uid.item()] for uid in validator_uids]
+        axons: list[AxonInfo] = [self.api.metagraph.axons[uid.item()] for uid in validator_uids]
 
         axon_uids = {
             axon.hotkey: uid.item()
             for uid, axon in zip(validator_uids, axons)
         }
 
-        response = await self.query_api(
-            input_parameters,
-            axons,
-        )
+        response_generator = get_responses(axons, request)
 
-        output = cast(MinerGenerationOutput, response.output)
+        response = await process_responses(response_generator)
 
-        return ImageGenerationResult(
-            images=output.images,
-            validator_info=NeuronGenerationInfo(
-                process_time=response.dendrite.process_time,
-                uid=axon_uids[response.axon.hotkey],
+        return GenerationResponse(
+            image=response.data.image,
+            miner_info=NeuronInfo(
+                hotkey=self.api.metagraph.hotkeys[response.data.miner_uid],
+                uid=response.data.miner_uid,
+                processing_time=response.data.generation_time,
+            ),
+            validator_info=NeuronInfo(
                 hotkey=response.axon.hotkey,
-            ),
-            miner_info=NeuronGenerationInfo(
-                process_time=output.process_time,
-                uid=output.miner_uid,
-                hotkey=output.miner_hotkey,
-            ),
+                uid=axon_uids[response.axon.hotkey],
+                processing_time=response.process_time,
+            )
         )
-
-
-async def main():
-    app = FastAPI()
-    logger = logging.getLogger("client")
-
-    @app.exception_handler(ValidatorQueryException)
-    async def validator_query_handler(_: Request, exception: ValidatorQueryException) -> JSONResponse:
-        logger.error("Subnetwork error", exc_info=exception)
-
-        return JSONResponse(
-            content={
-                "detail": str(exception),
-                "axons": [axon.dict() for axon in exception.queried_axons],
-                "dendrites": [dendrite.dict() for dendrite in exception.dendrite_responses],
-            },
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-
-    async with WomboSubnetAPI() as client:
-        @app.post("/api/generate")
-        async def generate(input_parameters: Annotated[ImageGenerationClientInputs, Body()]) -> ImageGenerationResult:
-            return await client.generate(input_parameters)
-
-        @app.get("/")
-        def healthcheck():
-            return datetime.utcnow()
-
-        uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", str(8000))))
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(WomboSubnetAPI().run())

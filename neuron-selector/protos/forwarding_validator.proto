@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package ai.wombo.tao.miner;
+package ai.wombo.tao.validator;
 
 import "tensor/protos/inputs.proto";
 

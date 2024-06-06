@@ -1,13 +1,12 @@
 syntax = "proto3";
 
-package ai.wombo.tao.miner;
+package ai.wombo.tao.client;
 
-import "tensor/protos/inputs.proto";
+import "neuron-selector/protos/forwarding_validator.proto";
 
 message UserRequest {
-  ai.wombo.tao.inputs.GenerationRequestInputs inputs = 1;
-  optional uint32 miner_uid = 2;
-  optional uint32 validator_uid = 3;
+  ai.wombo.tao.validator.ValidatorUserRequest inputs = 1;
+  optional uint32 validator_uid = 2;
 }
 
 message NeuronInfo {
