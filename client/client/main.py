@@ -24,7 +24,7 @@ from tensor.response import FailedResponse, create_request, Response, Successful
 class ValidatorQueryException(Exception):
     def __init__(
         self,
-        failed_responses: list[FailedResponse[ValidatorGenerationResponse]],
+        failed_responses: list[FailedResponse],
     ):
         super().__init__(f"Failed to query subnetwork, responses {failed_responses}")
         self.failed_responses = failed_responses
@@ -48,7 +48,7 @@ async def get_responses(
 async def process_responses(
     responses: AsyncGenerator[Response[ValidatorGenerationResponse], None],
 ) -> SuccessfulResponse[ValidatorGenerationResponse]:
-    bad_responses: list[FailedResponse[ValidatorGenerationResponse]] = []
+    bad_responses: list[FailedResponse] = []
 
     async for response in responses:
         if response.successful:
