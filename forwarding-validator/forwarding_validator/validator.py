@@ -23,6 +23,7 @@ import os
 import sys
 import traceback
 from asyncio import Semaphore, Lock
+from contextlib import asynccontextmanager
 from io import BytesIO
 from typing import AsyncGenerator, TypeAlias
 
@@ -112,6 +113,13 @@ class ValidatorInfoService(NeuronServicer):
         )
 
 
+@asynccontextmanager
+async def start_inference(semaphore: Semaphore):
+    async with semaphore:
+        with torch.inference_mode():
+            yield
+
+
 class OutputScoreService(OutputScorerServicer):
     def __init__(
         self,
@@ -135,7 +143,7 @@ class OutputScoreService(OutputScorerServicer):
         if hotkey != self.hotkey:
             return True, "Mismatching hotkey"
 
-        async with self.gpu_semaphore:
+        async with start_inference(self.gpu_semaphore):
             return OutputScore(
                 score=score_similarity(
                     self.pipeline,
@@ -240,7 +248,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
                     continue
 
-                async with self.gpu_semaphore:
+                async with start_inference(self.gpu_semaphore):
                     frames_tensor = load_tensor(download_result.data.frames)
 
                     if _random() < RANDOM_VALIDATION_CHANCE:
@@ -378,7 +386,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
                             continue
 
-                        async with self.gpu_semaphore:
+                        async with start_inference(self.gpu_semaphore):
                             similarity_score = score_similarity(
                                 self.pipeline,
                                 load_tensor(download_result.data.frames),
@@ -424,7 +432,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                 bt.logging.info(query_failure_error_message(inputs, bad_responses))
 
         async def rank_response(uid: int, frames: bytes):
-            async with self.gpu_semaphore:
+            async with start_inference(self.gpu_semaphore):
                 score = score_similarity(
                     self.pipeline,
                     load_tensor(frames),
