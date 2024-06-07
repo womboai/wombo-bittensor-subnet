@@ -261,7 +261,10 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
                             continue
 
-                    latents = frames_tensor[-1].to(self.pipeline.unet.device, self.pipeline.unet.dtype)
+                    latents = frames_tensor[-1].to(self.pipeline.unet.device, self.pipeline.unet.dtype)\
+
+                    del frames_tensor
+                    torch.cuda.empty_cache()
 
                     # make sure the VAE is in float32 mode, as it overflows in float16
                     needs_upcasting = self.pipeline.vae.dtype == torch.float16 and self.pipeline.vae.config.force_upcast
