@@ -261,7 +261,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
                             continue
 
-                    latents = frames_tensor[-1].to(self.pipeline.unet.device, self.pipeline.unet.dtype)\
+                    latents = frames_tensor[-1].clone().to(self.pipeline.unet.device)
 
                     del frames_tensor
                     torch.cuda.empty_cache()
