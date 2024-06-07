@@ -270,7 +270,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
                             continue
 
-                    latents = frames_tensor[-1].clone().to(self.pipeline.unet.device)
+                    latents = frames_tensor[-1].to(self.pipeline.unet.device)
 
                     # make sure the VAE is in float32 mode, as it overflows in float16
                     needs_upcasting = self.pipeline.vae.dtype == torch.float16 and self.pipeline.vae.config.force_upcast
@@ -290,7 +290,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
                     pt_image = self.pipeline.image_processor.postprocess(image, output_type="pt")
                     np_image = self.pipeline.image_processor.pt_to_numpy(pt_image)
-                    clip_input = self.feature_extractor([np_image], return_tensors="pt")
+                    clip_input = self.feature_extractor(np_image, return_tensors="pt")
 
                     _, has_nsfw_concept = self.safety_checker(
                         images=[image],
