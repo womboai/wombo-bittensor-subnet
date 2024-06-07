@@ -31,6 +31,7 @@ import bittensor as bt
 import grpc
 import torch
 import numpy
+from PIL.JpegImagePlugin import JpegImageFile
 from bittensor import AxonInfo
 from diffusers import StableDiffusionXLControlNetPipeline
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
@@ -306,7 +307,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                     image = apply_watermark(image)
 
                 with BytesIO() as buf:
-                    image.save(buf)
+                    image.save(buf, format=JpegImageFile.format)
                     image_bytes = buf.getvalue()
 
                 validation_coroutine = self.validate_user_request_responses(
