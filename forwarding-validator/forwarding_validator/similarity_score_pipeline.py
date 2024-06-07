@@ -500,7 +500,7 @@ def __validate_internal_cn(
     return __similarity(cast(torch.Tensor, latents), expected_next_latents)
 
 
-async def score_similarity(
+def score_similarity(
     pipeline: StableDiffusionXLControlNetPipeline,
     frames_tensor: Tensor,
     inputs: GenerationRequestInputs,

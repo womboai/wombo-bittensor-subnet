@@ -137,7 +137,7 @@ class OutputScoreService(OutputScorerServicer):
 
         async with self.gpu_semaphore:
             return OutputScore(
-                score=await score_similarity(
+                score=score_similarity(
                     self.pipeline,
                     load_tensor(request.frames),
                     request.inputs,
@@ -244,7 +244,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                     frames_tensor = load_tensor(download_result.data.frames)
 
                     if _random() < RANDOM_VALIDATION_CHANCE:
-                        similarity_score = await score_similarity(
+                        similarity_score = score_similarity(
                             self.pipeline,
                             frames_tensor,
                             request.inputs,
@@ -272,6 +272,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                     if needs_upcasting:
                         self.pipeline.upcast_vae()
                         latents = latents.to(next(iter(self.pipeline.vae.post_quant_conv.parameters())).dtype)
+                        torch.cuda.empty_cache()
 
                     image = self.pipeline.vae.decode(
                         latents / self.pipeline.vae.config.scaling_factor,
@@ -382,7 +383,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                             continue
 
                         async with self.gpu_semaphore:
-                            similarity_score = await score_similarity(
+                            similarity_score = score_similarity(
                                 self.pipeline,
                                 load_tensor(download_result.data.frames),
                                 inputs,
@@ -428,7 +429,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
         async def rank_response(uid: int, frames: bytes):
             async with self.gpu_semaphore:
-                score = await score_similarity(
+                score = score_similarity(
                     self.pipeline,
                     load_tensor(frames),
                     inputs,
