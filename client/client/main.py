@@ -67,7 +67,7 @@ class WomboSubnetAPI:
         bt.logging.check_config(client_config)
 
         # Set up logging with the provided configuration and directory.
-        bt.logging(config=client_config, logging_dir=client_config.full_path)
+        bt.logging(config=client_config.logging, logging_dir=client_config.full_path)
 
         # Log the configuration for reference.
         bt.logging.info(client_config)
@@ -113,7 +113,7 @@ class WomboSubnetAPI:
     async def run(self):
         await self.resync_metagraph()
 
-        bt.logging.info("Started")
+        bt.logging.info("Started server")
         await self.server.start()
 
         try:
@@ -154,8 +154,8 @@ class ClientRequestService(ClientServicer):
                     self.api.metagraph.validator_permit[uid]
                 )
             )
-            if request.validator_uid is None
-            else [request.validator_uid]
+            if not request.validator_uid
+            else [request.validator_uid - 1]
         )
 
         if not len(validator_uids):
@@ -168,9 +168,7 @@ class ClientRequestService(ClientServicer):
             for uid, axon in zip(validator_uids, axons)
         }
 
-        response_generator = get_responses(axons, request)
-
-        response = await process_responses(response_generator)
+        response = await process_responses(get_responses(axons, request))
 
         return GenerationResponse(
             image=response.data.image,

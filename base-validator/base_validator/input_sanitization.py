@@ -42,7 +42,6 @@ def sanitize_inputs(inputs: GenerationRequestInputs):
     if not inputs.guidance_scale:
         inputs.guidance_scale = DEFAULT_GUIDANCE
 
-    if not inputs.seed:
-        inputs.seed = int.from_bytes(urandom(4), "little")
+    inputs.seed = int.from_bytes(urandom(4), "little")
 
     return inputs

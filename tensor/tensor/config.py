@@ -48,7 +48,7 @@ def check_config(config: bt.config, name: str):
     logging.addLevelName(38, "EVENTS")
 
 
-def add_args(parser: argparse.ArgumentParser, default_device: str = "cuda"):
+def add_args(parser: argparse.ArgumentParser, default_device: str):
     """
     Adds relevant arguments to the parser for operation.
     """

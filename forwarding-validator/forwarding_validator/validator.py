@@ -108,7 +108,7 @@ class ValidatorInfoService(NeuronServicer):
     def Info(self, request: Empty, context: ServicerContext):
         return InfoResponse(
             spec_version=SPEC_VERSION,
-            capabilities=[NeuronCapabilities.MINER]
+            capabilities=[NeuronCapabilities.FORWARDING_VALIDATOR],
         )
 
 
@@ -195,8 +195,8 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                 numpy.nan_to_num(await self.metric_manager.get_rps()),
                 lambda _, info: NeuronCapabilities.MINER in info.capabilities,
             )
-            if request.miner_uid is None
-            else numpy.array([request.miner_uid])
+            if not request.miner_uid
+            else numpy.array([request.miner_uid - 1])
         )
 
         if not len(miner_uids):
@@ -618,6 +618,6 @@ class ForwardingValidator(BaseValidator):
 
     @classmethod
     def add_args(cls, parser):
-        add_args(parser)
+        add_args(parser, "cuda")
 
         super().add_args(parser)

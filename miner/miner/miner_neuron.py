@@ -186,7 +186,7 @@ class Miner(BaseNeuron):
 
     @classmethod
     def add_args(cls, parser):
-        add_args(parser)
+        add_args(parser, "cuda")
 
         parser.add_argument(
             "--blacklist.force_validator_permit",
