@@ -46,6 +46,6 @@ def get_best_uids(
         return []
 
     return weighted_sample(
-        [(rank[uid], uid) for uid in available_uids],
+        [(rank[uid].item(), uid) for uid in available_uids],
         k=k,
     )

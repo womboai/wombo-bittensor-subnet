@@ -150,7 +150,7 @@ class ClientRequestService(ClientServicer):
                 self.api.neuron_info,
                 self.api.metagraph.total_stake,
                 lambda uid, info: (
-                    NeuronCapabilities.FORWARDING_VALIDATOR in info.capbilities and
+                    NeuronCapabilities.FORWARDING_VALIDATOR in info.capabilities and
                     self.api.metagraph.validator_permit[uid]
                 )
             )

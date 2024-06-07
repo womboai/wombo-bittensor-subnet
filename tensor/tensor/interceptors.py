@@ -36,6 +36,9 @@ class LoggingInterceptor(ServerInterceptor):
     ) -> RpcMethodHandler:
         handler = await continuation(handler_call_details)
 
+        if not handler:
+            return handler
+
         async def invoke_and_log(request: RequestT, context: ServicerContext):
             hotkey = get_metadata(context).get(HOTKEY_HEADER)
 
