@@ -290,7 +290,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
                     pt_image = self.pipeline.image_processor.postprocess(image, output_type="pt")
                     np_image = self.pipeline.image_processor.pt_to_numpy(pt_image)
-                    clip_input = self.pipeline.feature_extractor([np_image], return_tensors="pt")
+                    clip_input = self.feature_extractor([np_image], return_tensors="pt")
 
                     _, has_nsfw_concept = self.safety_checker(
                         images=[image],
