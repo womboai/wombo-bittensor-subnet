@@ -30,10 +30,10 @@ sudo npm install -g pm2
 OLD_DIRECTORY=$(pwd)
 DIRECTORY=$(dirname $(realpath $0))
 
-cd $DIRECTORY/stress-test
+cd $DIRECTORY/stress-test-validator
 pm2 start poetry --name wombo-stress-test-validator --interpreter none -- run python stress_test_validator/main.py $@
 
-cd $DIRECTORY/user-requests
-pm2 start poetry --name wombo-user-requests-validator --interpreter none -- run python user_requests_validator/main.py $@
+cd $DIRECTORY/forwarding-validator
+pm2 start poetry --name wombo-forwarding-validator --interpreter none -- run python forwarding_validator/main.py $@
 
 cd OLD_DIRECTORY

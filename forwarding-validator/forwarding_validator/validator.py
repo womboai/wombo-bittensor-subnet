@@ -287,7 +287,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                     if needs_upcasting:
                         self.pipeline.vae.to(dtype=torch.float16)
 
-                    pt_image = self.pipeline.image_processor(image, return_tensors="pt")
+                    pt_image = self.pipeline.image_processor.postprocess(image, output_type="pt")
 
                     _, has_nsfw_concept = self.safety_checker(
                         images=[image],

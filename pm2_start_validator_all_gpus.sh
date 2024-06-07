@@ -56,17 +56,17 @@ echo "
 
 pm2 start nginx --name wombo-validator-nginx --interpreter none -- -c $DIRECTORY/nginx.conf
 
-cd $DIRECTORY/stress-test
+cd $DIRECTORY/stress-test-validator
 pm2 start poetry --name wombo-stress-test-validator --interpreter none -- run python stress_test_validator/main.py ${@:2}
 
-cd $DIRECTORY/user-requests
+cd $DIRECTORY/forwarding-validator
 
 for i in "$(seq $GPU_COUNT)"; do
   pm2 start poetry \
-    --name wombo-user-requests-validator \
+    --name wombo-forwarding-validator-$i \
     --interpreter none -- \
     run python \
-    user_requests_validator/main.py \
+    forwarding_validator/main.py \
     --neuron.device "cuda:$(($i - 1))" \
     --axon.port $(($PORT + $i)) \
     --axon.external_port $PORT \
