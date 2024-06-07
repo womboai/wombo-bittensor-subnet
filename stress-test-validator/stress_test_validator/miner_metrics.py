@@ -42,7 +42,6 @@ from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron.redis import parse_redis_value
 from tensor.protos.inputs_pb2 import GenerationRequestInputs
 from tensor.response import Response, axon_channel, SuccessfulResponse, call_request
-from tensor.timeouts import CLIENT_REQUEST_TIMEOUT
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -113,7 +112,7 @@ class MinerMetrics(BaseModel):
     failed_user_requests: Annotated[int, Field(ge=0)]
 
     def get_weight(self):
-        concurrency_factor = pow((self.generated_count / self.generation_time * CLIENT_REQUEST_TIMEOUT) / 128, 1.125)
+        concurrency_factor = pow(self.generated_count / (self.generation_time * 128), 1.125)
         similarity_factor = pow(self.similarity_score, 8)
         success_factor = pow(1 - self.error_rate, 2)
 

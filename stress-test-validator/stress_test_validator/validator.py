@@ -92,7 +92,7 @@ class StressTestValidator(BaseValidator):
     def get_next_uid(self) -> tuple[int, str] | None:
         miners = {
             self.metagraph.axons[uid].hotkey: uid
-            for uid in range(self.metagraph.n.item())
+            for uid in range(self.metagraph.n)
             if self.metagraph.axons[uid].is_serving
         }
 
@@ -267,7 +267,7 @@ class StressTestValidator(BaseValidator):
         Sets the validator weights to the metagraph hotkeys based on the scores it has received from the miners. The weights determine the trust and incentive level the validator assigns to miner nodes on the network.
         """
 
-        metrics = await asyncio.gather(*[self.metric_manager.get(uid) for uid in range(self.metagraph.n.item())])
+        metrics = await asyncio.gather(*[self.metric_manager.get(uid) for uid in range(self.metagraph.n)])
 
         scores = numpy.array(
             [

@@ -35,7 +35,7 @@ async def get_neuron_info(axon: AxonInfo) -> Response[InfoResponse]:
 async def sync_neuron_info(metagraph: bt.metagraph, wallet: bt.wallet):
     uids: list[int] = [
         uid
-        for uid in range(metagraph.n.item())
+        for uid in range(metagraph.n)
         if metagraph.axons[uid].is_serving
     ]
 

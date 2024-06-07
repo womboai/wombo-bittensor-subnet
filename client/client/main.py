@@ -151,7 +151,7 @@ class ClientRequestService(ClientServicer):
                 self.api.metagraph.total_stake,
                 lambda uid, info: (
                     NeuronCapabilities.FORWARDING_VALIDATOR in info.capbilities and
-                    self.api.metagraph.validator_permit[uid].item()
+                    self.api.metagraph.validator_permit[uid]
                 )
             )
             if request.validator_uid is None
@@ -164,7 +164,7 @@ class ClientRequestService(ClientServicer):
         axons: list[AxonInfo] = [self.api.metagraph.axons[uid] for uid in validator_uids]
 
         axon_uids = {
-            axon.hotkey: uid.item()
+            axon.hotkey: uid
             for uid, axon in zip(validator_uids, axons)
         }
 

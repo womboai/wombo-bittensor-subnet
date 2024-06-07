@@ -37,7 +37,6 @@ from fastapi.security import HTTPBasic
 from google.protobuf.empty_pb2 import Empty
 from grpc import StatusCode
 from grpc.aio import Channel, ServicerContext
-from torch import Tensor, tensor
 from transformers import CLIPConfig
 
 from base_validator.input_sanitization import sanitize_inputs
@@ -217,7 +216,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
             bad_responses: list[MinerResponseFailureInfo] = []
 
             axon_uids = {
-                axon.hotkey: uid.item()
+                axon.hotkey: uid
                 for uid, axon in zip(miner_uids, axons)
             }
 
@@ -344,14 +343,14 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
         self,
         inputs: GenerationRequestInputs,
         finished_response: SuccessfulResponse[MinerGenerationResponse],
-        miner_uids: Tensor,
+        miner_uids: list[int],
         axons: list[AxonInfo],
         bad_responses: list[MinerResponseFailureInfo],
         response_generator: AsyncGenerator[tuple[Response[MinerGenerationResponse], Channel], None],
         channels: Channels,
     ):
         axon_uids = {
-            axon.hotkey: uid.item()
+            axon.hotkey: uid
             for uid, axon in zip(miner_uids, axons)
         }
 

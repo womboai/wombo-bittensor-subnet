@@ -1,7 +1,6 @@
 from typing import Any, Callable
 
 import bittensor as bt
-import numpy
 from numpy import ndarray
 
 from tensor.config import SPEC_VERSION
@@ -19,7 +18,7 @@ def get_best_uids(
 ) -> list[int]:
     available_uids = [
         uid
-        for uid in range(metagraph.n.item())
+        for uid in range(metagraph.n)
         if (
             metagraph.axons[uid].is_serving and
             (not blacklist or
@@ -44,9 +43,9 @@ def get_best_uids(
     ]
 
     if not len(available_uids):
-        return torch.tensor([], dtype=torch.int64)
+        return []
 
     return weighted_sample(
-        [(rank[uid].item(), uid) for uid in available_uids],
+        [(rank[uid], uid) for uid in available_uids],
         k=k,
     )
