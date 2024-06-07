@@ -24,7 +24,7 @@ import bittensor as bt
 from grpc import HandlerCallDetails, RpcMethodHandler, unary_unary_rpc_method_handler
 from grpc.aio import ServerInterceptor, ServicerContext
 
-from neuron.api_handler import get_metadata, HOTKEY_HEADER
+from tensor.api_handler import get_metadata, HOTKEY_HEADER
 from tensor.response import RequestT, ResponseT
 
 

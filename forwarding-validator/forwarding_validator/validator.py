@@ -53,7 +53,7 @@ from forwarding_validator.similarity_score_pipeline import score_similarity
 from forwarding_validator.watermark import apply_watermark
 from gpu_pipeline.pipeline import get_pipeline
 from gpu_pipeline.tensor import load_tensor
-from neuron.api_handler import HOTKEY_HEADER, request_error, RequestVerifier, serve_ip, WhitelistChecker, get_metadata
+from tensor.api_handler import HOTKEY_HEADER, request_error, RequestVerifier, serve_ip, WhitelistChecker, get_metadata
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerStub
 from neuron_selector.protos.forwarding_validator_pb2 import ValidatorUserRequest, ValidatorGenerationResponse

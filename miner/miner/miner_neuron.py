@@ -34,7 +34,7 @@ from redis.asyncio import Redis
 
 from gpu_pipeline.pipeline import get_pipeline, get_tao_img
 from miner.image_generator import generate
-from neuron.api_handler import request_error, RequestVerifier, HOTKEY_HEADER, serve_ip, WhitelistChecker, get_metadata
+from tensor.api_handler import request_error, RequestVerifier, HOTKEY_HEADER, serve_ip, WhitelistChecker, get_metadata
 from neuron.neuron import BaseNeuron
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerServicer, add_MinerServicer_to_server

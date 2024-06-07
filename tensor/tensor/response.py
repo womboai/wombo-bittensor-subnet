@@ -28,7 +28,7 @@ from grpc import StatusCode, RpcError
 from grpc.aio import Channel, insecure_channel, UnaryUnaryMultiCallable
 from pydantic import BaseModel, ConfigDict, RootModel, Field
 
-from neuron.api_handler import NONCE_HEADER, HOTKEY_HEADER, SIGNATURE_HEADER
+from tensor.api_handler import NONCE_HEADER, HOTKEY_HEADER, SIGNATURE_HEADER
 
 ResponseT = TypeVar("ResponseT", bound=Message)
 RequestT = TypeVar("RequestT", bound=Message)
