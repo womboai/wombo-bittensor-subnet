@@ -20,12 +20,8 @@
 
 from os import urandom
 
+from neuron.defaults import DEFAULT_WIDTH, DEFAULT_HEIGHT, DEFAULT_STEPS, DEFAULT_GUIDANCE
 from tensor.protos.inputs_pb2 import GenerationRequestInputs
-
-DEFAULT_WIDTH = 1024
-DEFAULT_HEIGHT = 1024
-DEFAULT_STEPS = 30
-DEFAULT_GUIDANCE = 7.0
 
 MIN_SIZE = 512
 MAX_SIZE = 1536
