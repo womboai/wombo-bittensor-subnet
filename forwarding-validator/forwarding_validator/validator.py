@@ -100,8 +100,8 @@ async def get_forward_responses(
         ]
     )
 
-    for response, channel in responses:
-        yield await response, channel
+    for result in responses:
+        yield await result
 
 
 class ValidatorInfoService(NeuronServicer):

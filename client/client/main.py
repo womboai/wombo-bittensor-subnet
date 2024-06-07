@@ -33,10 +33,11 @@ class ValidatorQueryException(Exception):
 async def get_responses(
     axons: list[AxonInfo],
     inputs: UserRequest,
+    wallet: bt.wallet,
 ) -> AsyncGenerator[Response[ValidatorGenerationResponse], None]:
     responses = asyncio.as_completed(
         [
-            create_request(axon, inputs.inputs, lambda channel: ForwardingValidatorStub(channel).Generate)
+            create_request(axon, inputs.inputs, lambda channel: ForwardingValidatorStub(channel).Generate, wallet)
             for axon in axons
         ]
     )
@@ -168,7 +169,7 @@ class ClientRequestService(ClientServicer):
             for uid, axon in zip(validator_uids, axons)
         }
 
-        response = await process_responses(get_responses(axons, request))
+        response = await process_responses(get_responses(axons, request, self.api.wallet))
 
         return GenerationResponse(
             image=response.data.image,
