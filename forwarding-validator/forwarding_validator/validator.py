@@ -38,7 +38,7 @@ from fastapi.security import HTTPBasic
 from google.protobuf.empty_pb2 import Empty
 from grpc import StatusCode
 from grpc.aio import Channel, ServicerContext
-from transformers import CLIPConfig
+from transformers import CLIPConfig, CLIPImageProcessor
 
 from base_validator.input_sanitization import sanitize_inputs
 from base_validator.protos.scoring_pb2 import OutputScoreRequest, OutputScore
@@ -168,6 +168,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
         self.gpu_semaphore = gpu_semaphore
         self.pipeline = pipeline
 
+        self.feature_extractor = pipeline.feature_extractor or CLIPImageProcessor()
         self.safety_checker = StableDiffusionSafetyChecker(CLIPConfig()).to(validator.device)
 
         # Set up initial scoring weights for validation
@@ -288,17 +289,18 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                         self.pipeline.vae.to(dtype=torch.float16)
 
                     pt_image = self.pipeline.image_processor.postprocess(image, output_type="pt")
+                    np_image = self.pipeline.image_processor.pt_to_numpy(pt_image)
+                    clip_input = self.pipeline.feature_extractor([np_image], return_tensors="pt")
 
                     _, has_nsfw_concept = self.safety_checker(
                         images=[image],
-                        clip_input=pt_image.to(torch.float16),
+                        clip_input=clip_input.pixel_values.to(torch.float16),
                     )
 
                     if has_nsfw_concept[0]:
                         raise BadImagesDetected(request.inputs, response.axon)
 
-                    nd_image = self.pipeline.image_processor.pt_to_numpy(pt_image)
-                    image = self.pipeline.image_processor.numpy_to_pil(nd_image)
+                    image = self.pipeline.image_processor.numpy_to_pil(np_image)
 
                 if request.watermark:
                     image = apply_watermark(image)
