@@ -300,7 +300,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                     if has_nsfw_concept[0]:
                         raise BadImagesDetected(request.inputs, response.axon)
 
-                    image = self.pipeline.image_processor.numpy_to_pil(np_image)
+                    image = self.pipeline.image_processor.numpy_to_pil(np_image)[0]
 
                 if request.watermark:
                     image = apply_watermark(image)

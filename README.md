@@ -100,6 +100,20 @@ git clone https://github.com/womboai/wombo-bittensor-subnet
 cd wombo-bittensor-subnet
 ```
 
+Install poetry and PM2
+```bash
+  sudo apt-get update
+
+  # PM2
+  sudo apt-get install -y npm
+  sudo npm -g install pm2
+
+  # Poetry
+  sudo apt install pipx
+  pipx ensurepath
+  pipx install poetry
+```
+
 ### Running a miner
 
 #### Requirements
