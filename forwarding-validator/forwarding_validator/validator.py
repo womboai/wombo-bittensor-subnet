@@ -291,7 +291,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
                     _, has_nsfw_concept = self.safety_checker(
                         images=[image],
-                        clip_input=pt_image.pixel_values.to(torch.float16),
+                        clip_input=pt_image.to(torch.float16),
                     )
 
                     if has_nsfw_concept[0]:
