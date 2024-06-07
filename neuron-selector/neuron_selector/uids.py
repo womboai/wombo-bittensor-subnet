@@ -1,8 +1,8 @@
 from typing import Any, Callable
 
 import bittensor as bt
-import torch
-from torch import Tensor
+import numpy
+from numpy import ndarray
 
 from tensor.config import SPEC_VERSION
 from tensor.protos.inputs_pb2 import InfoResponse
@@ -13,10 +13,10 @@ def get_best_uids(
     blacklist: Any,
     metagraph: bt.metagraph,
     neuron_info: dict[int, InfoResponse],
-    rank: Tensor,
+    rank: ndarray,
     condition: Callable[[int, InfoResponse], bool],
     k: int = 3,
-) -> Tensor:
+) -> list[int]:
     available_uids = [
         uid
         for uid in range(metagraph.n.item())
@@ -46,11 +46,7 @@ def get_best_uids(
     if not len(available_uids):
         return torch.tensor([], dtype=torch.int64)
 
-    uids = torch.tensor(
-        weighted_sample(
-            [(rank[uid].item(), uid) for uid in available_uids],
-            k=k,
-        ),
+    return weighted_sample(
+        [(rank[uid].item(), uid) for uid in available_uids],
+        k=k,
     )
-
-    return uids

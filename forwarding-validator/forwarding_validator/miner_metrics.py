@@ -68,7 +68,7 @@ class MinerUserRequestMetricManager(MinerMetricManager):
 
         cheaters = [parse_redis_value(cheater, bool) for cheater in values[count * 2:]]
 
-        return tensor([0.0 if cheaters[index] else rps for index, rps in enumerate((counts / times).tolist())])
+        return [0.0 if cheaters[index] else rps for index, rps in enumerate((counts / times).tolist())]
 
     async def successful_user_request(self, uid: int, similarity_score: float):
         async with self.validator.redis.pipeline() as pipeline:

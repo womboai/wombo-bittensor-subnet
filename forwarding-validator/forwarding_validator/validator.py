@@ -29,6 +29,7 @@ from typing import AsyncGenerator, TypeAlias
 import bittensor as bt
 import grpc
 import torch
+import numpy
 from bittensor import AxonInfo
 from diffusers import StableDiffusionXLControlNetPipeline
 from diffusers.pipelines.stable_diffusion import StableDiffusionSafetyChecker
@@ -192,11 +193,11 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                 self.validator.config.blacklist,
                 self.validator.metagraph,
                 self.validator.neuron_info,
-                (await self.metric_manager.get_rps()).nan_to_num(0.0),
+                numpy.nan_to_num(await self.metric_manager.get_rps()),
                 lambda _, info: NeuronCapabilities.MINER in info.capabilities,
             )
             if request.miner_uid is None
-            else tensor([request.miner_uid])
+            else numpy.array([request.miner_uid])
         )
 
         if not len(miner_uids):

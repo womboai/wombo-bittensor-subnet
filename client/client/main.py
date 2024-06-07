@@ -8,7 +8,6 @@ import bittensor as bt
 import grpc
 from bittensor import AxonInfo
 from grpc.aio import ServicerContext
-from torch import tensor
 
 from client.protos.client_pb2 import UserRequest, GenerationResponse, NeuronInfo
 from client.protos.client_pb2_grpc import ClientServicer, add_ClientServicer_to_server
@@ -156,13 +155,13 @@ class ClientRequestService(ClientServicer):
                 )
             )
             if request.validator_uid is None
-            else tensor([request.validator_uid])
+            else [request.validator_uid]
         )
 
         if not len(validator_uids):
             raise RuntimeError("No suitable validators found")
 
-        axons: list[AxonInfo] = [self.api.metagraph.axons[uid.item()] for uid in validator_uids]
+        axons: list[AxonInfo] = [self.api.metagraph.axons[uid] for uid in validator_uids]
 
         axon_uids = {
             axon.hotkey: uid.item()
