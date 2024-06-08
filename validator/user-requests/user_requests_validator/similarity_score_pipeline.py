@@ -18,7 +18,7 @@
 #
 #
 
-from threading import Semaphore
+from asyncio import Semaphore
 from typing import List, Optional, Union, Tuple, Dict, Any, cast
 
 import torch
@@ -499,7 +499,7 @@ def __validate_internal_cn(
     return __similarity(cast(torch.Tensor, latents), expected_next_latents)
 
 
-def score_similarity(
+async def score_similarity(
     gpu_semaphore: Semaphore,
     pipeline: StableDiffusionXLControlNetPipeline,
     frames: bytes,
@@ -525,7 +525,7 @@ def score_similarity(
     input_kwargs = parse_input_parameters(inputs)
     frames_tensor = frames_tensor.to(pipeline.unet.device, pipeline.unet.dtype)
 
-    with gpu_semaphore:
+    async with gpu_semaphore:
         similarities = torch.tensor(
             [
                 __validate_internal_cn(

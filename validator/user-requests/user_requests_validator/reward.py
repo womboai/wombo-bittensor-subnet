@@ -15,33 +15,37 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
 
 import base64
-from io import BytesIO
+from asyncio import Semaphore
+from typing import cast
 
-from PIL import Image
+from diffusers import StableDiffusionXLControlNetPipeline
 
-
-WATERMARK = Image.open("w_watermark.png")
-
-
-def watermark_image(image: Image.Image) -> Image.Image:
-    image_copy = image.copy()
-    wm = WATERMARK.resize((image_copy.size[0], int(image_copy.size[0] * WATERMARK.size[1] / WATERMARK.size[0])))
-    wm, alpha = wm.convert("RGB"), wm.split()[3]
-    image_copy.paste(wm, (0, image_copy.size[1] - wm.size[1]), alpha)
-    return image_copy
+from image_generation_protocol.io_protocol import ImageGenerationOutput, ImageGenerationInputs
+from tensor.protocol import ImageGenerationSynapse
+from user_requests_validator.similarity_score_pipeline import score_similarity
 
 
-def add_watermarks(images: list[Image.Image]) -> list[bytes]:
+async def reward(
+    semaphore: Semaphore,
+    pipeline: StableDiffusionXLControlNetPipeline,
+    query: ImageGenerationInputs,
+    synapse: ImageGenerationSynapse,
+):
     """
-    Add watermarks to the images.
+    Reward the miner response to the generation request. This method returns a reward
+    value for the miner, which is used to update the miner's score.
+
+    Returns:
+    - float: The reward value for the miner.
     """
 
-    def save_image(image: Image.Image) -> bytes:
-        image = watermark_image(image)
-        with BytesIO() as image_bytes:
-            image.save(image_bytes, format="JPEG")
-            return base64.b64encode(image_bytes.getvalue())
+    frames = cast(ImageGenerationOutput, synapse.output).frames
 
-    return [save_image(image) for image in images]
+    if not frames:
+        return 0.0
+
+    return await score_similarity(semaphore, pipeline, base64.b64decode(frames), query)

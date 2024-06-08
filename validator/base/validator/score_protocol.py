@@ -15,10 +15,18 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
+from bittensor import Synapse
 
-import asyncio
+from image_generation_protocol.io_protocol import ImageGenerationInputs
 
-from validator.validator import Validator
 
-if __name__ == "__main__":
-    asyncio.run(Validator().run())
+class ScoreOutputSynapse(Synapse):
+    inputs: ImageGenerationInputs
+    frames: str
+
+    score: float = 0.0
+
+    def deserialize(self) -> float:
+        return self.score
