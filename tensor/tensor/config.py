@@ -57,7 +57,7 @@ def check_config(config: bt.config, name: str):
         )
 
 
-def add_args(parser: argparse.ArgumentParser, default_device: str = "cpu"):
+def add_args(parser: argparse.ArgumentParser, default_device: str = "cuda"):
     """
     Adds relevant arguments to the parser for operation.
     """

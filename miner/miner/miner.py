@@ -21,14 +21,17 @@
 import asyncio
 import base64
 import traceback
+from asyncio import Semaphore
 from typing import cast, Tuple
 
 import bittensor as bt
-from aiohttp import ClientSession, MultipartReader, BodyPartReader
+from aiohttp import ClientSession
 from bittensor import SynapseDendriteNoneException
 from substrateinterface import Keypair
 
+from gpu_pipeline.pipeline import get_pipeline
 from image_generation_protocol.io_protocol import ImageGenerationOutput
+from miner.image_generator import generate
 from neuron.neuron import BaseNeuron
 from tensor.config import add_args, check_config
 from tensor.protocol import ImageGenerationSynapse, NeuronInfoSynapse
@@ -87,6 +90,10 @@ class Miner(BaseNeuron):
 
         self.last_metagraph_sync = self.block
 
+        concurrency, self.pipeline = get_pipeline(self.device)
+
+        self.gpu_semaphore = Semaphore(concurrency)
+
         self.image_generator_session = None
 
     @classmethod
@@ -96,13 +103,6 @@ class Miner(BaseNeuron):
     @classmethod
     def add_args(cls, parser):
         add_args(parser)
-
-        parser.add_argument(
-            "--generation_endpoint",
-            type=str,
-            help="The endpoint to call for miner generation",
-            default="http://localhost:8001/api/generate",
-        )
 
         parser.add_argument(
             "--blacklist.force_validator_permit",
@@ -194,42 +194,11 @@ class Miner(BaseNeuron):
         self,
         synapse: ImageGenerationSynapse,
     ) -> ImageGenerationSynapse:
-        async with self.image_generator_session.post(
-            self.config.generation_endpoint,
-            json=synapse.inputs.dict(),
-        ) as response:
-            response.raise_for_status()
-
-            reader = MultipartReader.from_response(response)
-
-            frames_tensor: bytes | None = None
-            images: list[bytes] = []
-
-            while True:
-                part = cast(BodyPartReader, await reader.next())
-
-                if part is None:
-                    break
-
-                name = part.name
-
-                if not name:
-                    continue
-
-                if name == "frames":
-                    frames_tensor = await part.read(decode=True)
-                elif name.startswith("image_"):
-                    index = int(name[len("image_"):])
-
-                    while len(images) <= index:
-                        # This is assuming that it will be overridden when the actual index is found
-                        images.append(b"")
-
-                    images[index] = base64.b64encode(await part.read(decode=True))
+        frames, images = await generate(self.gpu_semaphore, self.pipeline, synapse.inputs)
 
         synapse.output = ImageGenerationOutput(
-            frames=base64.b64encode(frames_tensor) if frames_tensor else None,
-            images=images,
+            frames=base64.b64encode(frames),
+            images=[base64.b64encode(image.getvalue()) for image in images],
         )
 
         return synapse
