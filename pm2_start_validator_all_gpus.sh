@@ -57,9 +57,11 @@ echo "
 pm2 start nginx --name wombo-validator-nginx --interpreter none -- -c $DIRECTORY/nginx.conf
 
 cd $DIRECTORY/stress-test-validator
+poetry install
 pm2 start poetry --name wombo-stress-test-validator --interpreter none -- run python stress_test_validator/main.py ${@:2}
 
 cd $DIRECTORY/forwarding-validator
+poetry install
 
 for i in "$(seq $GPU_COUNT)"; do
   pm2 start poetry \
