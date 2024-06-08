@@ -38,10 +38,7 @@ class BaseNeuron(ABC):
     wallet: bt.wallet
     metagraph: bt.metagraph
     config: bt.config
-<<<<<<< HEAD
     redis: Redis
-=======
->>>>>>> refs/heads/main
 
     @classmethod
     @abstractmethod
