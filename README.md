@@ -120,38 +120,19 @@ Install poetry and PM2
 
 - Recommended: GPU with at least 24GB of VRAM
 
-#### The image generator API
-
-Miners by default use an API for image generation, this can be set up as follows with PM2:
-
-- Set the python packages up
-
-  ```bash
-  cd image-generator
-  ./setup.sh
-  ```
-
-- Then run with PM2
-  ```bash
-  pm2 start run.sh --name wombo-image-generator --interpreter bash
-  ```
-
-Note that running one image-generator with one GPU is likely to be ineffective, running multiple image generators with a
-load balancer is likely to get better rewards.
-
-#### Running the miner neuron
+#### Running the miner
 
 To set the miner neuron up,
 
 - Set the python packages up
   ```bash
   cd miner
-  ./setup.sh
+  poetry install
   ```
 
 - Then run with PM2, replacing the arguments
   ```bash
-  pm2 start run.sh --name wombo-miner --interpreter bash -- \
+  pm2 start poetry --name wombo-miner --interpreter none -- run python miner/main.py \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey} \
@@ -160,7 +141,7 @@ To set the miner neuron up,
   ```
 
 The miner will then run on your network provided the port `8091` is open.
-The responsibility of keeping the miner/repo up-to-date falls on you, hence you should `git pull` every once in a while.
+While this will work, it is recommended to run multiple instances of the miner behind a load balancer(and set axon.external_port and potentially axon.external_ip to be that of the load balancer)
 
 ### Running a validator
 
@@ -203,8 +184,8 @@ process is more complicated.
 On each GPU device, run
 
 ```bash
-# cwd: user-requests-validator
-poetry run python user_requests_validator/main.py -- \
+# cwd: forwarding-validator
+poetry run python forwarding_validator/main.py -- \
     --axon.port {local_port} \
     --axon.external_ip {external_ip} \
     --axon.external_port {external_port} \
@@ -212,6 +193,10 @@ poetry run python user_requests_validator/main.py -- \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey} \
     --subtensor.network local
+
+# With PM2
+pm2 start poetry --name {name} --interpreter none -- run python \
+  ...
 ```
 
 Then, create a Nginx config in /etc/nginx/nginx.conf at the machine that lives at {external_ip}
