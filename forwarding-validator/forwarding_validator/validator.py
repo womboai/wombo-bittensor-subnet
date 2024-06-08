@@ -191,7 +191,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
 
             return await request_error(context, StatusCode.PERMISSION_DENIED, "Unrecognized hotkey")
 
-        sanitize_inputs(request.inputs)
+        sanitize_inputs(request.miner_inputs)
 
         bt.logging.trace(
             f"Not Blacklisting recognized hotkey {hotkey}"
@@ -219,7 +219,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
         try:
             response_generator = get_forward_responses(
                 zip(channels.channels, axons),
-                request.inputs,
+                request.miner_inputs,
                 self.validator.wallet,
             )
 
@@ -257,7 +257,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                         similarity_score = score_similarity(
                             self.pipeline,
                             frames_tensor,
-                            request.inputs,
+                            request.miner_inputs,
                         )
 
                         if similarity_score < 0.85:
@@ -299,7 +299,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                     )
 
                     if has_nsfw_concept[0]:
-                        raise BadImagesDetected(request.inputs, response.axon)
+                        raise BadImagesDetected(request.miner_inputs, response.axon)
 
                     image = self.pipeline.image_processor.numpy_to_pil(np_image)[0]
 
@@ -311,7 +311,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                     image_bytes = buf.getvalue()
 
                 validation_coroutine = self.validate_user_request_responses(
-                    request.inputs,
+                    request.miner_inputs,
                     response,
                     miner_uids,
                     axons,
@@ -348,7 +348,7 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                 ]
             )
 
-            raise GetMinerResponseException(request.inputs, bad_responses)
+            raise GetMinerResponseException(request.miner_inputs, bad_responses)
 
     async def validate_user_request_responses(
         self,

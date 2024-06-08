@@ -5,9 +5,9 @@ package ai.wombo.tao.validator;
 import "tensor/protos/inputs.proto";
 
 message ValidatorUserRequest {
-  ai.wombo.tao.inputs.GenerationRequestInputs inputs = 1;
-  bool watermark = 2;
-  optional uint32 miner_uid = 3;
+  ai.wombo.tao.inputs.GenerationRequestInputs miner_inputs = 1;
+  optional uint32 miner_uid = 2;
+  optional bool watermark = 3;
 }
 
 message ValidatorGenerationResponse {

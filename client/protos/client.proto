@@ -5,7 +5,7 @@ package ai.wombo.tao.client;
 import "neuron-selector/protos/forwarding_validator.proto";
 
 message UserRequest {
-  ai.wombo.tao.validator.ValidatorUserRequest inputs = 1;
+  ai.wombo.tao.validator.ValidatorUserRequest validator_inputs = 1;
   optional uint32 validator_uid = 2;
 }
 

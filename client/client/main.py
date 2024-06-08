@@ -37,7 +37,7 @@ async def get_responses(
 ) -> AsyncGenerator[Response[ValidatorGenerationResponse], None]:
     responses = asyncio.as_completed(
         [
-            create_request(axon, inputs.inputs, lambda channel: ForwardingValidatorStub(channel).Generate, wallet)
+            create_request(axon, inputs.validator_inputs, lambda channel: ForwardingValidatorStub(channel).Generate, wallet)
             for axon in axons
         ]
     )
