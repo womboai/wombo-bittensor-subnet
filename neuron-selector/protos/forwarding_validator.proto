@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package ai.wombo.tao.validator;
+
+import "tensor/protos/inputs.proto";
+
+message ValidatorUserRequest {
+  ai.wombo.tao.inputs.GenerationRequestInputs inputs = 1;
+  bool watermark = 2;
+  optional uint32 miner_uid = 3;
+}
+
+message ValidatorGenerationResponse {
+  bytes image = 1;
+  uint32 miner_uid = 2;
+  float generation_time = 3;
+}
+
+service ForwardingValidator {
+  rpc Generate(ValidatorUserRequest) returns (ValidatorGenerationResponse);
+}

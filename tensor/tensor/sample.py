@@ -15,11 +15,37 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
+from bisect import bisect
+from itertools import accumulate
+from random import random
+from typing import TypeVar, Sequence
 
-import asyncio
+T = TypeVar("T")
 
-from miner.miner_neuron import Miner
 
-# This is the main function, which runs the miner.
-if __name__ == "__main__":
-    asyncio.run(Miner().run())
+def weighted_sample(weighted_items: Sequence[tuple[float, T]], k=1):
+    k = min(k, len(weighted_items))
+
+    enumerated_population: list[tuple[int, T]] = list([(index, item) for index, (_, item) in enumerate(weighted_items)])
+    cumulative_weights: list[float] = list(accumulate([weight for weight, _ in weighted_items]))
+    population_size = len(enumerated_population)
+    total = cumulative_weights[-1]
+
+    result: list[T] = []
+
+    while len(result) < k:
+        index, item = enumerated_population[bisect(
+            cumulative_weights,
+            random() * total,
+            0,
+            population_size - 1,
+        )]
+
+        if item in result:
+            continue
+
+        result.append(item)
+
+    return result

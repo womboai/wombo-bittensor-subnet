@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package ai.wombo.tao.validator;
+
+import "tensor/protos/inputs.proto";
+
+message OutputScoreRequest {
+  ai.wombo.tao.inputs.GenerationRequestInputs inputs = 1;
+  bytes frames = 2;
+}
+
+message OutputScore {
+  float score = 1;
+}
+
+service OutputScorer {
+  rpc ScoreOutput(OutputScoreRequest) returns (OutputScore);
+}

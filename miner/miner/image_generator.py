@@ -24,10 +24,11 @@ from io import BytesIO
 import torch
 from PIL import Image
 from diffusers import StableDiffusionXLControlNetPipeline
+from torch import Tensor
 
 from gpu_pipeline.pipeline import parse_input_parameters
 from gpu_pipeline.tensor import save_tensor
-from image_generation_protocol.io_protocol import ImageGenerationInputs
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
 
 def image_stream(image: Image.Image) -> BytesIO:
@@ -41,26 +42,21 @@ def image_stream(image: Image.Image) -> BytesIO:
 async def generate(
     gpu_semaphore: Semaphore,
     pipeline: StableDiffusionXLControlNetPipeline,
-    inputs: ImageGenerationInputs,
-) -> tuple[bytes, list[BytesIO]]:
-    frames = []
+    inputs: GenerationRequestInputs,
+) -> bytes:
+    frames: list[Tensor] = []
 
     def save_frames(_pipe, _step_index, _timestep, callback_kwargs):
         frames.append(callback_kwargs["latents"])
 
         return callback_kwargs
 
-    input_kwargs = parse_input_parameters(inputs)
+    input_kwargs = parse_input_parameters(inputs, pipeline.device)
 
     async with gpu_semaphore:
-        output = pipeline(
+        pipeline(
             **input_kwargs,
             callback_on_step_end=save_frames,
         )
 
-    if len(frames):
-        frame_st_bytes = save_tensor(torch.stack(frames))
-    else:
-        frame_st_bytes = None
-
-    return frame_st_bytes, [image_stream(image) for image in output.images]
+    return save_tensor(torch.stack(frames))

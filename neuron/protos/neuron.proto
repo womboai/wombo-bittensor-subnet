@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package ai.wombo.tao.neuron;
+
+import "tensor/protos/inputs.proto";
+import "google/protobuf/empty.proto";
+
+message MinerGenerationIdentifier {
+  bytes id = 1;
+}
+
+message MinerGenerationResponse {
+  MinerGenerationIdentifier id = 1;
+  bytes hash = 2;
+}
+
+message MinerGenerationResult {
+  bytes frames = 1;
+}
+
+service Miner {
+  rpc Generate(ai.wombo.tao.inputs.GenerationRequestInputs) returns (MinerGenerationResponse);
+  rpc Download(MinerGenerationIdentifier) returns (MinerGenerationResult);
+  rpc Delete(MinerGenerationIdentifier) returns (google.protobuf.Empty);
+}

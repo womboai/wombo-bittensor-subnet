@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "wombo-bittensor-subnet-neuron-selector"
+
+version = "1.0.0"
+
+description = "Used for choosing the neurons to query"
+
+license = "MIT"
+
+authors = ["WOMBO <hello@w.ai>"]
+
+packages = [{ include = "neuron_selector" }]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+wombo-bittensor-subnet-tensor = { path = "../tensor", develop = true }
+
+[build-system]
+requires = ["poetry-core", "setuptools", "grpcio-tools==1.64.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.build]
+script = "build.py"
+generate-setup-file = true
+
+[tool.poetry-monorepo.deps]

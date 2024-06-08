@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package ai.wombo.tao.client;
+
+import "neuron-selector/protos/forwarding_validator.proto";
+
+message UserRequest {
+  ai.wombo.tao.validator.ValidatorUserRequest inputs = 1;
+  optional uint32 validator_uid = 2;
+}
+
+message NeuronInfo {
+  string hotkey = 1;
+  uint32 uid = 2;
+  float processing_time = 3;
+}
+
+message GenerationResponse {
+  bytes image = 1;
+  NeuronInfo miner_info = 2;
+  NeuronInfo validator_info = 3;
+}
+
+service Client {
+  rpc Generate(UserRequest) returns (GenerationResponse);
+}

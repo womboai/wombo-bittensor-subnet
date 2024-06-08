@@ -15,11 +15,19 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
 
-import asyncio
+from pathlib import Path
 
-from miner.miner_neuron import Miner
+from PIL import Image
 
-# This is the main function, which runs the miner.
-if __name__ == "__main__":
-    asyncio.run(Miner().run())
+WATERMARK = Image.open(Path(__file__).parent.parent / "w_watermark.png")
+
+
+def apply_watermark(image: Image.Image) -> Image.Image:
+    image_copy = image.copy()
+    wm = WATERMARK.resize((image_copy.size[0], int(image_copy.size[0] * WATERMARK.size[1] / WATERMARK.size[0])))
+    wm, alpha = wm.convert("RGB"), wm.split()[3]
+    image_copy.paste(wm, (0, image_copy.size[1] - wm.size[1]), alpha)
+    return image_copy

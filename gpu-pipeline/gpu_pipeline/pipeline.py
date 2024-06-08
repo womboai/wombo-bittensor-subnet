@@ -35,7 +35,9 @@ from diffusers import (
     ControlNetModel, DPMSolverMultistepScheduler,
 )
 
-from image_generation_protocol.io_protocol import ImageGenerationInputs
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
+
+TAO_IMAGE_CACHE: dict[(int, int), Image.Image] = {}
 
 TAO_PATTERN = r'\b(?:' + '|'.join(
     re.escape(keyword) for keyword in sorted(
@@ -49,7 +51,18 @@ TAO_PATTERN = r'\b(?:' + '|'.join(
 ) + r')\b'
 
 
+def size_key(size: int):
+    return size / 8 - 64
+
+
 def get_tao_img(width: int, height: int):
+    cache_key = (size_key(width), size_key(height))
+
+    cached = TAO_IMAGE_CACHE.get(cache_key)
+
+    if cached:
+        return cached
+
     tao_img = Image.open(Path(__file__).parent.parent / "tao.jpg")
     scale_factor = min(width / tao_img.width, height / tao_img.height)
     tao_img = tao_img.resize((int(tao_img.width * scale_factor), int(tao_img.height * scale_factor)))
@@ -61,6 +74,9 @@ def get_tao_img(width: int, height: int):
     image = image[:, :, None]
     image = np.concatenate([image, image, image], axis=2)
     new_img = Image.fromarray(image)
+
+    TAO_IMAGE_CACHE[cache_key] = new_img
+
     return new_img
 
 
@@ -69,16 +85,23 @@ def replace_keywords_with_tau_symbol(input_string):
     return replaced_string
 
 
-def parse_input_parameters(inputs: ImageGenerationInputs) -> tuple[StableDiffusionXLControlNetPipeline, dict[str, Any]]:
-    input_kwargs = inputs.dict()
-    seed = input_kwargs.pop("seed")
+def parse_input_parameters(inputs: GenerationRequestInputs, device) -> dict[str, Any]:
+    input_kwargs = {
+        "prompt": replace_keywords_with_tau_symbol(inputs.prompt),
+        "prompt_2": inputs.prompt_2,
+        "width": inputs.width,
+        "height": inputs.height,
+        "num_inference_steps": inputs.num_inference_steps,
+        "guidance_scale": inputs.guidance_scale,
+        "negative_prompt": inputs.negative_prompt,
+        "negative_prompt_2": inputs.negative_prompt_2,
+        "controlnet_conditioning_scale": inputs.controlnet_conditioning_scale,
+        "image": get_tao_img(inputs.width, inputs.height),
+        "output_type": "latent",
+    }
 
-    if seed:
-        input_kwargs["generator"] = torch.Generator().manual_seed(seed)
-
-    input_kwargs["prompt"] = replace_keywords_with_tau_symbol(inputs.prompt)
-
-    input_kwargs["image"] = get_tao_img(inputs.width, inputs.height)
+    if inputs.seed:
+        input_kwargs["generator"] = torch.Generator(device).manual_seed(inputs.seed)
 
     return input_kwargs
 

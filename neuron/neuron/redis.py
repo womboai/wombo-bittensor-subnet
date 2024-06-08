@@ -15,11 +15,51 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
 
-import asyncio
+from urllib.parse import urlparse
 
-from miner.miner_neuron import Miner
 
-# This is the main function, which runs the miner.
-if __name__ == "__main__":
-    asyncio.run(Miner().run())
+def parse_redis_value(value: str | None, t: type):
+    if value is None:
+        return t()
+
+    return t(value)
+
+
+def parse_redis_uri(uri: str):
+    url = urlparse(uri)
+
+    if url.scheme == "redis":
+        ssl = False
+    elif url.scheme == "rediss":
+        ssl = True
+    else:
+        raise RuntimeError(f"Invalid Redis scheme {url.scheme}")
+
+    if url.path:
+        path_db = url.path[1:]
+
+        if not path_db:
+            db = 0
+        else:
+            db = int(path_db)
+    else:
+        db = 0
+
+    if not url.username or url.password:
+        username = url.username
+        password = url.password
+    else:
+        username = None
+        password = url.username
+
+    return {
+        "host": url.hostname,
+        "port": url.port,
+        "db": db,
+        "password": password,
+        "ssl": ssl,
+        "username": username,
+    }

@@ -15,11 +15,33 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
 
-import asyncio
+from os import urandom
 
-from miner.miner_neuron import Miner
+from neuron.defaults import DEFAULT_WIDTH, DEFAULT_HEIGHT, DEFAULT_STEPS, DEFAULT_GUIDANCE
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
 
-# This is the main function, which runs the miner.
-if __name__ == "__main__":
-    asyncio.run(Miner().run())
+MIN_SIZE = 512
+MAX_SIZE = 1536
+MAX_STEPS = 100
+
+
+# I dislike how manual this is, but it's probably fine
+def sanitize_inputs(inputs: GenerationRequestInputs):
+    if not inputs.width or inputs.width < MIN_SIZE or inputs.height > MAX_SIZE:
+        inputs.width = DEFAULT_WIDTH
+
+    if not inputs.height or inputs.height < MIN_SIZE or inputs.height > MAX_SIZE:
+        inputs.height = DEFAULT_HEIGHT
+
+    if not inputs.num_inference_steps or inputs.num_inference_steps > MAX_STEPS:
+        inputs.num_inference_steps = DEFAULT_STEPS
+
+    if not inputs.guidance_scale:
+        inputs.guidance_scale = DEFAULT_GUIDANCE
+
+    inputs.seed = int.from_bytes(urandom(4), "little")
+
+    return inputs
