@@ -112,7 +112,7 @@ class MinerMetrics(BaseModel):
     failed_user_requests: Annotated[int, Field(ge=0)]
 
     def get_weight(self):
-        concurrency_factor = pow(self.generated_count / (self.generation_time * 128), 1.125)
+        concurrency_factor = pow((self.generated_count / self.generation_time * 60) / 128, 1.125)
         similarity_factor = pow(self.similarity_score, 8)
         success_factor = pow(1 - self.error_rate, 2)
 
