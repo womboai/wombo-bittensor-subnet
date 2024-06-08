@@ -23,7 +23,7 @@ from typing import Callable
 
 import bittensor as bt
 
-SPEC_VERSION = 20
+SPEC_VERSION = 21
 
 
 def check_config(config: bt.config, name: str):
