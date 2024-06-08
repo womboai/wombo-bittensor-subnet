@@ -17,12 +17,11 @@
 # DEALINGS IN THE SOFTWARE.
 
 import os
-from os import path
 from io import open
+from os import path
 from pathlib import Path
 
 from setuptools import setup, find_packages
-
 
 here = path.abspath(path.dirname(__file__))
 
@@ -43,7 +42,7 @@ setup(
     license="MIT",
     python_requires=">=3.10",
     install_requires=[
-        "torch==2.2.0+cpu",
+        "wombo-bittensor-subnet-gpu-pipeline",
         "wombo-bittensor-subnet-neuron",
     ],
     depdendency_links=[
