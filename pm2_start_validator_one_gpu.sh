@@ -24,11 +24,13 @@
 
 set -e
 
-sudo apt-get install redis npm
-sudo npm install -g pm2
+apt-get install redis npm
+npm install -g pm2
 
 OLD_DIRECTORY=$(pwd)
 DIRECTORY=$(dirname $(realpath $0))
+
+pm2 start redis --name wombo-redis --interpreter none
 
 cd $DIRECTORY/stress-test-validator
 poetry install

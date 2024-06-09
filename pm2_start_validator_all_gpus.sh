@@ -24,8 +24,8 @@
 
 set -e
 
-sudo apt-get install redis npm
-sudo npm install -g pm2
+apt-get install redis npm
+npm install -g pm2
 
 PORT=$1
 OLD_DIRECTORY=$(pwd)
@@ -55,6 +55,7 @@ echo "
 " >> $DIRECTORY/nginx.conf
 
 pm2 start nginx --name wombo-validator-nginx --interpreter none -- -c $DIRECTORY/nginx.conf
+pm2 start redis --name wombo-redis --interpreter none
 
 cd $DIRECTORY/stress-test-validator
 poetry install
