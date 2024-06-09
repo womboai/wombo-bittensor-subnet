@@ -26,6 +26,7 @@ from torch import tensor
 
 from base_validator.miner_metrics import MinerMetricManager
 from neuron.redis import parse_redis_value
+from tensor.config import SPEC_VERSION
 
 
 class MinerUserRequestMetricManager(MinerMetricManager):
@@ -42,6 +43,7 @@ class MinerUserRequestMetricManager(MinerMetricManager):
                 "successful": successful,
                 "failed": failed,
                 "similarity_score": similarity_score,
+                "spec_version": SPEC_VERSION,
             },
         )
 
