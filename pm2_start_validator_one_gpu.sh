@@ -35,6 +35,8 @@ include /etc/redis/redis.conf
 dir $DIRECTORY
 " > $DIRECTORY/redis.conf
 
+pm2 delete wombo-redis wombo-stress-test-validator wombo-forwarding-validator || true
+
 pm2 start redis-server --name wombo-redis --interpreter none -- $DIRECTORY/redis.conf
 
 cd $DIRECTORY/stress-test-validator
@@ -45,4 +47,6 @@ cd $DIRECTORY/forwarding-validator
 poetry install
 pm2 start poetry --name wombo-forwarding-validator --interpreter none -- run python forwarding_validator/main.py $@
 
-cd OLD_DIRECTORY
+pm2 save
+
+cd $OLD_DIRECTORY

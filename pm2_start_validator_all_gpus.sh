@@ -59,6 +59,8 @@ echo "
 }
 " >> $DIRECTORY/nginx.conf
 
+pm2 delete wombo-redis wombo-stress-test-validator || true
+
 pm2 start nginx --name wombo-validator-nginx --interpreter none -- -c $DIRECTORY/nginx.conf
 pm2 start redis-server --name wombo-redis --interpreter none -- $DIRECTORY/redis.conf
 
@@ -70,6 +72,8 @@ cd $DIRECTORY/forwarding-validator
 poetry install
 
 for i in "$(seq $GPU_COUNT)"; do
+  pm2 delete wombo-forwarding-validator-$i || true
+
   pm2 start poetry \
     --name wombo-forwarding-validator-$i \
     --interpreter none -- \
@@ -81,4 +85,6 @@ for i in "$(seq $GPU_COUNT)"; do
     ${@:2}
 done
 
-cd OLD_DIRECTORY
+pm2 save
+
+cd $OLD_DIRECTORY
