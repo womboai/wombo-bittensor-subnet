@@ -33,6 +33,11 @@ DIRECTORY=$(dirname $(realpath $0))
 GPU_COUNT=$((nvidia-smi -L || true) | wc -l)
 
 echo "
+include /etc/redis/redis.conf
+dir $DIRECTORY
+" > $DIRECTORY/redis.conf
+
+echo "
 http {
   upstream validator {
 " > $DIRECTORY/nginx.conf
@@ -55,7 +60,7 @@ echo "
 " >> $DIRECTORY/nginx.conf
 
 pm2 start nginx --name wombo-validator-nginx --interpreter none -- -c $DIRECTORY/nginx.conf
-pm2 start redis-server --name wombo-redis --interpreter none
+pm2 start redis-server --name wombo-redis --interpreter none -- $DIRECTORY/redis.conf
 
 cd $DIRECTORY/stress-test-validator
 poetry install

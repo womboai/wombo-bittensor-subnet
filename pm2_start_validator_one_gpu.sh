@@ -30,7 +30,12 @@ npm install -g pm2
 OLD_DIRECTORY=$(pwd)
 DIRECTORY=$(dirname $(realpath $0))
 
-pm2 start redis-server --name wombo-redis --interpreter none
+echo "
+include /etc/redis/redis.conf
+dir $DIRECTORY
+" > $DIRECTORY/redis.conf
+
+pm2 start redis-server --name wombo-redis --interpreter none -- $DIRECTORY/redis.conf
 
 cd $DIRECTORY/stress-test-validator
 poetry install
