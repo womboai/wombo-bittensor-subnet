@@ -130,13 +130,20 @@ To set the miner neuron up,
   poetry install
   ```
 
+- Start a redis sever to allow the miner to store results
+  ```bash
+  apt-get update
+  apt-get install -y redis
+
+  pm2 start redis-server --name wombo-redis --interpreter none
+  ```
+
 - Then run with PM2, replacing the arguments
   ```bash
   pm2 start poetry --name wombo-miner --interpreter none -- run python miner/main.py \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey} \
-    --generation_endpoint http://localhost:8001/api/generate \
     --blacklist.force_validator_permit
   ```
 
@@ -181,7 +188,16 @@ This queries all the available Cuda GPUs and uses all of them via a Nginx load b
 
 If you have your GPUs on different machines, you still can utilize them and are recommended to do so. However, the
 process is more complicated.
-On each GPU device, run
+
+- Firstly, start the redis server used for communication
+```bash
+apt-get update
+apt-get install -y redis
+
+pm2 start redis-server --name wombo-redis --interpreter none
+```
+
+- On each GPU device, run
 
 ```bash
 # cwd: forwarding-validator
@@ -192,14 +208,15 @@ poetry run python forwarding_validator/main.py -- \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey} \
-    --subtensor.network local
+    --subtensor.network local \
+    --redis_url {redis_url}
 
 # With PM2
 pm2 start poetry --name {name} --interpreter none -- run python \
   ...
 ```
 
-Then, create a Nginx config in /etc/nginx/nginx.conf at the machine that lives at {external_ip}
+- Then, create a Nginx config in /etc/nginx/nginx.conf at the machine that lives at {external_ip}
 
 ```nginx
 http {
@@ -218,7 +235,7 @@ http {
 }
 ```
 
-Finally, run the CPU portion of the validator which sets weights
+- Finally, run the CPU portion of the validator which sets weights
 
 ```bash
 # cwd: stress-test-validator
@@ -226,7 +243,8 @@ poetry run python stress_test_validator/main.py -- \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey} \
-    --subtensor.network local
+    --subtensor.network local \
+    --redis_url {redis_url}
 ```
 
 ## Applications
