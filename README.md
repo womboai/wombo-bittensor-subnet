@@ -163,14 +163,14 @@ If you have one GPU, run
 
 ```bash
 ./pm2_start_validator_one_gpu.sh \
-    --axon.port 10000 \
+    10000 \
     --netuid {netuid} \
     --wallet.name {wallet} \
     --wallet.hotkey {hotkey} \
     --subtensor.network local
 ```
 
-Which will start the basic minimum required for the validator to work, however we do recommend more compute, such as
+Which will start the basic minimum required for the validator to work(axon port 10000), however we do recommend more compute, such as
 multiple GPUs. That can be started with:
 
 ```bash
