@@ -47,6 +47,8 @@ async def generate(
     frames: list[Tensor] = []
 
     def save_frames(_pipe, _step_index, _timestep, callback_kwargs):
+        nonlocal frames
+
         frames.append(callback_kwargs["latents"])
 
         return callback_kwargs
