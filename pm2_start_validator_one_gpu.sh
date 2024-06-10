@@ -27,6 +27,7 @@ set -e
 apt-get install redis npm
 npm install -g pm2
 
+PORT=$1
 OLD_DIRECTORY=$(pwd)
 DIRECTORY=$(dirname $(realpath $0))
 
@@ -41,11 +42,25 @@ pm2 start redis-server --name wombo-redis --interpreter none -- $DIRECTORY/redis
 
 cd $DIRECTORY/stress-test-validator
 poetry install
-pm2 start poetry --name wombo-stress-test-validator --interpreter none -- run python stress_test_validator/main.py $@
+
+pm2 start poetry \
+  --name wombo-stress-test-validator \
+  --interpreter none -- \
+  run python \
+  stress_test_validator/main.py \
+  --forwarding_validator.axon "localhost:$PORT" \
+  ${@:2}
 
 cd $DIRECTORY/forwarding-validator
 poetry install
-pm2 start poetry --name wombo-forwarding-validator --interpreter none -- run python forwarding_validator/main.py $@
+
+pm2 start poetry \
+  --name wombo-forwarding-validator \
+  --interpreter none -- \
+  run python \
+  forwarding_validator/main.py \
+  --axon.port $PORT \
+  ${@:2}
 
 pm2 save
 

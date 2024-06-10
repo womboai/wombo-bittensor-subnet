@@ -26,23 +26,23 @@ from typing import TypeAlias, Annotated
 import bittensor as bt
 import nltk
 from aiohttp import ClientSession
-from bittensor import AxonInfo
-from grpc.aio import Channel
-from numpy import mean
-from pydantic import BaseModel, Field
-
 from base_validator.cryptographic_sample import cryptographic_sample
 from base_validator.input_sanitization import sanitize_inputs
 from base_validator.miner_metrics import MinerMetricManager
 from base_validator.protos.scoring_pb2 import OutputScoreRequest, OutputScore
 from base_validator.protos.scoring_pb2_grpc import OutputScorerStub
 from base_validator.validator import get_miner_response, is_cheater
+from bittensor import AxonInfo
+from grpc.aio import Channel, insecure_channel
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
 from neuron.protos.neuron_pb2_grpc import MinerStub
+from numpy import mean
+from pydantic import BaseModel, Field
+
 from neuron.redis import parse_redis_value
 from tensor.config import SPEC_VERSION
 from tensor.protos.inputs_pb2 import GenerationRequestInputs
-from tensor.response import Response, axon_channel, SuccessfulResponse, call_request
+from tensor.response import Response, axon_channel, SuccessfulResponse, call_request, axon_address
 
 nltk.download('words')
 nltk.download('universal_tagset')
@@ -376,7 +376,9 @@ async def stress_test_miner(validator: "StressTestValidator", uid: int):
     else:
         validator_axon = validator.metagraph.axons[validator.uid]
 
-        async with axon_channel(validator_axon) as channel:
+        axon_url = validator.config.forwarding_validator.axon or axon_address(validator_axon)
+
+        async with insecure_channel(axon_url) as channel:
             scores = await asyncio.gather(
                 *[
                     score_output(

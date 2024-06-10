@@ -66,7 +66,14 @@ pm2 start redis-server --name wombo-redis --interpreter none -- $DIRECTORY/redis
 
 cd $DIRECTORY/stress-test-validator
 poetry install
-pm2 start poetry --name wombo-stress-test-validator --interpreter none -- run python stress_test_validator/main.py ${@:2}
+
+pm2 start poetry \
+  --name wombo-stress-test-validator \
+  --interpreter none -- \
+  run python \
+  stress_test_validator/main.py \
+  --forwarding_validator.axon "localhost:$PORT" \
+  ${@:2}
 
 cd $DIRECTORY/forwarding-validator
 poetry install

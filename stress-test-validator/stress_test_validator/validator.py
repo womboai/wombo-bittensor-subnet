@@ -68,6 +68,12 @@ class StressTestValidator(BaseValidator):
             default=False,
         )
 
+        parser.add_argument(
+            "--forwarding_validator.axon",
+            type=str,
+            help="The axon of the forwarding-validator to be used for GPU tasks",
+        )
+
     async def sync(self):
         # Ensure validator hotkey is still registered on the network.
         self.check_registered()
