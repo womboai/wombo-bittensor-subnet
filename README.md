@@ -218,6 +218,11 @@ multiple GPUs. That can be started with:
 
 This queries all the available Cuda GPUs and uses all of them via a Nginx load balancer
 
+Then start the redis server
+```bash
+redis-server /path/to/config
+```
+
 #### More complex validator setups
 
 If you have your GPUs on different machines, you still can utilize them and are recommended to do so. However, the
@@ -228,7 +233,7 @@ process is more complicated.
 apt-get update
 apt-get install -y redis
 
-pm2 start redis-server --name wombo-redis --interpreter none
+redis-server /path/to/config
 ```
 
 - On each GPU device, run

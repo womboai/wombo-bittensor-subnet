@@ -31,14 +31,7 @@ PORT=$1
 OLD_DIRECTORY=$(pwd)
 DIRECTORY=$(dirname $(realpath $0))
 
-echo "
-include /etc/redis/redis.conf
-dir $DIRECTORY
-" > $DIRECTORY/redis.conf
-
-pm2 delete wombo-redis wombo-stress-test-validator wombo-forwarding-validator || true
-
-pm2 start redis-server --name wombo-redis --interpreter none -- $DIRECTORY/redis.conf
+pm2 delete wombo-stress-test-validator wombo-forwarding-validator || true
 
 cd $DIRECTORY/stress-test-validator
 poetry install
