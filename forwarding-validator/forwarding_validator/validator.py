@@ -47,7 +47,7 @@ from base_validator.protos.scoring_pb2_grpc import OutputScorerServicer, add_Out
 from base_validator.validator import (
     BaseValidator,
     get_miner_response,
-    SuccessfulGenerationResponseInfo, is_cheater,
+    SuccessfulGenerationResponseInfo, is_cheater, MINER_REQUEST_TIMEOUT,
 )
 from forwarding_validator.miner_metrics import MinerUserRequestMetricManager
 from forwarding_validator.similarity_score_pipeline import score_similarity
@@ -236,7 +236,12 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                     continue
 
                 download_result: Response[MinerGenerationResult] = (
-                    await call_request(response.axon, response.data.id, MinerStub(channel).Download)
+                    await call_request(
+                        response.axon,
+                        response.data.id,
+                        MinerStub(channel).Download,
+                        timeout=MINER_REQUEST_TIMEOUT,
+                    )
                 )
 
                 if is_cheater(axon_uids[response.axon.hotkey], download_result.data.frames, response.data.hash):

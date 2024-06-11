@@ -20,6 +20,7 @@
 
 import copy
 from hashlib import sha256
+from os import getenv
 from typing import TypeVar
 
 import bittensor as bt
@@ -35,6 +36,9 @@ from tensor.protos.inputs_pb2 import InfoResponse, GenerationRequestInputs
 from tensor.response import SuccessfulResponseInfo, call_request, Response
 
 T = TypeVar("T")
+
+
+MINER_REQUEST_TIMEOUT = int(getenv("MINER_REQUEST_TIMEOUT", str(60)))
 
 
 class SuccessfulGenerationResponseInfo(SuccessfulResponseInfo):
@@ -57,7 +61,13 @@ async def get_miner_response(
     channel: Channel,
     wallet: bt.wallet,
 ) -> Response[MinerGenerationResponse]:
-    return await call_request(axon, inputs, MinerStub(channel).Generate, wallet)
+    return await call_request(
+        axon,
+        inputs,
+        MinerStub(channel).Generate,
+        wallet,
+        timeout=MINER_REQUEST_TIMEOUT,
+    )
 
 
 def is_cheater(uid: int, frames: bytes, expected_hash: bytes):

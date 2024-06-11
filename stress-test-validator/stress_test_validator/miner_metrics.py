@@ -31,7 +31,7 @@ from base_validator.input_sanitization import sanitize_inputs
 from base_validator.miner_metrics import MinerMetricManager
 from base_validator.protos.scoring_pb2 import OutputScoreRequest, OutputScore
 from base_validator.protos.scoring_pb2_grpc import OutputScorerStub
-from base_validator.validator import get_miner_response, is_cheater
+from base_validator.validator import get_miner_response, is_cheater, MINER_REQUEST_TIMEOUT
 from bittensor import AxonInfo
 from grpc.aio import Channel, insecure_channel
 from neuron.protos.neuron_pb2 import MinerGenerationResponse, MinerGenerationIdentifier, MinerGenerationResult
@@ -113,7 +113,7 @@ class MinerMetrics(BaseModel):
     failed_user_requests: Annotated[int, Field(ge=0)]
 
     def get_weight(self):
-        concurrency_factor = pow((self.generated_count / self.generation_time * 60) / 128, 1.125)
+        concurrency_factor = pow((self.generated_count / self.generation_time * MINER_REQUEST_TIMEOUT) / 128, 1.125)
         similarity_factor = pow(self.similarity_score, 8)
         success_factor = pow(1 - self.error_rate, 2)
 

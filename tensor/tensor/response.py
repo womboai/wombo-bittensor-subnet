@@ -127,13 +127,14 @@ async def call_request(
     request: RequestT,
     invoker: UnaryUnaryMultiCallable[RequestT, ResponseT],
     wallet: bt.wallet | None = None,
+    timeout: float | None = None,
 ) -> Response[ResponseT]:
     start = perf_counter()
 
     method = invoker._method
     metadata = create_metadata(axon, wallet) if wallet else None
 
-    call = invoker(request, metadata=metadata)
+    call = invoker(request, timeout=timeout, metadata=metadata)
 
     try:
         try:

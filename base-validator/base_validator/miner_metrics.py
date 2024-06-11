@@ -17,7 +17,7 @@
 #  DEALINGS IN THE SOFTWARE.
 #
 #
-
+from os import getenv
 from typing import Any
 
 import bittensor as bt
