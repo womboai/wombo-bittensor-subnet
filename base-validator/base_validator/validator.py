@@ -19,6 +19,7 @@
 #
 
 import copy
+from abc import ABC
 from hashlib import sha256
 from os import getenv
 from typing import TypeVar
@@ -84,7 +85,7 @@ def is_cheater(uid: int, frames: bytes, expected_hash: bytes):
     return False
 
 
-class BaseValidator(BaseNeuron):
+class BaseValidator(BaseNeuron, ABC):
     neuron_info: dict[int, InfoResponse]
 
     def __init__(self):

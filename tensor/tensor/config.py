@@ -48,7 +48,11 @@ def check_config(config: bt.config, name: str):
     logging.addLevelName(38, "EVENTS")
 
 
-def add_args(parser: argparse.ArgumentParser, default_device: str):
+def add_args(
+    parser: argparse.ArgumentParser,
+    default_device: str,
+    project_name: str | None = None,
+):
     """
     Adds relevant arguments to the parser for operation.
     """
@@ -95,6 +99,51 @@ def add_args(parser: argparse.ArgumentParser, default_device: str):
         type=str,
         help="The endpoint called when checking if the hotkey should be whitelisted for requests",
         default="",
+    )
+
+    if not project_name:
+        return
+
+    parser.add_argument(
+        "--wandb.off",
+        action="store_true",
+        help="Turn off wandb.",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--wandb.offline",
+        action="store_true",
+        help="Runs wandb in offline mode.",
+        default=False,
+    )
+
+    parser.add_argument(
+        "--wandb.run_epoch_length",
+        type=int,
+        help="How long each each wandb run should be in blocks.",
+        default=7200,
+    )
+
+    parser.add_argument(
+        "--wandb.notes",
+        type=str,
+        help="Notes to add to the wandb run.",
+        default="",
+    )
+
+    parser.add_argument(
+        "--wandb.project_name",
+        type=str,
+        help="The name of the project where you are sending the new run.",
+        default=project_name,
+    )
+
+    parser.add_argument(
+        "--wandb.entity",
+        type=str,
+        help="Wandb entity to log to.",
+        default="wombo",
     )
 
 

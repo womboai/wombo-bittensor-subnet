@@ -544,6 +544,9 @@ class ForwardingValidator(BaseValidator):
         self.pending_requests_lock = Lock()
         self.pending_request_futures = []
 
+    def wandb_tags(self) -> list[str]:
+        return [axon_address(self.config.axon)]
+
     async def run(self):
         """
         Initiates and manages the main loop for the miner on the Bittensor network. The main loop handles graceful shutdown on keyboard interrupts and logs unforeseen errors.
@@ -599,6 +602,8 @@ class ForwardingValidator(BaseValidator):
                         self.last_metagraph_sync = self.block
                         sleep = False
 
+                    self.check_wandb_run()
+
                     if sleep:
                         neuron_refresh_in = neuron_refresh_blocks - blocks_since_neuron_refresh
                         sync_in = self.config.neuron.epoch_length - blocks_since_sync
@@ -634,6 +639,6 @@ class ForwardingValidator(BaseValidator):
 
     @classmethod
     def add_args(cls, parser):
-        add_args(parser, "cuda")
+        add_args(parser, "cuda", "forwarding_validator")
 
         super().add_args(parser)

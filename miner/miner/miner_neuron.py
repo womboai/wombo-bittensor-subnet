@@ -180,13 +180,16 @@ class Miner(BaseNeuron):
 
         self.last_metagraph_sync = self.block
 
+    def wandb_tags(self) -> list[str]:
+        return [axon_address(self.config.axon)]
+
     @classmethod
     def check_config(cls, config: bt.config):
         check_config(config, "miner")
 
     @classmethod
     def add_args(cls, parser):
-        add_args(parser, "cuda")
+        add_args(parser, "cuda", "miner")
 
         parser.add_argument(
             "--blacklist.force_validator_permit",
@@ -229,6 +232,8 @@ class Miner(BaseNeuron):
         try:
             while True:
                 block = self.block
+
+                self.check_wandb_run()
 
                 if block - self.last_metagraph_sync <= self.config.neuron.epoch_length:
                     await asyncio.sleep(max(self.config.neuron.epoch_length - block + self.last_metagraph_sync, 0) * 12)

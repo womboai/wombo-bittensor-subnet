@@ -55,9 +55,12 @@ class StressTestValidator(BaseValidator):
 
         self.step = 0
 
+    def wandb_tags(self) -> list[str]:
+        return []
+
     @classmethod
     def add_args(cls, parser):
-        add_args(parser, "cpu")
+        add_args(parser, "cpu", "stress_test_validator")
 
         super().add_args(parser)
 
@@ -241,6 +244,8 @@ class StressTestValidator(BaseValidator):
                     if blocks_since_check >= check_blocks:
                         await self.check_next_miner()
                         sleep = False
+
+                    self.check_wandb_run()
 
                     # Sync metagraph and potentially set weights.
                     await self.sync()

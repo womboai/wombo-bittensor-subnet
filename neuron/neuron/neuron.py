@@ -16,15 +16,19 @@
 # DEALINGS IN THE SOFTWARE.
 
 from abc import ABC, abstractmethod
+from datetime import datetime, timedelta
+from os import getenv
 
 import bittensor as bt
+import wandb
 from redis.asyncio import Redis
+from wandb.sdk.wandb_run import Run
 
 from neuron.misc import ttl_get_block
 from neuron.redis import parse_redis_uri
 from neuron.select_endpoint import select_endpoint
 # Sync calls set weights and also resyncs the metagraph.
-from tensor.config import config
+from tensor.config import config, SPEC_VERSION
 
 
 class BaseNeuron(ABC):
@@ -40,19 +44,8 @@ class BaseNeuron(ABC):
     config: bt.config
     redis: Redis
 
-    @classmethod
-    @abstractmethod
-    def check_config(cls, config: bt.config):
-        ...
-
-    @classmethod
-    @abstractmethod
-    def add_args(cls, parser):
-        ...
-
-    @property
-    def block(self):
-        return ttl_get_block(self.subtensor)
+    wandb_run_start: int | None
+    wandb_run: Run | None
 
     def __init__(self):
         self.config = config(self.add_args)
@@ -100,6 +93,79 @@ class BaseNeuron(ABC):
         bt.logging.info(f"Connecting to redis at {self.config.neuron.redis_url}")
 
         self.redis = Redis(**parse_redis_uri(self.config.neuron.redis_url))
+
+        self.wandb_run_start = None
+        self.wandb_run = None
+
+    @abstractmethod
+    def wandb_tags(self) -> list[str]:
+        ...
+
+    @classmethod
+    @abstractmethod
+    def check_config(cls, config: bt.config):
+        ...
+
+    @classmethod
+    @abstractmethod
+    def add_args(cls, parser):
+        ...
+
+    @property
+    def block(self):
+        return ttl_get_block(self.subtensor)
+
+    def initialize_wandb(self):
+        if self.config.wandb.off:
+            bt.logging.warning("Running with --wandb.off. It is strongly recommended to run with W&B enabled.")
+            return
+
+        self.new_wandb_run()
+
+    def new_wandb_run(self):
+        """Creates a new wandb run to save information to."""
+        run_id = datetime.utcnow().strftime("%Y-%m-%d_%H-%M-%S")
+        hotkey = self.wallet.hotkey.ss58_address
+        uid = self.metagraph.hotkeys.index(hotkey)
+        netuid = self.metagraph.netuid
+
+        name = f"validator-sn{netuid}-{uid}-{run_id}"
+
+        self.wandb_run_start = self.block
+        self.wandb_run = wandb.init(
+            name=name,
+            project=self.config.wandb.project_name,
+            entity=self.config.wandb.entity,
+            config={
+                "hotkey": hotkey,
+            },
+            allow_val_change=True,
+            anonymous="allow",
+            tags=[
+                self.config.wandb.project_name,
+                f"version_{SPEC_VERSION}",
+                f"sn{netuid}",
+                f"uid_{uid}",
+                hotkey,
+                *self.wandb_tags(),
+            ],
+        )
+
+        bt.logging.debug(f"Started a new wandb run: {name}")
+
+    def check_wandb_run(self):
+        if self.config.wandb.off:
+            return
+
+        # Check if we should start a new wandb run.
+        if self.block - self.wandb_run_start >= self.config.wandb.run_epoch_length:
+            bt.logging.info(
+                f"Current wandb run is older than {self.config.wandb.run_epoch_length} blocks. "
+                f"Starting a new run."
+            )
+
+            self.wandb_run.finish()
+            self.new_wandb_run()
 
     def check_registered(self):
         # --- Check for registration.

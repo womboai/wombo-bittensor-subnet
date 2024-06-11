@@ -31,6 +31,7 @@ classifiers = [
 python = ">=3.10,<3.11"
 wombo-bittensor-subnet-tensor = { path = "../tensor", develop = true }
 redis = { version = "5.0.4", extras = ["hiredis"] }
+wandb = "0.17.1"
 
 [build-system]
 requires = ["poetry-core", "setuptools", "grpcio-tools==1.64.0"]
