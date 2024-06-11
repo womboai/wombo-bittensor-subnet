@@ -168,7 +168,7 @@ Create a Nginx config like the following
 ```nginx
 http {
   upstream miner {
-    {local_ip_1}:{local_port_2}
+    {miner_ip_1}:{miner_port_2}
     ... # All of the GPU instances' IPs and ports, can include localhost IPs
   }
 
@@ -236,7 +236,7 @@ pm2 start redis-server --name wombo-redis --interpreter none
 ```bash
 # cwd: forwarding-validator
 poetry run python forwarding_validator/main.py -- \
-    --axon.port {local_port} \
+    --axon.port {port} \
     --axon.external_ip {external_ip} \
     --axon.external_port {external_port} \
     --netuid {netuid} \
@@ -255,7 +255,7 @@ pm2 start poetry --name {name} --interpreter none -- run python \
 ```nginx
 http {
   upstream validator {
-    {local_ip_1}:{local_port_2}
+    {forwarding_validator_ip_1}:{forwarding_validator_port_2}
     ... # All of the GPU instances' IPs and ports, can include localhost IPs
   }
 
