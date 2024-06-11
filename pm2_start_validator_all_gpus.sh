@@ -53,7 +53,7 @@ echo "
     listen $PORT http2;
 
     location / {
-      proxy_pass grpc://validator;
+      grpc_pass grpc://validator;
     }
   }
 }

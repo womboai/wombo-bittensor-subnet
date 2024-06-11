@@ -155,7 +155,34 @@ To set the miner neuron up,
   ```
 
 The miner will then run on your network provided the port `8091` is open.
-While this will work, it is recommended to run multiple instances of the miner behind a load balancer(and set axon.external_port and potentially axon.external_ip to be that of the load balancer)
+While this will work, it is recommended to run multiple instances of the miner behind a [load balancer](#load-balancing)
+
+#### Load balancing
+and set axon.external_port and potentially axon.external_ip to be that of the load balancer
+
+Run a miner for each GPU that you want to load balance over,
+setting `--axon.external_port` and (if needed) `--axon.external_ip` to be that of the device/port that you want to run the load balancer on.
+
+Create a Nginx config like the following
+
+```nginx
+http {
+  upstream miner {
+    {local_ip_1}:{local_port_2}
+    ... # All of the GPU instances' IPs and ports, can include localhost IPs
+  }
+
+  server {
+    listen {external_port} http2
+
+    location / {
+      grpc_pass grpc://miner;
+    }
+  }
+}
+```
+
+Then run Nginx with the config `nginx path/to/config` on the device where external_ip lives
 
 ### Running a validator
 
@@ -236,7 +263,7 @@ http {
     listen {external_port} http2
 
     location / {
-      proxy_pass grpc://validator;
+      grpc_pass grpc://validator;
     }
   }
 }
