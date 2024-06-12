@@ -143,7 +143,7 @@ def add_args(
         "--wandb.entity",
         type=str,
         help="Wandb entity to log to.",
-        default="wombo",
+        default="wombo-ai",
     )
 
 

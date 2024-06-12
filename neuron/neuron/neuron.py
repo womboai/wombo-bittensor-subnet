@@ -130,16 +130,19 @@ class BaseNeuron(ABC):
         netuid = self.metagraph.netuid
 
         name = f"validator-sn{netuid}-{uid}-{run_id}"
+        project_name = f"sn{netuid}_{self.config.wandb.project_name}"
 
         self.wandb_run_start = self.block
+
         self.wandb_run = wandb.init(
             name=name,
-            project=self.config.wandb.project_name,
+            project=project_name,
             entity=self.config.wandb.entity,
             notes=self.config.wandb.notes,
             mode="offline" if self.config.wandb.offline else "online",
             config={
                 "hotkey": hotkey,
+                "axon": getattr(self.config, "axon", None),
             },
             allow_val_change=True,
             anonymous="allow",
