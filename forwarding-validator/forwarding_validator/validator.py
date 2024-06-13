@@ -47,7 +47,7 @@ from base_validator.protos.scoring_pb2_grpc import OutputScorerServicer, add_Out
 from base_validator.validator import (
     BaseValidator,
     get_miner_response,
-    SuccessfulGenerationResponseInfo, is_cheater, MINER_REQUEST_TIMEOUT,
+    SuccessfulGenerationResponseInfo, is_cheater, MINER_REQUEST_TIMEOUT, SUPPORTED_SPEC_VERSIONS,
 )
 from forwarding_validator.miner_metrics import MinerUserRequestMetricManager
 from forwarding_validator.similarity_score_pipeline import score_similarity
@@ -203,7 +203,10 @@ class ValidatorGenerationService(ForwardingValidatorServicer):
                 self.validator.metagraph,
                 self.validator.neuron_info,
                 numpy.nan_to_num(await self.metric_manager.get_rps()),
-                lambda _, info: NeuronCapabilities.MINER in info.capabilities,
+                lambda _, info: (
+                    info.spec_version in SUPPORTED_SPEC_VERSIONS and
+                    NeuronCapabilities.MINER in info.capabilities
+                ),
             )
             if not request.miner_uid
             else numpy.array([request.miner_uid - 1])

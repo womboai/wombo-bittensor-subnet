@@ -39,7 +39,7 @@ def get_best_uids(
     available_uids = [
         uid
         for uid in available_uids
-        if infos[uid] and infos[uid].spec_version == SPEC_VERSION and condition(uid, infos[uid])
+        if infos[uid] and condition(uid, infos[uid])
     ]
 
     if not len(available_uids):

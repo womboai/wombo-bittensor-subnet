@@ -29,7 +29,7 @@ import numpy
 from bittensor.utils.weight_utils import process_weights_for_netuid, convert_weights_and_uids_for_emit
 from heapdict import heapdict
 
-from base_validator.validator import BaseValidator
+from base_validator.validator import BaseValidator, SUPPORTED_SPEC_VERSIONS
 from stress_test_validator.miner_metrics import MinerStressTestMetricManager, stress_test_miner
 from tensor.config import add_args, SPEC_VERSION
 from tensor.protos.inputs_pb2 import NeuronCapabilities
@@ -114,7 +114,7 @@ class StressTestValidator(BaseValidator):
             for hotkey, uid in miners.items()
             if (
                 not infos[uid] or
-                infos[uid].spec_version != SPEC_VERSION or
+                infos[uid].spec_version not in SUPPORTED_SPEC_VERSIONS or
                 NeuronCapabilities.MINER not in infos[uid].capabilities
             )
         ]

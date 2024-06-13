@@ -30,15 +30,15 @@ from grpc.aio import Channel
 from neuron.neuron import BaseNeuron
 from neuron.protos.neuron_pb2 import MinerGenerationResponse
 from neuron.protos.neuron_pb2_grpc import MinerStub
-from tensor.config import check_config
+from tensor.config import check_config, SPEC_VERSION
 from tensor.neuron_info import sync_neuron_info
 from tensor.protos.inputs_pb2 import InfoResponse, GenerationRequestInputs
 from tensor.response import SuccessfulResponseInfo, call_request, Response
 
 T = TypeVar("T")
 
-
 MINER_REQUEST_TIMEOUT = int(getenv("MINER_REQUEST_TIMEOUT", str(60)))
+SUPPORTED_SPEC_VERSIONS = {SPEC_VERSION, SPEC_VERSION - 1}
 
 
 class SuccessfulGenerationResponseInfo(SuccessfulResponseInfo):
