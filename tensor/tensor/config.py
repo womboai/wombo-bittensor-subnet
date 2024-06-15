@@ -16,12 +16,14 @@
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
 
-import os
 import argparse
+import logging
+import os
 from typing import Callable
 
 import bittensor as bt
-from loguru import logger
+
+SPEC_VERSION = 22
 
 
 def check_config(config: bt.config, name: str):
@@ -42,22 +44,11 @@ def check_config(config: bt.config, name: str):
     if not os.path.exists(config.neuron.full_path):
         os.makedirs(config.neuron.full_path, exist_ok=True)
 
-    if not config.neuron.dont_save_events:
-        # Add custom event logger for the events.
-        logger.level("EVENTS", no=38, icon="📝")
-        logger.add(
-            os.path.join(config.neuron.full_path, "events.log"),
-            rotation=config.neuron.events_retention_size,
-            serialize=True,
-            enqueue=True,
-            backtrace=False,
-            diagnose=False,
-            level="EVENTS",
-            format="{time:YYYY-MM-DD at HH:mm:ss} | {level} | {message}",
-        )
+    # Add custom event logger for the events.
+    logging.addLevelName(38, "EVENTS")
 
 
-def add_args(parser: argparse.ArgumentParser, default_device: str = "cpu"):
+def add_args(parser: argparse.ArgumentParser, default_device: str):
     """
     Adds relevant arguments to the parser for operation.
     """
@@ -79,17 +70,31 @@ def add_args(parser: argparse.ArgumentParser, default_device: str = "cpu"):
     )
 
     parser.add_argument(
-        "--neuron.events_retention_size",
+        "--neuron.redis_url",
         type=str,
-        help="Events retention size.",
-        default="2 GB",
+        help="The URL to connect to Redis at",
+        default="redis://localhost:6379/",
     )
 
     parser.add_argument(
-        "--neuron.dont_save_events",
-        action="store_true",
-        help="If set, we dont save events to a log file.",
-        default=False,
+        "--blacklist.hotkeys",
+        action='append',
+        help="The hotkeys to block when sending or receiving requests",
+        default=[],
+    )
+
+    parser.add_argument(
+        "--blacklist.coldkeys",
+        action='append',
+        help="The coldkeys to block when sending or receiving requests",
+        default=["5DhPDjLR4YNAixDLNFNP2pTiCpkDQ5A5vm5fyQ3Q52rYcEaw"],
+    )
+
+    parser.add_argument(
+        "--is_hotkey_allowed_endpoint",
+        type=str,
+        help="The endpoint called when checking if the hotkey should be whitelisted for requests",
+        default="",
     )
 
 

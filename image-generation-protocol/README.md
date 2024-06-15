@@ -1,1 +1,0 @@
-# wombo-bittensor-subnet-image-generation-protocol

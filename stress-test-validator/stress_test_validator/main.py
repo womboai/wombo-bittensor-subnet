@@ -18,8 +18,7 @@
 
 import asyncio
 
-from miner.miner_neuron import Miner
+from stress_test_validator.validator import StressTestValidator
 
-# This is the main function, which runs the miner.
 if __name__ == "__main__":
-    asyncio.run(Miner().run())
+    asyncio.run(StressTestValidator().run())

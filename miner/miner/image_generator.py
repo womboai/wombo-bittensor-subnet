@@ -15,11 +15,50 @@
 #  THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 #  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 #  DEALINGS IN THE SOFTWARE.
+#
+#
 
-import asyncio
+from asyncio import Semaphore
+from io import BytesIO
 
-from miner.miner_neuron import Miner
+import torch
+from PIL import Image
+from diffusers import StableDiffusionXLControlNetPipeline
+from torch import Tensor
 
-# This is the main function, which runs the miner.
-if __name__ == "__main__":
-    asyncio.run(Miner().run())
+from gpu_pipeline.pipeline import parse_input_parameters
+from gpu_pipeline.tensor import save_tensor
+from tensor.protos.inputs_pb2 import GenerationRequestInputs
+
+
+def image_stream(image: Image.Image) -> BytesIO:
+    output = BytesIO()
+    image.save(output, format="jpeg")
+    output.seek(0)
+
+    return output
+
+
+async def generate(
+    gpu_semaphore: Semaphore,
+    pipeline: StableDiffusionXLControlNetPipeline,
+    inputs: GenerationRequestInputs,
+) -> bytes:
+    frames: list[Tensor] = []
+
+    def save_frames(_pipe, _step_index, _timestep, callback_kwargs):
+        nonlocal frames
+
+        frames.append(callback_kwargs["latents"])
+
+        return callback_kwargs
+
+    input_kwargs = parse_input_parameters(inputs, pipeline.device)
+
+    async with gpu_semaphore:
+        pipeline(
+            **input_kwargs,
+            callback_on_step_end=save_frames,
+        )
+
+    return save_tensor(torch.stack(frames))
