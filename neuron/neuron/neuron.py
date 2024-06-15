@@ -121,10 +121,6 @@ class BaseNeuron(ABC):
             f"using the signature {signature}"
         )
 
-    @abstractmethod
-    async def resync_metagraph(self):
-        ...
-
     def check_registered(self):
         # --- Check for registration.
         if not self.subtensor.is_hotkey_registered(
