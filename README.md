@@ -131,6 +131,13 @@ To set the miner neuron up,
   ```
 
 - Start a redis sever to allow the miner to store results
+VM or Bare Metal
+  ```bash
+  // prerequisites docker and docker-compose
+  // https://docs.docker.com/engine/install/ubuntu/
+  docker compose -f redis.yml up -d
+  ```
+Container based
   ```bash
   apt-get update
   apt-get install lsb-release curl gpg
