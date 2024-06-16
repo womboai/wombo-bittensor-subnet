@@ -142,7 +142,8 @@ To start a Redis server to allow the miner to store results, follow these steps:
   ```bash
   // prerequisites docker and docker-compose
   // [Docker Installation Guide](https://docs.docker.com/engine/install/ubuntu/)
-  docker compose -f redis.yml up -d
+  cd redis/
+  docker compose up -d
   ```
 Container based
   ```bash
