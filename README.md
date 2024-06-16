@@ -131,10 +131,17 @@ To set the miner neuron up,
   ```
 
 - Start a redis sever to allow the miner to store results
-VM or Bare Metal
+## Running on VM or Bare Metal
+
+To start a Redis server to allow the miner to store results, follow these steps:
+
+### Prerequisites
+- Docker
+- Docker Compose
+
   ```bash
   // prerequisites docker and docker-compose
-  // https://docs.docker.com/engine/install/ubuntu/
+  // [Docker Installation Guide](https://docs.docker.com/engine/install/ubuntu/)
   docker compose -f redis.yml up -d
   ```
 Container based
