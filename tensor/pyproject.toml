@@ -30,6 +30,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
 bittensor = "7.0.1"
+numpy = "1.26.4"
 protobuf = ">=5.27"
 grpcio = ">=1.64"
 grpcio-tools = "1.64.0"
