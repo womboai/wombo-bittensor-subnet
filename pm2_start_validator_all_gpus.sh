@@ -41,8 +41,7 @@ done
 echo "}
 
 server {
-  listen $PORT;
-  http2 on;
+  listen $PORT http2;
 
   location / {
     grpc_pass grpc://validator;
