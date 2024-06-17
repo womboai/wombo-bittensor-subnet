@@ -24,7 +24,7 @@
 
 set -e
 
-apt-get install redis npm
+apt-get install redis npm nginx
 npm install -g pm2
 
 PORT=$1
@@ -32,31 +32,26 @@ OLD_DIRECTORY=$(pwd)
 DIRECTORY=$(dirname $(realpath $0))
 GPU_COUNT=$((nvidia-smi -L || true) | wc -l)
 
-echo "
-http {
-  upstream validator {
-" > $DIRECTORY/nginx.conf
+echo "upstream validator {" > $DIRECTORY/generated-nginx.conf
 
 for i in $(seq $GPU_COUNT); do
-  echo "  server localhost:$(($PORT + $i));" >> $DIRECTORY/nginx.conf
+  echo "  server localhost:$(($PORT + $i));" >> $DIRECTORY/generated-nginx.conf
 done
 
-echo "
-  }
+echo "}
 
-  server {
-    listen $PORT http2;
+server {
+  listen $PORT;
+  http2 on;
 
-    location / {
-      grpc_pass grpc://validator;
-    }
+  location / {
+    grpc_pass grpc://validator;
   }
-}
-" >> $DIRECTORY/nginx.conf
+}" >> $DIRECTORY/generated-nginx.conf
 
 pm2 delete wombo-stress-test-validator || true
 
-pm2 start nginx --name wombo-validator-nginx --interpreter none -- -c $DIRECTORY/nginx.conf
+nginx -c $DIRECTORY/validator-nginx.conf
 
 cd $DIRECTORY/stress-test-validator
 poetry install
