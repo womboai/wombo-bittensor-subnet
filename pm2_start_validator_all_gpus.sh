@@ -37,7 +37,7 @@ http {
   upstream validator {
 " > $DIRECTORY/nginx.conf
 
-for i in "$(seq $GPU_COUNT)"; do
+for i in $(seq $GPU_COUNT); do
   echo "  server localhost:$(($PORT + $i));" >> $DIRECTORY/nginx.conf
 done
 
@@ -72,7 +72,7 @@ pm2 start poetry \
 cd $DIRECTORY/forwarding-validator
 poetry install
 
-for i in "$(seq $GPU_COUNT)"; do
+for i in $(seq $GPU_COUNT); do
   pm2 delete wombo-forwarding-validator-$i || true
 
   pm2 start poetry \
