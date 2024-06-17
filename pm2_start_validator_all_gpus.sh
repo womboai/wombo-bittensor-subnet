@@ -51,6 +51,7 @@ server {
 
 pm2 delete wombo-stress-test-validator || true
 
+killall nginx
 nginx -c $DIRECTORY/validator-nginx.conf
 
 cd $DIRECTORY/stress-test-validator
