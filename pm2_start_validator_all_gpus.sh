@@ -24,8 +24,13 @@
 
 set -e
 
-apt-get install redis npm nginx
-npm install -g pm2
+if [ -x "$(command -v sudo)" ]; then
+  sudo apt-get install redis npm nginx
+  sudo npm install -g pm2
+else
+  apt-get install redis npm nginx
+  npm install -g pm2
+fi
 
 PORT=$1
 OLD_DIRECTORY=$(pwd)
