@@ -79,7 +79,7 @@ class WomboSubnetAPI:
         bt.logging.info(f"Subtensor: {self.subtensor}")
 
         # The metagraph holds the state of the network, letting us know about other validators and miners.
-        self.metagraph = self.subtensor.metagraph(client_config.netuid)
+        self.metagraph = self.subtensor.metagraph(netuid=client_config.netuid)
         bt.logging.info(f"Metagraph: {self.metagraph}")
 
         self.server = grpc.aio.server(interceptors=[LoggingInterceptor()])
