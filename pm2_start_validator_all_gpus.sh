@@ -55,8 +55,13 @@ server {
 
 pm2 delete wombo-stress-test-validator || true
 
-killall nginx || true
-nginx -c $DIRECTORY/validator-nginx.conf
+if [ -x "$(command -v sudo)" ]; then
+  sudo killall nginx || true
+  sudo nginx -c $DIRECTORY/validator-nginx.conf
+else
+  killall nginx || true
+  nginx -c $DIRECTORY/validator-nginx.conf
+fi
 
 cd $DIRECTORY/stress-test-validator
 poetry install
